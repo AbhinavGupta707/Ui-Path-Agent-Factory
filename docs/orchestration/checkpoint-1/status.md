@@ -6,13 +6,14 @@ Worker IDs are filled in by the orchestrator after thread creation.
 
 | Lane | Thread | Worktree | Status | Notes |
 |---|---|---|---|---|
-| Factory API Spine | pending | pending | pending | Owns API/contracts |
-| Factory Console UX | pending | pending | pending | Owns console app |
-| UiPath Mapping Docs | pending | pending | pending | Owns UiPath/docs |
+| Factory API Spine | `pendingWorktreeId: local:9eda1994-29f3-4072-b841-b8eb0941eb53` | pending | queued | Owns API/contracts |
+| Factory Console UX | `pendingWorktreeId: local:38366b70-cf93-474d-b65d-1f9e752cad95` | pending | queued | Owns console app |
+| UiPath Mapping Docs | `pendingWorktreeId: local:b4943f01-09b4-4973-ad3e-d8bb22b294a6` | pending | queued | Owns UiPath/docs |
 
 ## Integration Log
 
 - Created checkpoint docs and lane prompts.
+- Spawned three isolated worktree worker sessions from `main`.
 
 ## Required Orchestrator Actions
 
