@@ -1,0 +1,14 @@
+.DS_Store
+.env
+.env.*
+!.env.example
+node_modules/
+dist/
+coverage/
+*.log
+.vercel/
+.turbo/
+.vite/
+.uipath/.skills/
+.uipath/*.auth
+.agents/skills/

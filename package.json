@@ -1,0 +1,32 @@
+{
+  "name": "ui-path-agent-factory",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "packageManager": "npm@10.9.7",
+  "workspaces": [
+    "packages/*",
+    "services/*",
+    "apps/*"
+  ],
+  "scripts": {
+    "build": "npm run build --workspaces --if-present",
+    "test": "npm run test --workspaces --if-present",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "lint": "npm run lint --workspaces --if-present",
+    "smoke": "npm run build && npm test",
+    "dev:console": "npm run dev -w @agent-factory/factory-console",
+    "dev:customer360": "npm run dev -w @agent-factory/customer360-template",
+    "dev:api": "npm run dev -w @agent-factory/factory-api",
+    "dev:worker": "npm run dev -w @agent-factory/build-worker"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.2",
+    "@types/react": "^19.0.2",
+    "@types/react-dom": "^19.0.2",
+    "@vitejs/plugin-react": "^4.3.4",
+    "typescript": "^5.7.2",
+    "vite": "^6.0.5",
+    "vitest": "^4.1.9"
+  }
+}
