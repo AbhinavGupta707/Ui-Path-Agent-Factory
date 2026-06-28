@@ -15,6 +15,7 @@
     "typecheck": "npm run typecheck --workspaces --if-present",
     "lint": "npm run lint --workspaces --if-present",
     "smoke": "npm run build && npm test",
+    "smoke:customer360": "npm --workspace @agent-factory/customer360-template run smoke",
     "dev:console": "npm run dev -w @agent-factory/factory-console",
     "dev:customer360": "npm run dev -w @agent-factory/customer360-template",
     "dev:api": "npm run dev -w @agent-factory/factory-api",
