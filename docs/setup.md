@@ -34,6 +34,24 @@ uip or folders list --output json
 
 The primary folder for the demo is `AgentFactoryDemo`.
 
+Install the optional product tools that are required for this repo:
+
+```bash
+uip tools install @uipath/integrationservice-tool --output json
+uip tools install @uipath/test-manager-tool --output json
+```
+
+Then verify discovery:
+
+```bash
+uip tools list --output json
+uip is connectors list --filter github --output json
+uip tm project list --limit 1 --output json
+uip df entities list --native-only --output json
+uip tasks list --folder-id 7986306 --limit 1 --output json
+uip maestro bpmn process list --folder-key cba41e19-47cc-4a0a-bf73-de88b60a61be --output json
+```
+
 ## GitHub Remote
 
 ```bash

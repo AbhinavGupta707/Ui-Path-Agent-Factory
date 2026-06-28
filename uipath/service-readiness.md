@@ -5,16 +5,22 @@ Primary organization:
 - Organization: `galacticus`
 - Tenant: `DefaultTenant`
 - Orchestrator folder: `AgentFactoryDemo`
+- Folder key: `cba41e19-47cc-4a0a-bf73-de88b60a61be`
+- Folder id: `7986306`
 
-Services to confirm before live orchestration:
+## Confirmed
 
-- Orchestrator folder access.
-- Integration Service access.
-- Apps access.
-- Data Service access.
-- Action Center access.
-- Maestro / Process Orchestration access.
-- Agents / Agent Builder access.
-- Test Cloud access, if available in the plan.
+- Orchestrator folder access: `uip or folders get AgentFactoryDemo --output json` succeeded.
+- Maestro / Process Orchestration: `uip maestro bpmn processes list --output json` and folder-scoped process list succeeded with no processes yet.
+- Agents / Agent Builder: `uip agent list --output json` succeeded with no solutions yet.
+- Integration Service: installed `@uipath/integrationservice-tool`; connector and connection list probes succeeded.
+- Data Service / Data Fabric: `uip df entities list --native-only --output json` succeeded with no entities yet.
+- Action Center: `uip tasks list --folder-id 7986306 --limit 1 --output json` succeeded with no tasks yet.
+- Test Manager / Test Cloud: installed `@uipath/test-manager-tool`; `uip tm project list --limit 1 --output json` succeeded with no projects yet.
+- Apps: Automation Cloud portal search returns `Apps` as a page result: "Low-code web based tool for building and deploying automation-powered business applications." No Apps CLI tool is registered or discoverable.
 
-Use CLI first where coverage exists. Use the Automation Cloud portal when a service is enabled through the UI or the CLI lacks a direct discovery command.
+## Notes
+
+- GitHub Integration Service connector discovery returns `GitHub` with key `uipath-microsoft-github`, but no connection is configured yet.
+- No Data Fabric entities, Action Center tasks, Maestro processes, Agent solutions, or Test Manager projects exist yet. That is expected at this stage.
+- Use CLI first where coverage exists. Use the Automation Cloud portal when a service is enabled through the UI or the CLI lacks a direct discovery command.
