@@ -8,7 +8,7 @@ Worker IDs are filled in by the orchestrator after thread creation.
 |---|---|---|---|---|
 | Factory API Spine | `019f1050-388c-7831-9914-b6c407ab87e9` | `/Users/abhinavgupta/.codex/worktrees/928c/Agent Factory` | active | Pending id `local:9eda1994-29f3-4072-b841-b8eb0941eb53` |
 | Factory Console UX | `019f1050-6910-7c82-aa31-bd46e67ba17a` | `/Users/abhinavgupta/.codex/worktrees/b573/Agent Factory` | active | Pending id `local:38366b70-cf93-474d-b65d-1f9e752cad95` |
-| UiPath Mapping Docs | `019f1050-93e9-7110-84a9-c59accb954f9` | `/Users/abhinavgupta/.codex/worktrees/e73e/Agent Factory` | active | Pending id `local:b4943f01-09b4-4973-ad3e-d8bb22b294a6` |
+| UiPath Mapping Docs | `019f1050-93e9-7110-84a9-c59accb954f9` | `/Users/abhinavgupta/.codex/worktrees/e73e/Agent Factory` | commit ready, thread finalizing | Pending id `local:b4943f01-09b4-4973-ad3e-d8bb22b294a6`; lane commit `21caabc` |
 
 ## Integration Log
 
@@ -16,6 +16,7 @@ Worker IDs are filled in by the orchestrator after thread creation.
 - Spawned three isolated worktree worker sessions from `main`.
 - Created heartbeat automation `agent-factory-checkpoint-1-orchestrator-monitor` for periodic orchestration checks.
 - Resolved active thread IDs and worktree paths for all three lanes.
+- UiPath Mapping Docs produced clean lane commit `21caabc`; held for final handoff and dependency-order merge after API and console.
 
 ## Required Orchestrator Actions
 
