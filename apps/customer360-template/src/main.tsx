@@ -1,9 +1,14 @@
 import { StrictMode, useMemo, useState, type ReactNode } from "react";
 import { createRoot } from "react-dom/client";
 import {
-  seedCustomerRecords,
-  summarizeCustomer360,
-  type CustomerRecord
+  calculateCustomer360Metrics,
+  growthCustomer360Dataset,
+  mutateCustomer360Dataset,
+  seedCustomer360Dataset,
+  type Customer360Dataset,
+  type CustomerSegment,
+  type DataFreshnessMetric,
+  type OpportunityMetric
 } from "@agent-factory/customer360-metrics";
 import "./styles.css";
 
@@ -23,10 +28,10 @@ interface RevenuePoint {
 }
 
 interface SegmentMetric {
-  segment: CustomerRecord["segment"];
+  segment: CustomerSegment;
   revenue: number;
-  accounts: number;
-  averageHealth: number;
+  customers: number;
+  averageOrderValue: number;
   share: number;
 }
 
@@ -43,7 +48,7 @@ interface RetentionCohort {
 
 interface RiskRow {
   id: string;
-  segment: CustomerRecord["segment"];
+  segment: CustomerSegment;
   risk: "High" | "Medium" | "Low";
   signal: string;
   ownerAction: string;
@@ -65,30 +70,13 @@ interface DashboardModel {
   risks: RiskRow[];
   categories: CategoryMetric[];
   totalRevenue: number;
-  averageHealth: number;
+  datasetId: string;
+  freshness: DataFreshnessMetric;
+  warnings: string[];
 }
 
-const segmentOrder: CustomerRecord["segment"][] = ["Enterprise", "Mid-Market", "Commercial"];
-
-const revenueMultipliers = [0.68, 0.74, 0.71, 0.8, 0.86, 0.9, 0.96, 1];
-const monthLabels = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug"];
-const retentionLabels = ["New", "Repeat", "Expansion"];
-
-const retentionOffsets = [
-  [0, -5, -8, -12],
-  [-2, -6, -10, -14],
-  [1, -4, -7, -11]
-];
-
-const categoryWeights = [
-  { name: "Subscriptions", weight: 0.42 },
-  { name: "Services", weight: 0.28 },
-  { name: "Add-ons", weight: 0.18 },
-  { name: "Support", weight: 0.12 }
-];
-
 const modeLabels: Record<DataMode, string> = {
-  ready: "Current dataset",
+  ready: "Baseline dataset",
   degraded: "Degraded feed",
   empty: "Empty dataset"
 };
@@ -106,167 +94,159 @@ function formatPercent(value: number): string {
   return `${Math.round(value)}%`;
 }
 
-function average(values: number[]): number {
-  if (values.length === 0) {
-    return 0;
-  }
-
-  return Math.round(values.reduce((sum, value) => sum + value, 0) / values.length);
+function formatRatio(value: number): string {
+  return formatPercent(value * 100);
 }
 
-function customerLabel(record: CustomerRecord, index: number): string {
-  const segmentPrefix: Record<CustomerRecord["segment"], string> = {
-    Enterprise: "ENT",
-    "Mid-Market": "MID",
-    Commercial: "COM"
-  };
-
-  const regionSuffix: Record<CustomerRecord["region"], string> = {
-    Americas: "AM",
-    EMEA: "EU",
-    APAC: "AP"
-  };
-
-  return `${segmentPrefix[record.segment]}-${String(index + 1).padStart(3, "0")}-${regionSuffix[record.region]}`;
-}
-
-function recordsForMode(mode: DataMode): CustomerRecord[] {
-  if (mode === "empty") {
-    return [];
-  }
-
-  if (mode === "degraded") {
-    return seedCustomerRecords.slice(0, Math.max(1, seedCustomerRecords.length - 1));
-  }
-
-  return seedCustomerRecords;
-}
-
-function riskFor(record: CustomerRecord): RiskRow["risk"] {
-  if (record.healthScore < 70 || record.openRisks >= 3) {
+function riskLabel(tier: "low" | "medium" | "high"): RiskRow["risk"] {
+  if (tier === "high") {
     return "High";
   }
-
-  if (record.healthScore < 78 || record.openRisks > 0 || record.productUsage < 80) {
+  if (tier === "medium") {
     return "Medium";
   }
-
   return "Low";
 }
 
-function signalFor(record: CustomerRecord): string {
-  if (record.openRisks >= 3) {
-    return `${record.openRisks} unresolved service risks`;
-  }
-
-  if (record.healthScore < 70) {
-    return `Health score ${record.healthScore}`;
-  }
-
-  if (record.productUsage < 80) {
-    return `Usage at ${record.productUsage}%`;
-  }
-
-  return `Healthy usage at ${record.productUsage}%`;
+function emptyDataset(generatedAt: string): Customer360Dataset {
+  return {
+    metadata: {
+      datasetId: "customer360-empty",
+      seed: 0,
+      scenario: "baseline",
+      generatedAt,
+      piiPolicy: "mask_email_name_phone",
+      source: "synthetic"
+    },
+    customers: [],
+    orders: [],
+    events: [],
+    returns: []
+  };
 }
 
-function buildDashboardModel(records: CustomerRecord[]): DashboardModel {
-  const summary = summarizeCustomer360(records);
-  const totalRevenue = summary.totalArr;
-  const totalAccounts = records.length;
-  const averageProductUsage = average(records.map((record) => record.productUsage));
-  const repeatPurchaseRate =
-    totalAccounts === 0
-      ? 0
-      : (records.filter((record) => record.productUsage >= 75).length / totalAccounts) * 100;
-  const returnRate =
-    totalAccounts === 0
-      ? 0
-      : Math.min(18, Math.max(2, (records.reduce((sum, record) => sum + record.openRisks, 0) / totalAccounts) * 3.6));
-  const averageOrderValue = totalAccounts === 0 ? 0 : Math.round(totalRevenue / (totalAccounts * 24));
+function degradedDataset(generatedAt: string): Customer360Dataset {
+  return {
+    metadata: {
+      ...growthCustomer360Dataset.metadata,
+      datasetId: "customer360-degraded-feed",
+      scenario: "risk",
+      generatedAt
+    },
+    customers: growthCustomer360Dataset.customers.map((customer) => ({ ...customer })),
+    orders: growthCustomer360Dataset.orders.slice(0, -2).map((order) => ({ ...order })),
+    events: growthCustomer360Dataset.events
+      .filter((event) => event.eventType !== "purchase" && event.eventType !== "support_ticket")
+      .map((event) => ({ ...event })),
+    returns: []
+  };
+}
 
-  const segments = segmentOrder.map((segment) => {
-    const segmentRecords = records.filter((record) => record.segment === segment);
-    const revenue = summary.segmentArr[segment] ?? 0;
+export function datasetForMode(mode: DataMode, refreshRevision = 0, generatedAt = seedCustomer360Dataset.metadata.generatedAt): Customer360Dataset {
+  if (mode === "empty") {
+    return emptyDataset(generatedAt);
+  }
 
+  if (mode === "degraded") {
+    return degradedDataset(generatedAt);
+  }
+
+  if (refreshRevision > 0) {
+    return mutateCustomer360Dataset(seedCustomer360Dataset, {
+      seed: 20260715 + refreshRevision,
+      generatedAt,
+      scenario: "mutated"
+    });
+  }
+
+  return seedCustomer360Dataset;
+}
+
+function monthLabel(value: string): string {
+  const [year, month] = value.split("-");
+  const date = new Date(Date.UTC(Number(year), Number(month) - 1, 1));
+  return date.toLocaleString("en-US", { month: "short" });
+}
+
+function buildRevenueTrend(dataset: Customer360Dataset): RevenuePoint[] {
+  const revenueByOrder = new Map(dataset.orders.map((order) => [order.orderId, Math.max(0, order.amount - order.discount)]));
+  const monthByOrder = new Map(dataset.orders.map((order) => [order.orderId, order.orderDate.slice(0, 7)]));
+  const revenueByMonth = new Map<string, number>();
+
+  for (const order of dataset.orders) {
+    const month = order.orderDate.slice(0, 7);
+    revenueByMonth.set(month, (revenueByMonth.get(month) ?? 0) + (revenueByOrder.get(order.orderId) ?? 0));
+  }
+
+  for (const returned of dataset.returns) {
+    const month = monthByOrder.get(returned.orderId) ?? returned.returnDate.slice(0, 7);
+    revenueByMonth.set(month, (revenueByMonth.get(month) ?? 0) - returned.amount);
+  }
+
+  const points = [...revenueByMonth.entries()]
+    .sort(([left], [right]) => left.localeCompare(right))
+    .map(([month, value]) => ({ month: monthLabel(month), value: Math.max(0, Math.round(value)) }));
+
+  return points.length > 0 ? points : [{ month: "No data", value: 0 }];
+}
+
+function opportunityFor(risk: { customerId: string }, opportunities: OpportunityMetric[]): OpportunityMetric | undefined {
+  return opportunities.find((opportunity) => opportunity.id.includes(risk.customerId.toLowerCase()));
+}
+
+export function buildDashboardModel(dataset: Customer360Dataset): DashboardModel {
+  const metrics = calculateCustomer360Metrics(dataset);
+  const totalRevenue = metrics.kpis.revenue;
+  const maxCohortRevenue = Math.max(...metrics.retentionCohorts.map((cohort) => cohort.revenue), 1);
+
+  const segments = metrics.segmentRevenue.map((segment) => ({
+    segment: segment.segment,
+    revenue: segment.revenue,
+    customers: segment.customerCount,
+    averageOrderValue: segment.averageOrderValue,
+    share: segment.shareOfRevenue * 100
+  }));
+
+  const funnel = metrics.behaviorFunnel.map((stage) => ({
+    label: stage.label,
+    value: stage.customerCount,
+    detail:
+      stage.dropOffFromPrevious > 0
+        ? `${stage.dropOffFromPrevious} drop-off; ${formatRatio(stage.overallConversion)} overall`
+        : `${formatRatio(stage.overallConversion)} overall conversion`
+  }));
+
+  const retention = metrics.retentionCohorts.slice(0, 4).map((cohort) => ({
+    label: cohort.cohort,
+    values: [
+      Math.round(cohort.retentionRate * 100),
+      Math.round(cohort.repeatPurchaseRate * 100),
+      cohort.customerCount === 0 ? 0 : Math.round((cohort.activeCustomersLast90Days / cohort.customerCount) * 100),
+      Math.round((cohort.revenue / maxCohortRevenue) * 100)
+    ]
+  }));
+
+  const risks = metrics.churnRisk.slice(0, 8).map((risk) => {
+    const opportunity = opportunityFor(risk, metrics.topOpportunities);
     return {
-      segment,
-      revenue,
-      accounts: segmentRecords.length,
-      averageHealth: average(segmentRecords.map((record) => record.healthScore)),
-      share: totalRevenue === 0 ? 0 : (revenue / totalRevenue) * 100
+      id: risk.label,
+      segment: risk.segment,
+      risk: riskLabel(risk.riskTier),
+      signal: risk.riskFactors.join("; ") || `${risk.daysSinceLastActivity} days since last activity`,
+      ownerAction:
+        risk.riskTier === "high"
+          ? "Create retention task"
+          : risk.riskTier === "medium"
+            ? "Schedule adoption review"
+            : "Queue expansion outreach",
+      opportunity: opportunity ? `${opportunity.title} (${formatCurrency(opportunity.impact)})` : formatCurrency(risk.revenue)
     };
   });
 
-  const revenueTrend = revenueMultipliers.map((multiplier, index) => ({
-    month: monthLabels[index] ?? `M${index + 1}`,
-    value: Math.round(totalRevenue * multiplier)
-  }));
-
-  const funnelBase = Math.max(totalAccounts, 1);
-  const funnel = [
-    {
-      label: "Known customers",
-      value: totalAccounts,
-      detail: "Synthetic CRM records"
-    },
-    {
-      label: "Active usage",
-      value: records.filter((record) => record.productUsage >= 70).length,
-      detail: `${formatPercent(averageProductUsage)} avg usage`
-    },
-    {
-      label: "Repeat purchase",
-      value: Math.round((repeatPurchaseRate / 100) * funnelBase),
-      detail: `${formatPercent(repeatPurchaseRate)} repeat proxy`
-    },
-    {
-      label: "Expansion ready",
-      value: summary.expansionCandidates,
-      detail: "High health + usage"
-    }
-  ];
-
-  const retentionBase = Math.max(58, Math.min(96, summary.averageHealthScore + 8));
-  const retention = retentionLabels.map((label, index) => ({
-    label,
-    values: (retentionOffsets[index] ?? []).map((offset) =>
-      Math.max(32, Math.min(98, retentionBase + offset - index * 4))
-    )
-  }));
-
-  const risks = records
-    .map((record, index) => {
-      const risk = riskFor(record);
-
-      return {
-        id: customerLabel(record, index),
-        segment: record.segment,
-        risk,
-        signal: signalFor(record),
-        ownerAction:
-          risk === "High"
-            ? "Create retention play"
-            : risk === "Medium"
-              ? "Schedule adoption review"
-              : "Queue expansion outreach",
-        opportunity:
-          record.productUsage >= 90 && record.healthScore >= 85
-            ? "Expansion"
-            : risk === "High"
-              ? "Save"
-              : "Nurture"
-      };
-    })
-    .sort((a, b) => {
-      const weight: Record<RiskRow["risk"], number> = { High: 0, Medium: 1, Low: 2 };
-      return weight[a.risk] - weight[b.risk] || a.id.localeCompare(b.id);
-    });
-
-  const categories = categoryWeights.map((category) => ({
-    name: category.name,
-    revenue: Math.round(totalRevenue * category.weight),
-    share: category.weight * 100
+  const categories = metrics.topCategories.map((category) => ({
+    name: category.productCategory,
+    revenue: category.revenue,
+    share: totalRevenue === 0 ? 0 : (category.revenue / totalRevenue) * 100
   }));
 
   return {
@@ -274,59 +254,66 @@ function buildDashboardModel(records: CustomerRecord[]): DashboardModel {
       {
         label: "Revenue",
         value: formatCurrency(totalRevenue),
-        detail: `${totalAccounts} masked accounts in scope`,
+        detail: `${metrics.kpis.orderCount} orders; ${metrics.kpis.returnCount} returns`,
         tone: "revenue"
       },
       {
         label: "Avg order value",
-        value: formatCurrency(averageOrderValue),
-        detail: "Proxy from approved seed set",
+        value: formatCurrency(metrics.kpis.averageOrderValue),
+        detail: `${metrics.kpis.activeCustomers} active customers`,
         tone: "neutral"
       },
       {
         label: "Repeat purchase",
-        value: formatPercent(repeatPurchaseRate),
-        detail: `${summary.averageHealthScore} avg health score`,
+        value: formatRatio(metrics.kpis.repeatPurchaseRate),
+        detail: `${metrics.kpis.purchaseFrequency} purchases per active customer`,
         tone: "positive"
       },
       {
         label: "Return rate",
-        value: formatPercent(returnRate),
-        detail: "Derived from open risk events",
+        value: formatRatio(metrics.kpis.returnRate),
+        detail: `${formatCurrency(metrics.kpis.returnedRevenue)} returned revenue`,
         tone: "warning"
       },
       {
         label: "Churn risk",
-        value: String(summary.accountsAtRisk),
-        detail: `${summary.expansionCandidates} expansion candidates`,
+        value: String(metrics.kpis.highRiskCustomers),
+        detail: `${metrics.topOpportunities.length} ranked opportunities`,
         tone: "warning"
       }
     ],
-    revenueTrend,
+    revenueTrend: buildRevenueTrend(dataset),
     segments,
     funnel,
     retention,
     risks,
     categories,
     totalRevenue,
-    averageHealth: summary.averageHealthScore
+    datasetId: metrics.metadata.datasetId,
+    freshness: metrics.dataFreshness,
+    warnings: [...metrics.validation.warnings, ...metrics.dataFreshness.warnings]
   };
 }
 
-function App() {
+export function App() {
   const [mode, setMode] = useState<DataMode>("ready");
   const [refreshState, setRefreshState] = useState<RefreshState>("idle");
   const [lastRefresh, setLastRefresh] = useState(() => new Date("2026-06-29T09:12:00+01:00"));
+  const [refreshRevision, setRefreshRevision] = useState(0);
 
-  const records = useMemo(() => recordsForMode(mode), [mode]);
-  const model = useMemo(() => buildDashboardModel(records), [records]);
-  const isEmpty = records.length === 0;
+  const dataset = useMemo(
+    () => datasetForMode(mode, refreshRevision, lastRefresh.toISOString()),
+    [lastRefresh, mode, refreshRevision]
+  );
+  const model = useMemo(() => buildDashboardModel(dataset), [dataset]);
+  const isEmpty = dataset.customers.length === 0;
   const isDegraded = mode === "degraded";
 
   const handleRefresh = () => {
     setRefreshState("loading");
     window.setTimeout(() => {
       setLastRefresh(new Date());
+      setRefreshRevision((revision) => revision + 1);
       setRefreshState("idle");
     }, 420);
   };
@@ -343,12 +330,12 @@ function App() {
 
       {refreshState === "loading" ? <LoadingState /> : null}
 
-      <StatusRail mode={mode} lastRefresh={lastRefresh} />
+      <StatusRail datasetId={model.datasetId} freshness={model.freshness} mode={mode} warnings={model.warnings} />
 
       {isDegraded ? (
         <section className="alert-band" aria-label="Degraded data notice">
           <strong>Degraded metric path</strong>
-          <span>Returns and event feeds are unavailable, so retention and return-rate panels are using local account-health proxies.</span>
+          <span>Return records and purchase events are unavailable, so the metric layer is rendering validated partial-feed warnings.</span>
         </section>
       ) : null}
 
@@ -364,7 +351,7 @@ function App() {
           </section>
 
           <section className="dashboard-grid dashboard-grid-secondary">
-            <RetentionPanel cohorts={model.retention} averageHealth={model.averageHealth} />
+            <RetentionPanel cohorts={model.retention} />
             <FunnelPanel funnel={model.funnel} />
             <CategoryPanel categories={model.categories} />
           </section>
@@ -419,8 +406,18 @@ function Header({ mode, refreshState, lastRefresh, onModeChange, onRefresh }: He
   );
 }
 
-function StatusRail({ mode, lastRefresh }: { mode: DataMode; lastRefresh: Date }) {
-  const freshness = lastRefresh.toLocaleDateString([], {
+function StatusRail({
+  datasetId,
+  freshness,
+  mode,
+  warnings
+}: {
+  datasetId: string;
+  freshness: DataFreshnessMetric;
+  mode: DataMode;
+  warnings: string[];
+}) {
+  const generatedAt = new Date(freshness.generatedAt).toLocaleDateString([], {
     month: "short",
     day: "numeric",
     year: "numeric"
@@ -428,10 +425,14 @@ function StatusRail({ mode, lastRefresh }: { mode: DataMode; lastRefresh: Date }
 
   return (
     <section className="status-rail" aria-label="Data protection and freshness">
-      <StatusItem label="Data mode" value={modeLabels[mode]} detail="Local simulated source" />
-      <StatusItem label="Freshness" value={freshness} detail="No network dependency" />
+      <StatusItem label="Data mode" value={modeLabels[mode]} detail={datasetId} />
+      <StatusItem label="Freshness" value={freshness.isStale ? "Review needed" : "Fresh"} detail={`Generated ${generatedAt}`} />
       <StatusItem label="PII masking" value="Enabled" detail="Names tokenized; email and phone suppressed" />
-      <StatusItem label="UiPath state" value="uipath-ready" detail="Sandbox artifact, approval-gated" />
+      <StatusItem
+        label="Rows"
+        value={`${freshness.rowCounts.customers}/${freshness.rowCounts.orders}/${freshness.rowCounts.events}/${freshness.rowCounts.returns}`}
+        detail={warnings[0] ?? "Customers/orders/events/returns"}
+      />
     </section>
   );
 }
@@ -526,7 +527,7 @@ function RevenuePanel({ points, totalRevenue }: { points: RevenuePoint[]; totalR
   return (
     <Panel
       className="revenue-panel"
-      subtitle="Chart-like view backed by the current metrics summary"
+      subtitle="Monthly net revenue from synthetic orders minus returns"
       title="Revenue trend"
     >
       <div className="chart-summary">
@@ -551,7 +552,7 @@ function RevenuePanel({ points, totalRevenue }: { points: RevenuePoint[]; totalR
 
 function SegmentPanel({ segments, totalRevenue }: { segments: SegmentMetric[]; totalRevenue: number }) {
   return (
-    <Panel subtitle="Segment revenue, share, and health distribution" title="Segment revenue">
+    <Panel subtitle="Segment revenue, customer count, and calculated AOV" title="Segment revenue">
       <div className="segment-list">
         {segments.map((segment) => (
           <div className="segment-row" key={segment.segment}>
@@ -563,9 +564,9 @@ function SegmentPanel({ segments, totalRevenue }: { segments: SegmentMetric[]; t
               <span style={{ width: `${Math.max(segment.share, totalRevenue > 0 ? 4 : 0)}%` }} />
             </div>
             <div className="segment-meta">
-              <span>{segment.accounts} accounts</span>
+              <span>{segment.customers} customers</span>
               <span>{formatPercent(segment.share)} share</span>
-              <span>{segment.averageHealth} health</span>
+              <span>{formatCurrency(segment.averageOrderValue)} AOV</span>
             </div>
           </div>
         ))}
@@ -574,16 +575,16 @@ function SegmentPanel({ segments, totalRevenue }: { segments: SegmentMetric[]; t
   );
 }
 
-function RetentionPanel({ cohorts, averageHealth }: { cohorts: RetentionCohort[]; averageHealth: number }) {
+function RetentionPanel({ cohorts }: { cohorts: RetentionCohort[] }) {
   return (
-    <Panel subtitle={`Health-adjusted proxy, average score ${averageHealth}`} title="Retention proxy">
-      <div className="retention-grid" role="table" aria-label="Retention proxy by cohort">
+    <Panel subtitle="Cohort retention, repeat purchase, activity, and revenue share" title="Retention proxy">
+      <div className="retention-grid" role="table" aria-label="Retention metrics by cohort">
         <div className="retention-header" role="row">
           <span />
-          <span>M0</span>
-          <span>M1</span>
-          <span>M2</span>
-          <span>M3</span>
+          <span>Ret</span>
+          <span>Repeat</span>
+          <span>Active</span>
+          <span>Rev</span>
         </div>
         {cohorts.map((cohort) => (
           <div className="retention-row" key={cohort.label} role="row">
@@ -604,7 +605,7 @@ function FunnelPanel({ funnel }: { funnel: FunnelStep[] }) {
   const maxValue = Math.max(...funnel.map((step) => step.value), 1);
 
   return (
-    <Panel subtitle="Event summary derived from approved synthetic account behaviour" title="Behaviour funnel">
+    <Panel subtitle="Customer-level event progression from the synthetic behavior feed" title="Behaviour funnel">
       <div className="funnel-list">
         {funnel.map((step) => (
           <div className="funnel-step" key={step.label}>
@@ -625,7 +626,7 @@ function FunnelPanel({ funnel }: { funnel: FunnelStep[] }) {
 
 function CategoryPanel({ categories }: { categories: CategoryMetric[] }) {
   return (
-    <Panel subtitle="Top product categories allocated from current revenue" title="Category mix">
+    <Panel subtitle="Top product categories from validated order and return data" title="Category mix">
       <div className="category-list">
         {categories.map((category) => (
           <div className="category-row" key={category.name}>
@@ -661,7 +662,7 @@ function RiskTable({ risks }: { risks: RiskRow[] }) {
               <th>Risk</th>
               <th>Primary signal</th>
               <th>Owner action</th>
-              <th>Opportunity</th>
+              <th>Opportunity impact</th>
             </tr>
           </thead>
           <tbody>
@@ -684,8 +685,14 @@ function RiskTable({ risks }: { risks: RiskRow[] }) {
   );
 }
 
-createRoot(document.getElementById("root")!).render(
-  <StrictMode>
-    <App />
-  </StrictMode>
-);
+if (typeof document !== "undefined") {
+  const rootElement = document.getElementById("root");
+
+  if (rootElement) {
+    createRoot(rootElement).render(
+      <StrictMode>
+        <App />
+      </StrictMode>
+    );
+  }
+}

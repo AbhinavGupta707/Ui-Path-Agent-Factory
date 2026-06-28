@@ -42,13 +42,15 @@ The template package prebuilds `@agent-factory/customer360-metrics` before typec
 
 ## Synthetic Data
 
-Current seed data lives in `packages/customer360-metrics/src/index.ts` and is imported by the dashboard through the `@agent-factory/customer360-metrics` workspace package. The current records are synthetic account-level examples with segment, region, ARR, health score, open risk count, and product usage.
+Current seed data lives in `packages/customer360-metrics/src/index.ts` and is imported by the dashboard through the `@agent-factory/customer360-metrics` workspace package. The metric layer exposes typed `Customer360Dataset` records for customers, orders, behavior events, returns, refresh metadata, masking, validation, and aggregate metrics.
 
-This checkpoint does not use real customer data. Future metrics/data work may add `apps/customer360-template/public/data/**` CSV or JSON seed files, but those files must remain synthetic and must be safe to commit.
+The repo also ships repeatable synthetic JSON snapshots in `apps/customer360-template/public/data/customer360-baseline.json` and `apps/customer360-template/public/data/customer360-growth.json`. Those files are safe demo artifacts, not real customer data. The dashboard currently uses package exports for local-first rendering so it does not require a network call.
 
 ## PII Masking Expectations
 
-The current template displays account names only. It does not include raw emails, phone numbers, or individual person-name fields in the seed record shape. The app-level Vitest suite imports the rendered React tree and asserts that no email-like or phone-like raw contact data appears.
+The synthetic dataset includes person, email, and phone-shaped fields so the masking contract can be tested. The rendered dashboard must use the metric package's masked labels and must not display raw emails, phone numbers, or full person names.
+
+The app-level Vitest suite renders the React surface with `react-dom/server`, asserts that no raw contact data appears, and uses `containsRawCustomerPii` from the metrics package as a guardrail.
 
 For Checkpoint 3 and later Codex modifications:
 
@@ -59,18 +61,18 @@ For Checkpoint 3 and later Codex modifications:
 
 ## Refresh And Mutation Verification
 
-The automated template test mutates a copy of the seeded records and verifies that ARR, average health, risk count, and expansion candidate output change. That proves the dashboard's business output is data-dependent before the build worker begins modifying the artifact.
+The dashboard has baseline, degraded-feed, and empty-dataset modes. The refresh button deterministically mutates the local synthetic dataset through `mutateCustomer360Dataset`, recalculates metrics, and updates freshness metadata without any external fetch.
+
+The automated template test uses `datasetForMode("ready", 1, ...)` plus `mutateCustomer360Dataset` to prove that revenue, order count, and freshness change from the baseline seed.
 
 Manual smoke for the current local template:
 
 1. Run `npm run smoke:customer360`.
 2. Start the dashboard with `npm run dev:customer360`.
-3. Confirm the KPI strip and account table render.
-4. Change a synthetic seed value in the metrics workspace or, after the data lane lands, in the approved `public/data` seed files.
+3. Confirm the KPI strip, revenue trend, segment panel, retention grid, funnel, category mix, and churn-risk table render.
+4. Change a synthetic seed value in the metrics workspace or run `node scripts/mutate-customer360-data.mjs --seed 4242 --out apps/customer360-template/public/data/customer360-current.json`.
 5. Re-run `npm run smoke:customer360`.
 6. Refresh the local dashboard and confirm at least one KPI changes.
-
-If a later UX lane adds an in-app refresh button, use that button for step 6 and keep the smoke test focused on deterministic mutation proof.
 
 ## Safe Checkpoint 3 Modification Boundaries
 
