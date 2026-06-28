@@ -12,7 +12,7 @@ Read first:
 - `services/build-worker/src/index.ts`
 - `services/build-worker/src/server.ts`
 
-Base state: `main` at `9a8a332`.
+Base state: `main` at `285ee9a`.
 
 Goal:
 Implement the core Build Worker HTTP/runtime spine so an approved Customer360 build manifest can be queued, validated, tracked, and executed through dependency-injected runner hooks. The lane should make the worker real enough for Codex/Git lanes to plug in without relying on a fake final state.

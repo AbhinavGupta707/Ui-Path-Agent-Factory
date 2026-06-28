@@ -13,7 +13,7 @@ Worker IDs are filled in by the orchestrator after thread creation.
 
 ## Integration Log
 
-- Created checkpoint docs and lane prompts from `main` at `9a8a332`.
+- Created checkpoint docs and lane prompts from `main` at `285ee9a`.
 
 ## Checks Run
 

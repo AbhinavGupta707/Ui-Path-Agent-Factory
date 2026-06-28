@@ -11,7 +11,7 @@ Read first:
 - `docs/action-center-approvals.md`
 - `services/build-worker/src/index.ts`
 
-Base state: `main` at `9a8a332`.
+Base state: `main` at `285ee9a`.
 
 Goal:
 Implement the evidence layer that turns a completed worker run into branch, diff, artifact, and optional GitHub PR evidence. It must be useful in a live demo whether or not GitHub credentials are present.

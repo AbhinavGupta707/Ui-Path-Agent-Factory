@@ -12,7 +12,7 @@ Read first:
 - `services/build-worker/package.json`
 - `services/build-worker/test/build-plan.test.ts`
 
-Base state: `main` at `9a8a332`.
+Base state: `main` at `285ee9a`.
 
 Goal:
 Add repeatable QA and security coverage for the build worker and document how to run/demo it. This lane should make Checkpoint 3 trustworthy without requiring live GitHub or live Codex during ordinary tests.

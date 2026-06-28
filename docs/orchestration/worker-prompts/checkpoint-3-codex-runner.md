@@ -11,7 +11,7 @@ Read first:
 - `services/build-worker/src/index.ts`
 - `services/build-worker/test/build-plan.test.ts`
 
-Base state: `main` at `9a8a332`.
+Base state: `main` at `285ee9a`.
 
 Goal:
 Implement the Codex execution adapter and prompt templates for the build worker. The final adapter should construct safe Codex commands, run them with bounded execution, capture JSONL/stdout/stderr into redacted logs, detect failure, and optionally run one bounded repair attempt when the manifest allows it.

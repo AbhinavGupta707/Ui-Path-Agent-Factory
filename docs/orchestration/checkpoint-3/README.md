@@ -9,7 +9,7 @@ This checkpoint remains local-first and `uipath-ready`. It does not create live 
 ## Baseline
 
 - Integration branch: `main`
-- Base commit: `9a8a332`
+- Base commit: `285ee9a`
 - Checkpoint 1 and Checkpoint 2 are merged, pushed, and verified.
 - `codex --version` reports `codex-cli 0.142.3`.
 
