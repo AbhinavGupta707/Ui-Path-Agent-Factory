@@ -1,0 +1,259 @@
+{
+  "status": "planned",
+  "platformMode": "uipath-ready",
+  "namespace": "AgentFactory",
+  "organization": "galacticus",
+  "tenant": "DefaultTenant",
+  "folder": {
+    "name": "AgentFactoryDemo",
+    "key": "cba41e19-47cc-4a0a-bf73-de88b60a61be",
+    "id": 7986306
+  },
+  "entities": [
+    {
+      "name": "AutomationRequest",
+      "description": "Primary request lifecycle record",
+      "fields": [
+        { "name": "requestId", "type": "Text", "required": true, "unique": true },
+        { "name": "title", "type": "Text", "required": true },
+        { "name": "requesterEmail", "type": "Text", "required": true },
+        { "name": "businessGoal", "type": "LongText", "required": true },
+        { "name": "targetAudience", "type": "Text", "required": true },
+        { "name": "dueDate", "type": "Date", "required": false },
+        { "name": "sourceSystemsJson", "type": "LongText", "required": true },
+        { "name": "constraintsJson", "type": "LongText", "required": true },
+        {
+          "name": "status",
+          "type": "Choice",
+          "required": true,
+          "values": [
+            "draft",
+            "needs_clarification",
+            "awaiting_governance",
+            "approved_for_build",
+            "building",
+            "testing",
+            "awaiting_release_approval",
+            "deployed",
+            "rejected",
+            "failed"
+          ]
+        },
+        {
+          "name": "platformMode",
+          "type": "Choice",
+          "required": true,
+          "values": ["local-simulated", "uipath-ready", "uipath-live"]
+        },
+        { "name": "folderName", "type": "Text", "required": true },
+        { "name": "folderKey", "type": "Text", "required": true },
+        { "name": "folderId", "type": "Number", "required": true },
+        { "name": "currentApprovalId", "type": "Text", "required": false },
+        { "name": "currentBuildRunId", "type": "Text", "required": false },
+        { "name": "createdAt", "type": "DateTime", "required": true },
+        { "name": "updatedAt", "type": "DateTime", "required": true }
+      ]
+    },
+    {
+      "name": "StructuredSpec",
+      "description": "Agent-normalized requirements",
+      "fields": [
+        { "name": "specId", "type": "Text", "required": true, "unique": true },
+        { "name": "requestId", "type": "Text", "required": true },
+        { "name": "objective", "type": "LongText", "required": true },
+        { "name": "requiredCapabilitiesJson", "type": "LongText", "required": true },
+        { "name": "dataSourcesJson", "type": "LongText", "required": true },
+        { "name": "acceptanceCriteriaJson", "type": "LongText", "required": true },
+        { "name": "governanceNotesJson", "type": "LongText", "required": true },
+        { "name": "clarificationQuestionsJson", "type": "LongText", "required": false },
+        { "name": "clarificationAnswersJson", "type": "LongText", "required": false },
+        { "name": "agentVersion", "type": "Text", "required": false },
+        { "name": "createdAt", "type": "DateTime", "required": true },
+        { "name": "updatedAt", "type": "DateTime", "required": true }
+      ]
+    },
+    {
+      "name": "GovernanceAssessment",
+      "description": "Risk and permission assessment",
+      "fields": [
+        { "name": "assessmentId", "type": "Text", "required": true, "unique": true },
+        { "name": "requestId", "type": "Text", "required": true },
+        {
+          "name": "riskLevel",
+          "type": "Choice",
+          "required": true,
+          "values": ["low", "medium", "high"]
+        },
+        { "name": "requiresHumanApproval", "type": "Boolean", "required": true },
+        { "name": "requiredPermissionsJson", "type": "LongText", "required": true },
+        { "name": "blockersJson", "type": "LongText", "required": true },
+        { "name": "policySummary", "type": "LongText", "required": true },
+        { "name": "createdAt", "type": "DateTime", "required": true }
+      ]
+    },
+    {
+      "name": "ApprovalTask",
+      "description": "Action Center approval mirror",
+      "fields": [
+        { "name": "approvalId", "type": "Text", "required": true, "unique": true },
+        { "name": "requestId", "type": "Text", "required": true },
+        {
+          "name": "approvalType",
+          "type": "Choice",
+          "required": true,
+          "values": ["scope", "release"]
+        },
+        { "name": "actionCenterTaskId", "type": "Text", "required": false },
+        { "name": "title", "type": "Text", "required": true },
+        {
+          "name": "status",
+          "type": "Choice",
+          "required": true,
+          "values": ["pending", "approved", "rejected", "changes_requested", "cancelled", "expired"]
+        },
+        { "name": "payloadJson", "type": "LongText", "required": true },
+        { "name": "decisionJson", "type": "LongText", "required": false },
+        { "name": "requestedBy", "type": "Text", "required": true },
+        { "name": "assignedTo", "type": "Text", "required": false },
+        { "name": "decidedBy", "type": "Text", "required": false },
+        { "name": "createdAt", "type": "DateTime", "required": true },
+        { "name": "decidedAt", "type": "DateTime", "required": false }
+      ]
+    },
+    {
+      "name": "BuildManifest",
+      "description": "Build worker manifest",
+      "fields": [
+        { "name": "manifestId", "type": "Text", "required": true, "unique": true },
+        { "name": "requestId", "type": "Text", "required": true },
+        { "name": "template", "type": "Text", "required": true },
+        { "name": "branchName", "type": "Text", "required": true },
+        { "name": "outputApp", "type": "Text", "required": true },
+        { "name": "acceptanceCriteriaJson", "type": "LongText", "required": true },
+        { "name": "permissionsJson", "type": "LongText", "required": true },
+        { "name": "codexModel", "type": "Text", "required": true },
+        { "name": "manifestJson", "type": "LongText", "required": true },
+        { "name": "createdAt", "type": "DateTime", "required": true }
+      ]
+    },
+    {
+      "name": "BuildRun",
+      "description": "Build execution state",
+      "fields": [
+        { "name": "buildRunId", "type": "Text", "required": true, "unique": true },
+        { "name": "requestId", "type": "Text", "required": true },
+        { "name": "manifestId", "type": "Text", "required": true },
+        {
+          "name": "status",
+          "type": "Choice",
+          "required": true,
+          "values": ["queued", "running", "passed", "failed"]
+        },
+        {
+          "name": "workerMode",
+          "type": "Choice",
+          "required": true,
+          "values": ["scaffold", "codex-local", "codex-live"]
+        },
+        { "name": "workerEndpoint", "type": "Text", "required": false },
+        { "name": "startedAt", "type": "DateTime", "required": false },
+        { "name": "finishedAt", "type": "DateTime", "required": false },
+        { "name": "lastHeartbeatAt", "type": "DateTime", "required": false },
+        { "name": "logsUrl", "type": "Text", "required": false },
+        { "name": "pullRequestUrl", "type": "Text", "required": false },
+        { "name": "deploymentUrl", "type": "Text", "required": false },
+        { "name": "errorSummary", "type": "LongText", "required": false }
+      ]
+    },
+    {
+      "name": "TestRun",
+      "description": "Quality gate result",
+      "fields": [
+        { "name": "testRunId", "type": "Text", "required": true, "unique": true },
+        { "name": "requestId", "type": "Text", "required": true },
+        { "name": "buildRunId", "type": "Text", "required": true },
+        {
+          "name": "status",
+          "type": "Choice",
+          "required": true,
+          "values": ["queued", "running", "passed", "failed", "blocked"]
+        },
+        { "name": "testManagerProjectId", "type": "Text", "required": false },
+        { "name": "testSetId", "type": "Text", "required": false },
+        { "name": "automatedResultsUrl", "type": "Text", "required": false },
+        {
+          "name": "smokeResult",
+          "type": "Choice",
+          "required": true,
+          "values": ["not_run", "passed", "failed"]
+        },
+        {
+          "name": "securityReviewResult",
+          "type": "Choice",
+          "required": true,
+          "values": ["not_run", "passed", "failed", "waived"]
+        },
+        {
+          "name": "accessibilityResult",
+          "type": "Choice",
+          "required": true,
+          "values": ["not_run", "passed", "failed", "waived"]
+        },
+        {
+          "name": "qualityGateDecision",
+          "type": "Choice",
+          "required": true,
+          "values": ["pending", "passed", "failed", "waived"]
+        },
+        { "name": "notes", "type": "LongText", "required": false },
+        { "name": "createdAt", "type": "DateTime", "required": true },
+        { "name": "completedAt", "type": "DateTime", "required": false }
+      ]
+    },
+    {
+      "name": "DeploymentRecord",
+      "description": "Release artifact evidence",
+      "fields": [
+        { "name": "deploymentId", "type": "Text", "required": true, "unique": true },
+        { "name": "requestId", "type": "Text", "required": true },
+        { "name": "buildRunId", "type": "Text", "required": true },
+        {
+          "name": "status",
+          "type": "Choice",
+          "required": true,
+          "values": ["pending", "deployed", "rolled_back", "failed"]
+        },
+        { "name": "environment", "type": "Text", "required": true },
+        { "name": "deploymentUrl", "type": "Text", "required": false },
+        { "name": "releasedBy", "type": "Text", "required": false },
+        { "name": "releasedAt", "type": "DateTime", "required": false },
+        { "name": "rollbackNotes", "type": "LongText", "required": false }
+      ]
+    },
+    {
+      "name": "AuditEvent",
+      "description": "Append-only audit event",
+      "fields": [
+        { "name": "auditEventId", "type": "Text", "required": true, "unique": true },
+        { "name": "requestId", "type": "Text", "required": true },
+        { "name": "actor", "type": "Text", "required": true },
+        { "name": "action", "type": "Text", "required": true },
+        { "name": "summary", "type": "LongText", "required": true },
+        { "name": "payloadJson", "type": "LongText", "required": false },
+        { "name": "createdAt", "type": "DateTime", "required": true }
+      ]
+    }
+  ],
+  "indexes": [
+    "AutomationRequest.requestId",
+    "AutomationRequest.status",
+    "AutomationRequest.requesterEmail",
+    "ApprovalTask.requestId",
+    "ApprovalTask.status",
+    "BuildRun.requestId",
+    "TestRun.requestId",
+    "DeploymentRecord.requestId",
+    "AuditEvent.requestId",
+    "AuditEvent.createdAt"
+  ]
+}

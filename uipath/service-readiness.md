@@ -24,3 +24,9 @@ Primary organization:
 - GitHub Integration Service connector discovery returns `GitHub` with key `uipath-microsoft-github`, but no connection is configured yet.
 - No Data Fabric entities, Action Center tasks, Maestro processes, Agent solutions, or Test Manager projects exist yet. That is expected at this stage.
 - Use CLI first where coverage exists. Use the Automation Cloud portal when a service is enabled through the UI or the CLI lacks a direct discovery command.
+
+## Checkpoint 1 Mapping Status
+
+- Current implementation mode: `local-simulated` for request lifecycle execution.
+- Target platform mode for Checkpoint 4: `uipath-ready` before creation, then `uipath-live` only after the assets exist in Automation Cloud.
+- The docs under `docs/` and `uipath/` define planned platform assets. They are not exports from live-created Maestro, Data Service, Action Center, API Workflow, Test Manager, or Apps objects yet.

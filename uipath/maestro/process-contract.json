@@ -1,0 +1,77 @@
+{
+  "status": "planned",
+  "platformMode": "uipath-ready",
+  "processName": "Governed Agentic Automation Factory - Customer360 Build",
+  "organization": "galacticus",
+  "tenant": "DefaultTenant",
+  "folder": {
+    "name": "AgentFactoryDemo",
+    "key": "cba41e19-47cc-4a0a-bf73-de88b60a61be",
+    "id": 7986306
+  },
+  "correlationKey": "AutomationRequest.requestId",
+  "statuses": [
+    "draft",
+    "needs_clarification",
+    "awaiting_governance",
+    "approved_for_build",
+    "building",
+    "testing",
+    "awaiting_release_approval",
+    "deployed",
+    "rejected",
+    "failed"
+  ],
+  "stateTransitions": [
+    {
+      "from": "draft",
+      "to": "needs_clarification",
+      "task": "Normalize intake",
+      "auditAction": "intake_created"
+    },
+    {
+      "from": "needs_clarification",
+      "to": "awaiting_governance",
+      "task": "Requirements and clarification loop",
+      "auditAction": "structured_spec_created"
+    },
+    {
+      "from": "awaiting_governance",
+      "to": "approved_for_build",
+      "task": "Governance assessment and scope approval",
+      "auditAction": "scope_approval_decided"
+    },
+    {
+      "from": "approved_for_build",
+      "to": "building",
+      "task": "Build planner and StartBuildWorker API Workflow",
+      "auditAction": "build_started"
+    },
+    {
+      "from": "building",
+      "to": "testing",
+      "task": "Build worker completion",
+      "auditAction": "build_status_updated"
+    },
+    {
+      "from": "testing",
+      "to": "awaiting_release_approval",
+      "task": "Quality gate completion",
+      "auditAction": "quality_gate_completed"
+    },
+    {
+      "from": "awaiting_release_approval",
+      "to": "deployed",
+      "task": "Release approval and deployment",
+      "auditAction": "deployment_completed"
+    }
+  ],
+  "plannedAssets": {
+    "dataServiceSchema": "uipath/data-service/schema.json",
+    "agentContracts": "uipath/agents/agent-contracts.md",
+    "approvalContracts": "uipath/action-center/approval-contracts.md",
+    "apiWorkflowContracts": "uipath/api-workflows/contracts.md",
+    "testPlan": "uipath/test-cloud/test-plan.md",
+    "appsCompanion": "uipath/apps/companion-app.md"
+  }
+}
