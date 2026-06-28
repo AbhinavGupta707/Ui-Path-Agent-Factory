@@ -1,0 +1,560 @@
+{
+  "metadata": {
+    "datasetId": "customer360-baseline",
+    "seed": 20260628,
+    "scenario": "baseline",
+    "generatedAt": "2026-06-28T10:00:00.000Z",
+    "piiPolicy": "mask_email_name_phone",
+    "source": "synthetic"
+  },
+  "customers": [
+    {
+      "customerId": "CUS-1001",
+      "firstName": "Avery",
+      "lastName": "Morgan",
+      "email": "avery.morgan@example.invalid",
+      "phone": "+1-415-555-0101",
+      "signupDate": "2025-01-15",
+      "country": "United States",
+      "region": "Americas",
+      "channel": "Paid Search",
+      "segment": "Enterprise",
+      "acquisitionCohort": "2025-01"
+    },
+    {
+      "customerId": "CUS-1002",
+      "firstName": "Jordan",
+      "lastName": "Lee",
+      "email": "jordan.lee@example.invalid",
+      "phone": "+44-20-5555-0102",
+      "signupDate": "2025-02-03",
+      "country": "United Kingdom",
+      "region": "EMEA",
+      "channel": "Referral",
+      "segment": "Mid-Market",
+      "acquisitionCohort": "2025-02"
+    },
+    {
+      "customerId": "CUS-1003",
+      "firstName": "Priya",
+      "lastName": "Shah",
+      "email": "priya.shah@example.invalid",
+      "phone": "+91-80-5555-0103",
+      "signupDate": "2025-03-21",
+      "country": "India",
+      "region": "APAC",
+      "channel": "Organic",
+      "segment": "Commercial",
+      "acquisitionCohort": "2025-03"
+    },
+    {
+      "customerId": "CUS-1004",
+      "firstName": "Mateo",
+      "lastName": "Rossi",
+      "email": "mateo.rossi@example.invalid",
+      "phone": "+49-30-5555-0104",
+      "signupDate": "2025-01-30",
+      "country": "Germany",
+      "region": "EMEA",
+      "channel": "Partner",
+      "segment": "Enterprise",
+      "acquisitionCohort": "2025-01"
+    },
+    {
+      "customerId": "CUS-1005",
+      "firstName": "Sofia",
+      "lastName": "Chen",
+      "email": "sofia.chen@example.invalid",
+      "phone": "+65-5555-0105",
+      "signupDate": "2025-04-12",
+      "country": "Singapore",
+      "region": "APAC",
+      "channel": "Paid Search",
+      "segment": "Starter",
+      "acquisitionCohort": "2025-04"
+    },
+    {
+      "customerId": "CUS-1006",
+      "firstName": "Noa",
+      "lastName": "Williams",
+      "email": "noa.williams@example.invalid",
+      "phone": "+1-212-555-0106",
+      "signupDate": "2025-05-08",
+      "country": "United States",
+      "region": "Americas",
+      "channel": "Organic",
+      "segment": "Mid-Market",
+      "acquisitionCohort": "2025-05"
+    },
+    {
+      "customerId": "CUS-1007",
+      "firstName": "Lina",
+      "lastName": "Okafor",
+      "email": "lina.okafor@example.invalid",
+      "phone": "+1-647-555-0107",
+      "signupDate": "2025-06-17",
+      "country": "Canada",
+      "region": "Americas",
+      "channel": "Referral",
+      "segment": "Commercial",
+      "acquisitionCohort": "2025-06"
+    },
+    {
+      "customerId": "CUS-1008",
+      "firstName": "Samir",
+      "lastName": "Patel",
+      "email": "samir.patel@example.invalid",
+      "phone": "+971-4-555-0108",
+      "signupDate": "2025-02-18",
+      "country": "United Arab Emirates",
+      "region": "EMEA",
+      "channel": "Partner",
+      "segment": "Enterprise",
+      "acquisitionCohort": "2025-02"
+    }
+  ],
+  "orders": [
+    {
+      "orderId": "ORD-5001",
+      "customerId": "CUS-1001",
+      "orderDate": "2026-01-10",
+      "productCategory": "Analytics",
+      "amount": 4200,
+      "discount": 200,
+      "channel": "Web"
+    },
+    {
+      "orderId": "ORD-5002",
+      "customerId": "CUS-1001",
+      "orderDate": "2026-03-15",
+      "productCategory": "Automation",
+      "amount": 6800,
+      "discount": 300,
+      "channel": "Sales"
+    },
+    {
+      "orderId": "ORD-5003",
+      "customerId": "CUS-1001",
+      "orderDate": "2026-06-18",
+      "productCategory": "Insights",
+      "amount": 5100,
+      "discount": 0,
+      "channel": "Web"
+    },
+    {
+      "orderId": "ORD-5004",
+      "customerId": "CUS-1002",
+      "orderDate": "2026-02-20",
+      "productCategory": "Analytics",
+      "amount": 1900,
+      "discount": 100,
+      "channel": "Web"
+    },
+    {
+      "orderId": "ORD-5005",
+      "customerId": "CUS-1002",
+      "orderDate": "2026-05-02",
+      "productCategory": "Support",
+      "amount": 2300,
+      "discount": 0,
+      "channel": "Sales"
+    },
+    {
+      "orderId": "ORD-5006",
+      "customerId": "CUS-1003",
+      "orderDate": "2026-01-27",
+      "productCategory": "Commerce",
+      "amount": 800,
+      "discount": 0,
+      "channel": "Marketplace"
+    },
+    {
+      "orderId": "ORD-5007",
+      "customerId": "CUS-1004",
+      "orderDate": "2026-02-11",
+      "productCategory": "Automation",
+      "amount": 7600,
+      "discount": 600,
+      "channel": "Partner"
+    },
+    {
+      "orderId": "ORD-5008",
+      "customerId": "CUS-1004",
+      "orderDate": "2026-04-28",
+      "productCategory": "Analytics",
+      "amount": 8300,
+      "discount": 500,
+      "channel": "Partner"
+    },
+    {
+      "orderId": "ORD-5009",
+      "customerId": "CUS-1005",
+      "orderDate": "2026-03-05",
+      "productCategory": "Commerce",
+      "amount": 450,
+      "discount": 0,
+      "channel": "Web"
+    },
+    {
+      "orderId": "ORD-5010",
+      "customerId": "CUS-1006",
+      "orderDate": "2026-04-08",
+      "productCategory": "Insights",
+      "amount": 1250,
+      "discount": 50,
+      "channel": "Web"
+    },
+    {
+      "orderId": "ORD-5011",
+      "customerId": "CUS-1006",
+      "orderDate": "2026-06-21",
+      "productCategory": "Analytics",
+      "amount": 2100,
+      "discount": 100,
+      "channel": "Web"
+    },
+    {
+      "orderId": "ORD-5012",
+      "customerId": "CUS-1007",
+      "orderDate": "2026-05-16",
+      "productCategory": "Automation",
+      "amount": 900,
+      "discount": 0,
+      "channel": "Marketplace"
+    },
+    {
+      "orderId": "ORD-5013",
+      "customerId": "CUS-1008",
+      "orderDate": "2026-01-22",
+      "productCategory": "Insights",
+      "amount": 5400,
+      "discount": 400,
+      "channel": "Partner"
+    },
+    {
+      "orderId": "ORD-5014",
+      "customerId": "CUS-1008",
+      "orderDate": "2026-06-10",
+      "productCategory": "Automation",
+      "amount": 7200,
+      "discount": 200,
+      "channel": "Partner"
+    }
+  ],
+  "events": [
+    {
+      "eventId": "EVT-7001",
+      "customerId": "CUS-1001",
+      "timestamp": "2026-06-18T09:00:00.000Z",
+      "eventType": "visit",
+      "productCategory": "Insights",
+      "source": "web"
+    },
+    {
+      "eventId": "EVT-7002",
+      "customerId": "CUS-1001",
+      "timestamp": "2026-06-18T09:04:00.000Z",
+      "eventType": "product_view",
+      "productCategory": "Insights",
+      "source": "web"
+    },
+    {
+      "eventId": "EVT-7003",
+      "customerId": "CUS-1001",
+      "timestamp": "2026-06-18T09:07:00.000Z",
+      "eventType": "add_to_cart",
+      "productCategory": "Insights",
+      "source": "web"
+    },
+    {
+      "eventId": "EVT-7004",
+      "customerId": "CUS-1001",
+      "timestamp": "2026-06-18T09:10:00.000Z",
+      "eventType": "checkout_started",
+      "productCategory": "Insights",
+      "source": "web"
+    },
+    {
+      "eventId": "EVT-7005",
+      "customerId": "CUS-1001",
+      "timestamp": "2026-06-18T09:15:00.000Z",
+      "eventType": "purchase",
+      "productCategory": "Insights",
+      "source": "web"
+    },
+    {
+      "eventId": "EVT-7006",
+      "customerId": "CUS-1002",
+      "timestamp": "2026-05-01T10:00:00.000Z",
+      "eventType": "visit",
+      "productCategory": "Support",
+      "source": "email"
+    },
+    {
+      "eventId": "EVT-7007",
+      "customerId": "CUS-1002",
+      "timestamp": "2026-05-01T10:03:00.000Z",
+      "eventType": "product_view",
+      "productCategory": "Support",
+      "source": "email"
+    },
+    {
+      "eventId": "EVT-7008",
+      "customerId": "CUS-1002",
+      "timestamp": "2026-05-01T10:05:00.000Z",
+      "eventType": "add_to_cart",
+      "productCategory": "Support",
+      "source": "email"
+    },
+    {
+      "eventId": "EVT-7009",
+      "customerId": "CUS-1002",
+      "timestamp": "2026-05-01T10:08:00.000Z",
+      "eventType": "checkout_started",
+      "productCategory": "Support",
+      "source": "email"
+    },
+    {
+      "eventId": "EVT-7010",
+      "customerId": "CUS-1002",
+      "timestamp": "2026-05-01T10:14:00.000Z",
+      "eventType": "purchase",
+      "productCategory": "Support",
+      "source": "email"
+    },
+    {
+      "eventId": "EVT-7011",
+      "customerId": "CUS-1002",
+      "timestamp": "2026-05-22T12:35:00.000Z",
+      "eventType": "support_ticket",
+      "productCategory": "Support",
+      "source": "support"
+    },
+    {
+      "eventId": "EVT-7012",
+      "customerId": "CUS-1003",
+      "timestamp": "2026-02-03T08:00:00.000Z",
+      "eventType": "visit",
+      "productCategory": "Commerce",
+      "source": "web"
+    },
+    {
+      "eventId": "EVT-7013",
+      "customerId": "CUS-1003",
+      "timestamp": "2026-02-03T08:06:00.000Z",
+      "eventType": "product_view",
+      "productCategory": "Commerce",
+      "source": "web"
+    },
+    {
+      "eventId": "EVT-7014",
+      "customerId": "CUS-1003",
+      "timestamp": "2026-02-03T08:12:00.000Z",
+      "eventType": "add_to_cart",
+      "productCategory": "Commerce",
+      "source": "web"
+    },
+    {
+      "eventId": "EVT-7015",
+      "customerId": "CUS-1003",
+      "timestamp": "2026-02-17T15:30:00.000Z",
+      "eventType": "negative_feedback",
+      "productCategory": "Commerce",
+      "source": "survey"
+    },
+    {
+      "eventId": "EVT-7016",
+      "customerId": "CUS-1004",
+      "timestamp": "2026-06-20T11:00:00.000Z",
+      "eventType": "visit",
+      "productCategory": "Automation",
+      "source": "partner"
+    },
+    {
+      "eventId": "EVT-7017",
+      "customerId": "CUS-1004",
+      "timestamp": "2026-06-20T11:05:00.000Z",
+      "eventType": "product_view",
+      "productCategory": "Automation",
+      "source": "partner"
+    },
+    {
+      "eventId": "EVT-7018",
+      "customerId": "CUS-1004",
+      "timestamp": "2026-06-20T11:09:00.000Z",
+      "eventType": "add_to_cart",
+      "productCategory": "Automation",
+      "source": "partner"
+    },
+    {
+      "eventId": "EVT-7019",
+      "customerId": "CUS-1004",
+      "timestamp": "2026-06-20T11:16:00.000Z",
+      "eventType": "checkout_started",
+      "productCategory": "Automation",
+      "source": "partner"
+    },
+    {
+      "eventId": "EVT-7020",
+      "customerId": "CUS-1004",
+      "timestamp": "2026-06-20T11:21:00.000Z",
+      "eventType": "purchase",
+      "productCategory": "Automation",
+      "source": "partner"
+    },
+    {
+      "eventId": "EVT-7021",
+      "customerId": "CUS-1005",
+      "timestamp": "2026-05-30T07:30:00.000Z",
+      "eventType": "visit",
+      "productCategory": "Commerce",
+      "source": "ad"
+    },
+    {
+      "eventId": "EVT-7022",
+      "customerId": "CUS-1005",
+      "timestamp": "2026-05-30T07:33:00.000Z",
+      "eventType": "product_view",
+      "productCategory": "Commerce",
+      "source": "ad"
+    },
+    {
+      "eventId": "EVT-7023",
+      "customerId": "CUS-1005",
+      "timestamp": "2026-06-01T16:40:00.000Z",
+      "eventType": "negative_feedback",
+      "productCategory": "Commerce",
+      "source": "survey"
+    },
+    {
+      "eventId": "EVT-7024",
+      "customerId": "CUS-1006",
+      "timestamp": "2026-06-21T13:00:00.000Z",
+      "eventType": "visit",
+      "productCategory": "Analytics",
+      "source": "web"
+    },
+    {
+      "eventId": "EVT-7025",
+      "customerId": "CUS-1006",
+      "timestamp": "2026-06-21T13:03:00.000Z",
+      "eventType": "product_view",
+      "productCategory": "Analytics",
+      "source": "web"
+    },
+    {
+      "eventId": "EVT-7026",
+      "customerId": "CUS-1006",
+      "timestamp": "2026-06-21T13:05:00.000Z",
+      "eventType": "add_to_cart",
+      "productCategory": "Analytics",
+      "source": "web"
+    },
+    {
+      "eventId": "EVT-7027",
+      "customerId": "CUS-1006",
+      "timestamp": "2026-06-21T13:09:00.000Z",
+      "eventType": "checkout_started",
+      "productCategory": "Analytics",
+      "source": "web"
+    },
+    {
+      "eventId": "EVT-7028",
+      "customerId": "CUS-1006",
+      "timestamp": "2026-06-21T13:16:00.000Z",
+      "eventType": "purchase",
+      "productCategory": "Analytics",
+      "source": "web"
+    },
+    {
+      "eventId": "EVT-7029",
+      "customerId": "CUS-1007",
+      "timestamp": "2026-05-15T09:00:00.000Z",
+      "eventType": "visit",
+      "productCategory": "Automation",
+      "source": "referral"
+    },
+    {
+      "eventId": "EVT-7030",
+      "customerId": "CUS-1007",
+      "timestamp": "2026-05-15T09:04:00.000Z",
+      "eventType": "product_view",
+      "productCategory": "Automation",
+      "source": "referral"
+    },
+    {
+      "eventId": "EVT-7031",
+      "customerId": "CUS-1007",
+      "timestamp": "2026-05-15T09:08:00.000Z",
+      "eventType": "add_to_cart",
+      "productCategory": "Automation",
+      "source": "referral"
+    },
+    {
+      "eventId": "EVT-7032",
+      "customerId": "CUS-1008",
+      "timestamp": "2026-06-10T14:00:00.000Z",
+      "eventType": "visit",
+      "productCategory": "Automation",
+      "source": "partner"
+    },
+    {
+      "eventId": "EVT-7033",
+      "customerId": "CUS-1008",
+      "timestamp": "2026-06-10T14:02:00.000Z",
+      "eventType": "product_view",
+      "productCategory": "Automation",
+      "source": "partner"
+    },
+    {
+      "eventId": "EVT-7034",
+      "customerId": "CUS-1008",
+      "timestamp": "2026-06-10T14:05:00.000Z",
+      "eventType": "add_to_cart",
+      "productCategory": "Automation",
+      "source": "partner"
+    },
+    {
+      "eventId": "EVT-7035",
+      "customerId": "CUS-1008",
+      "timestamp": "2026-06-10T14:09:00.000Z",
+      "eventType": "checkout_started",
+      "productCategory": "Automation",
+      "source": "partner"
+    },
+    {
+      "eventId": "EVT-7036",
+      "customerId": "CUS-1008",
+      "timestamp": "2026-06-10T14:14:00.000Z",
+      "eventType": "purchase",
+      "productCategory": "Automation",
+      "source": "partner"
+    }
+  ],
+  "returns": [
+    {
+      "returnId": "RET-9001",
+      "customerId": "CUS-1003",
+      "orderId": "ORD-5006",
+      "returnDate": "2026-02-14",
+      "amount": 200,
+      "reason": "Fit mismatch"
+    },
+    {
+      "returnId": "RET-9002",
+      "customerId": "CUS-1005",
+      "orderId": "ORD-5009",
+      "returnDate": "2026-03-20",
+      "amount": 450,
+      "reason": "Buyer remorse"
+    },
+    {
+      "returnId": "RET-9003",
+      "customerId": "CUS-1002",
+      "orderId": "ORD-5005",
+      "returnDate": "2026-05-25",
+      "amount": 300,
+      "reason": "Service issue"
+    }
+  ]
+}
