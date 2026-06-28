@@ -27,10 +27,10 @@ Use these outcomes for both approval types:
 | Outcome | Meaning | State transition |
 |---|---|---|
 | `approved` | Approver accepts the proposal | Scope: `approved_for_build`; release: deploy then `deployed` |
-| `rejected` | Approver stops the request | `rejected` |
-| `changes_requested` | Approver asks for revised scope, build, or tests | Scope: `needs_clarification`; release: `approved_for_build` or `building` depending on required change |
-| `cancelled` | Task was cancelled by process owner | `failed` unless manually re-opened |
-| `expired` | SLA elapsed without decision | `failed` or escalation route in Maestro |
+| `rejected` | Approver stops the request | `blocked` with rejection details |
+| `changes_requested` | Approver asks for revised scope, build, or tests | Scope: `clarifying`; release: `approved_for_build` or `building` depending on required change |
+| `cancelled` | Task was cancelled by process owner | `cancelled` unless manually re-opened |
+| `expired` | SLA elapsed without decision | `blocked` or escalation route in Maestro |
 
 ## Scope Approval Payload
 
@@ -131,7 +131,7 @@ On completion:
 1. Update `ApprovalTask.status`.
 2. Write `AuditEvent.action = "release_approval_decided"`.
 3. If approved, call `AgentFactory_StartDeployment`.
-4. If rejected, set `AutomationRequest.status = "rejected"`.
+4. If rejected, set `AutomationRequest.status = "blocked"` with rejection details.
 5. If changes are requested, route back to build planning or build execution.
 
 ## SLA And Escalation

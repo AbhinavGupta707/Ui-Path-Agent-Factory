@@ -55,15 +55,20 @@ Primary lifecycle record aligned to `AutomationRequest`.
 Choice values for `status`:
 
 - `draft`
-- `needs_clarification`
-- `awaiting_governance`
+- `clarifying`
+- `awaiting_scope_approval`
 - `approved_for_build`
+- `manifest_created`
+- `build_queued`
 - `building`
-- `testing`
+- `build_failed`
+- `tests_running`
+- `tests_failed`
 - `awaiting_release_approval`
+- `deploying`
 - `deployed`
-- `rejected`
-- `failed`
+- `blocked`
+- `cancelled`
 
 ### StructuredSpec
 

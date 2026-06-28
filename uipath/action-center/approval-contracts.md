@@ -44,9 +44,10 @@ Minimum payload:
 Decisions:
 
 - `approved`: set request to `approved_for_build`.
-- `rejected`: set request to `rejected`.
-- `changes_requested`: set request to `needs_clarification`.
-- `cancelled` or `expired`: route through Maestro exception handling.
+- `rejected`: set request to `blocked`.
+- `changes_requested`: set request to `clarifying`.
+- `cancelled`: set request to `cancelled`.
+- `expired`: route through Maestro exception handling and set request to `blocked` if unresolved.
 
 ## Release Approval
 
@@ -79,9 +80,10 @@ Minimum payload:
 Decisions:
 
 - `approved`: call deployment workflow and then set request to `deployed`.
-- `rejected`: set request to `rejected`.
+- `rejected`: set request to `blocked`.
 - `changes_requested`: route back to build planning or build execution.
-- `cancelled` or `expired`: route through Maestro exception handling.
+- `cancelled`: set request to `cancelled`.
+- `expired`: route through Maestro exception handling and set request to `blocked` if unresolved.
 
 ## Data Service Writes
 

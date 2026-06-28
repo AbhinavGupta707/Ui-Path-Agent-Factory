@@ -229,7 +229,7 @@ Inputs:
   "upsertKey": "requestId",
   "record": {
     "requestId": "req_123",
-    "status": "needs_clarification",
+    "status": "clarifying",
     "platformMode": "uipath-ready"
   }
 }

@@ -69,7 +69,7 @@ Output shape:
 
 Routing:
 
-- If questions exist, Maestro keeps the request at `needs_clarification`.
+- If questions exist, Maestro keeps the request at `clarifying`.
 - Answers update `StructuredSpec.clarificationAnswersJson`.
 
 ## Governance Agent

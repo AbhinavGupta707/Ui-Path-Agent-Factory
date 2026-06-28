@@ -84,7 +84,7 @@ The current local product exposes:
 | Build Worker | Scaffold server plus Codex build-plan helpers |
 
 `POST /api/intake` creates an `AutomationRequest` with status
-`needs_clarification` and an `intake_created` audit event. Later lifecycle states
+`clarifying` and an `intake_created` audit event. Later lifecycle states
 are defined in shared contracts and mapped in the docs, but not yet fully
 executed by local API handlers in this lane.
 

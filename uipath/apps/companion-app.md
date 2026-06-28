@@ -43,7 +43,7 @@ Action:
 
 - Create `AutomationRequest` in Data Service or call the local/hosted Factory API
   through an API Workflow.
-- Set initial status to `needs_clarification` after submission.
+- Set initial status to `clarifying` after submission.
 
 ### Request Status
 

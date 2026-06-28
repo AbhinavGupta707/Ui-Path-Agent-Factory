@@ -12,57 +12,80 @@
   "correlationKey": "AutomationRequest.requestId",
   "statuses": [
     "draft",
-    "needs_clarification",
-    "awaiting_governance",
+    "clarifying",
+    "awaiting_scope_approval",
     "approved_for_build",
+    "manifest_created",
+    "build_queued",
     "building",
-    "testing",
+    "build_failed",
+    "tests_running",
+    "tests_failed",
     "awaiting_release_approval",
+    "deploying",
     "deployed",
-    "rejected",
-    "failed"
+    "blocked",
+    "cancelled"
   ],
   "stateTransitions": [
     {
       "from": "draft",
-      "to": "needs_clarification",
+      "to": "clarifying",
       "task": "Normalize intake",
       "auditAction": "intake_created"
     },
     {
-      "from": "needs_clarification",
-      "to": "awaiting_governance",
+      "from": "clarifying",
+      "to": "awaiting_scope_approval",
       "task": "Requirements and clarification loop",
       "auditAction": "structured_spec_created"
     },
     {
-      "from": "awaiting_governance",
+      "from": "awaiting_scope_approval",
       "to": "approved_for_build",
       "task": "Governance assessment and scope approval",
       "auditAction": "scope_approval_decided"
     },
     {
       "from": "approved_for_build",
+      "to": "manifest_created",
+      "task": "Build planner manifest creation",
+      "auditAction": "build_manifest_created"
+    },
+    {
+      "from": "manifest_created",
+      "to": "build_queued",
+      "task": "StartBuildWorker API Workflow accepted manifest",
+      "auditAction": "build_queued"
+    },
+    {
+      "from": "build_queued",
       "to": "building",
-      "task": "Build planner and StartBuildWorker API Workflow",
+      "task": "Build worker started",
       "auditAction": "build_started"
     },
     {
       "from": "building",
-      "to": "testing",
+      "to": "tests_running",
       "task": "Build worker completion",
       "auditAction": "build_status_updated"
     },
     {
-      "from": "testing",
+      "from": "tests_running",
       "to": "awaiting_release_approval",
       "task": "Quality gate completion",
       "auditAction": "quality_gate_completed"
     },
     {
       "from": "awaiting_release_approval",
+      "to": "deploying",
+      "task": "Release approval accepted",
+      "auditAction": "deployment_started"
+    },
+    {
+      "from": "deploying",
       "to": "deployed",
-      "task": "Release approval and deployment",
+      "task": "Deployment completed",
       "auditAction": "deployment_completed"
     }
   ],
