@@ -1,4 +1,5 @@
 import type { AutomationRequest, IntakeRequest } from "@agent-factory/shared-contracts";
+import type { ConsoleRequest } from "./seedData";
 
 const DEFAULT_API_BASE_URL = "http://localhost:8787";
 const REQUEST_TIMEOUT_MS = 1_200;
@@ -54,7 +55,7 @@ export async function checkFactoryApi(apiBaseUrl = getFactoryApiBaseUrl()): Prom
 export async function submitIntakeToFactoryApi(
   intake: IntakeRequest,
   apiBaseUrl = getFactoryApiBaseUrl()
-): Promise<AutomationRequest | null> {
+): Promise<ConsoleRequest | null> {
   try {
     const response = await requestJson<IntakeResponse>(`${apiBaseUrl}/api/intake`, {
       method: "POST",
@@ -64,10 +65,20 @@ export async function submitIntakeToFactoryApi(
       body: JSON.stringify(intake)
     });
 
-    return response.data ?? null;
+    return response.data ? mapAutomationRequest(response.data, intake) : null;
   } catch {
     return null;
   }
+}
+
+function mapAutomationRequest(request: AutomationRequest, intake: IntakeRequest): ConsoleRequest {
+  return {
+    id: request.request_id,
+    intake,
+    status: request.status,
+    createdAt: request.created_at,
+    updatedAt: request.updated_at
+  };
 }
 
 function createDegradedStatus(apiBaseUrl: string): FactoryApiStatus {

@@ -1,10 +1,6 @@
 import type {
-  AuditEvent,
-  AutomationRequest,
   BuildManifest,
-  GovernanceAssessment,
-  IntakeRequest,
-  StructuredSpec
+  IntakeRequest
 } from "@agent-factory/shared-contracts";
 
 export interface SourceSystem {
@@ -46,6 +42,40 @@ export interface LifecycleStep {
   label: string;
   product: string;
   status: "complete" | "active" | "waiting" | "queued";
+}
+
+export interface ConsoleRequest {
+  id: string;
+  intake: IntakeRequest;
+  status: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ConsoleStructuredSpec {
+  requestId: string;
+  objective: string;
+  requiredCapabilities: string[];
+  dataSources: string[];
+  acceptanceCriteria: string[];
+  governanceNotes: string[];
+}
+
+export interface ConsoleGovernanceAssessment {
+  requestId: string;
+  riskLevel: "low" | "medium" | "high";
+  requiresHumanApproval: boolean;
+  requiredPermissions: string[];
+  blockers: string[];
+}
+
+export interface ConsoleAuditEvent {
+  id: string;
+  requestId: string;
+  actor: string;
+  action: string;
+  summary: string;
+  createdAt: string;
 }
 
 export const requestId = "req_customer360_checkpoint_1";
@@ -143,10 +173,10 @@ export const seedIntake: IntakeRequest = {
   constraints: ["sandbox_only", "mask_email_name_phone", "no_production_deploy"]
 };
 
-export const seedRequest: AutomationRequest = {
+export const seedRequest: ConsoleRequest = {
   id: requestId,
   intake: seedIntake,
-  status: "needs_clarification",
+  status: "clarifying",
   createdAt: "2026-06-28T09:00:00.000Z",
   updatedAt: "2026-06-28T09:14:00.000Z"
 };
@@ -178,7 +208,7 @@ export const clarificationQuestions: ClarificationQuestion[] = [
   }
 ];
 
-export const structuredSpec: StructuredSpec = {
+export const structuredSpec: ConsoleStructuredSpec = {
   requestId,
   objective:
     "Build a sandbox Customer360 dashboard that helps revenue teams inspect growth, retention, support friction, and churn-risk indicators without exposing raw PII.",
@@ -208,7 +238,7 @@ export const structuredSpec: StructuredSpec = {
   ]
 };
 
-export const governanceAssessment: GovernanceAssessment = {
+export const governanceAssessment: ConsoleGovernanceAssessment = {
   requestId,
   riskLevel: "medium",
   requiresHumanApproval: true,
@@ -383,7 +413,7 @@ export const buildArtifacts = [
   }
 ];
 
-export const auditEvents: AuditEvent[] = [
+export const auditEvents: ConsoleAuditEvent[] = [
   {
     id: "audit_001",
     requestId,
@@ -426,17 +456,17 @@ export const auditEvents: AuditEvent[] = [
   }
 ];
 
-export function createLocalRequest(intake: IntakeRequest): AutomationRequest {
+export function createLocalRequest(intake: IntakeRequest): ConsoleRequest {
   return {
     id: requestId,
     intake,
-    status: "needs_clarification",
+    status: "clarifying",
     createdAt: seedRequest.createdAt,
     updatedAt: "2026-06-28T09:18:00.000Z"
   };
 }
 
-export function createConsoleAudit(summary: string, sequence = 1): AuditEvent {
+export function createConsoleAudit(summary: string, sequence = 1): ConsoleAuditEvent {
   return {
     id: `audit_console_submit_${sequence}`,
     requestId,
