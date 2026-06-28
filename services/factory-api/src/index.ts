@@ -1,14 +1,38 @@
-import { randomUUID } from "node:crypto";
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
+import { z } from "zod";
 import {
+  BuildStatusUpdateSchema,
+  ClarificationAnswersRequestSchema,
+  CreateAutomationRequestSchema,
   IntakeRequestSchema,
   createAuditEvent,
   type AuditEvent,
-  type AutomationRequest
+  type BuildRun
 } from "@agent-factory/shared-contracts";
+import {
+  approveScopeTask,
+  createQueuedBuildRun,
+  generateBuildManifest,
+  generateClarificationQuestions,
+  generateGovernanceAssessment,
+  generateStructuredSpec,
+  mapLegacyIntakeToCreateRequest
+} from "./lifecycle.js";
+import { createInMemoryFactoryStore, type FactoryRequestRecord, type FactoryStore } from "./store.js";
 
-const requests = new Map<string, AutomationRequest>();
-const auditEvents: AuditEvent[] = [];
+const BuildCreateRequestSchema = z.object({
+  request_id: z.string().min(1),
+  manifest_id: z.string().min(1).optional(),
+  mode: z.literal("sandbox").default("sandbox")
+});
+
+const ScopeApprovalRequestSchema = z.object({
+  comments: z.string().optional()
+});
+
+const platformMode = "local-simulated";
+
+const defaultHandler = createFactoryRequestHandler();
 
 export interface FactoryRequestInput {
   method: string;
@@ -21,12 +45,14 @@ export interface FactoryResponseOutput {
   body: unknown;
 }
 
-export function createFactoryApiServer() {
+export function createFactoryApiServer(store: FactoryStore = createInMemoryFactoryStore()) {
+  const handler = createFactoryRequestHandler(store);
+
   return createServer(async (request, response) => {
     try {
       const url = new URL(request.url ?? "/", "http://localhost");
-      const body = request.method === "POST" ? await readJson(request) : undefined;
-      const result = await handleFactoryRequest({
+      const body = request.method === "POST" || request.method === "PATCH" ? await readJson(request) : undefined;
+      const result = await handler({
         method: request.method ?? "GET",
         pathname: url.pathname,
         body
@@ -41,65 +67,537 @@ export function createFactoryApiServer() {
   });
 }
 
+export function createFactoryRequestHandler(store: FactoryStore = createInMemoryFactoryStore()) {
+  return async function handleFactoryRequestWithStore(input: FactoryRequestInput): Promise<FactoryResponseOutput> {
+    try {
+      return await routeFactoryRequest(store, input);
+    } catch (error) {
+      return errorResponse(error);
+    }
+  };
+}
+
 export async function handleFactoryRequest(input: FactoryRequestInput): Promise<FactoryResponseOutput> {
-  if (input.method === "GET" && input.pathname === "/health") {
+  return defaultHandler(input);
+}
+
+async function routeFactoryRequest(store: FactoryStore, input: FactoryRequestInput): Promise<FactoryResponseOutput> {
+  const method = input.method.toUpperCase();
+  const parts = input.pathname.split("/").filter(Boolean);
+
+  if (method === "OPTIONS") {
+    return { statusCode: 204, body: {} };
+  }
+
+  if (method === "GET" && (input.pathname === "/health" || input.pathname === "/api/health")) {
+    const requests = await store.listRequests();
+
     return {
       statusCode: 200,
       body: {
-      ok: true,
-      service: "factory-api",
-      requests: requests.size
+        ok: true,
+        service: "factory-api",
+        platformMode,
+        requests: requests.length
       }
     };
   }
 
-  if (input.method === "GET" && input.pathname === "/api/requests") {
+  if (method === "GET" && input.pathname === "/api/requests") {
     return {
       statusCode: 200,
       body: {
-        data: [...requests.values()],
-        audit: auditEvents
+        data: await store.listRequests(),
+        platformMode
       }
     };
   }
 
-  if (input.method === "POST" && input.pathname === "/api/intake") {
-    const intake = IntakeRequestSchema.parse(input.body ?? {});
-    const now = new Date().toISOString();
-    const id = `req_${randomUUID()}`;
-
-    const automationRequest: AutomationRequest = {
-      id,
-      intake,
-      status: "needs_clarification",
-      createdAt: now,
-      updatedAt: now
-    };
-
-    requests.set(id, automationRequest);
-    auditEvents.push(
-      createAuditEvent({
-        requestId: id,
-        actor: "factory-api",
-        action: "intake_created",
-        summary: `Created intake request: ${intake.title}`
-      })
-    );
+  if (method === "POST" && input.pathname === "/api/requests") {
+    const requestInput = CreateAutomationRequestSchema.parse(input.body ?? {});
+    const record = await store.createRequest(requestInput);
+    await audit(store, record.request.request_id, {
+      actor_type: "factory-api",
+      actor_name: "Factory API",
+      action: "request_created",
+      summary: `Created ${record.request.request_id} and moved it to clarifying.`,
+      payload_json: {
+        status_transition: { from: "draft", to: "clarifying" },
+        platformMode
+      }
+    });
 
     return {
       statusCode: 201,
       body: {
-        data: automationRequest
+        request_id: record.request.request_id,
+        status: record.request.status,
+        platformMode,
+        data: record.request
       }
     };
   }
 
+  if (method === "POST" && input.pathname === "/api/intake") {
+    const legacyIntake = IntakeRequestSchema.parse(input.body ?? {});
+    const record = await store.createRequest(mapLegacyIntakeToCreateRequest(legacyIntake));
+    await audit(store, record.request.request_id, {
+      actor_type: "factory-api",
+      actor_name: "Factory API",
+      action: "request_created",
+      summary: `Created ${record.request.request_id} from legacy intake and moved it to clarifying.`,
+      payload_json: {
+        status_transition: { from: "draft", to: "clarifying" },
+        platformMode
+      }
+    });
+
+    return {
+      statusCode: 201,
+      body: {
+        request_id: record.request.request_id,
+        status: record.request.status,
+        platformMode,
+        data: record.request
+      }
+    };
+  }
+
+  if (parts[0] === "api" && parts[1] === "requests" && parts[2]) {
+    return routeRequestResource(store, method, parts[2], parts[3], input.body);
+  }
+
+  if (method === "POST" && input.pathname === "/api/builds") {
+    return createBuild(store, input.body);
+  }
+
+  if (parts[0] === "api" && parts[1] === "builds" && parts[2]) {
+    return routeBuildResource(store, method, parts[2], parts[3], input.body);
+  }
+
+  throw new ApiError(404, "not_found", `No route for ${method} ${input.pathname}`);
+}
+
+async function routeRequestResource(
+  store: FactoryStore,
+  method: string,
+  requestId: string,
+  action: string | undefined,
+  body: unknown
+): Promise<FactoryResponseOutput> {
+  if (method === "GET" && !action) {
+    const detail = await store.getRequestDetail(requestId);
+
+    if (!detail) {
+      throw new ApiError(404, "request_not_found", `Request not found: ${requestId}`);
+    }
+
+    return {
+      statusCode: 200,
+      body: {
+        data: detail,
+        platformMode
+      }
+    };
+  }
+
+  if (method === "POST" && action === "clarify") {
+    const record = await requireRecord(store, requestId);
+    const questions = generateClarificationQuestions(record);
+    await store.saveClarificationQuestions(requestId, questions);
+    await audit(store, requestId, {
+      actor_type: "uipath-agent",
+      actor_name: "Clarification Agent (local)",
+      action: "clarification_questions_generated",
+      summary: `Generated ${questions.length} deterministic clarification questions.`,
+      payload_json: { question_ids: questions.map((question) => question.id), platformMode }
+    });
+
+    return {
+      statusCode: 200,
+      body: {
+        request_id: requestId,
+        spec_id: `SPEC-${requestId}`,
+        questions,
+        status: record.request.status,
+        platformMode
+      }
+    };
+  }
+
+  if (method === "POST" && action === "answers") {
+    await requireRecord(store, requestId);
+    const answerBody = ClarificationAnswersRequestSchema.parse(body ?? {});
+    const answers = answerBody.answers.map((answer) => ({
+      ...answer,
+      answered_at: answer.answered_at ?? store.now()
+    }));
+    const record = await store.saveClarificationAnswers(requestId, answers);
+    await audit(store, requestId, {
+      actor_type: "user",
+      actor_name: "Business User",
+      action: "clarification_answers_recorded",
+      summary: `Recorded ${answers.length} clarification answers.`,
+      payload_json: { answer_ids: answers.map((answer) => answer.question_id), platformMode }
+    });
+
+    return {
+      statusCode: 200,
+      body: {
+        request_id: requestId,
+        answers: record.clarificationAnswers,
+        status: record.request.status,
+        platformMode
+      }
+    };
+  }
+
+  if (method === "POST" && action === "spec") {
+    const record = await requireRecord(store, requestId);
+    const spec = generateStructuredSpec(record, store.now());
+    await store.saveStructuredSpec(requestId, spec);
+    await audit(store, requestId, {
+      actor_type: "uipath-agent",
+      actor_name: "Requirements Agent (local)",
+      action: "structured_spec_generated",
+      summary: "Generated structured Customer360 build spec.",
+      payload_json: { spec_id: spec.spec_id, platformMode }
+    });
+
+    return {
+      statusCode: 200,
+      body: {
+        data: spec,
+        status: record.request.status,
+        platformMode
+      }
+    };
+  }
+
+  if (method === "POST" && action === "govern") {
+    const record = await requireRecord(store, requestId);
+    const hadSpec = Boolean(record.structuredSpec);
+    const spec = record.structuredSpec ?? generateStructuredSpec(record, store.now());
+    await store.saveStructuredSpec(requestId, spec);
+    if (!hadSpec) {
+      await audit(store, requestId, {
+        actor_type: "uipath-agent",
+        actor_name: "Requirements Agent (local)",
+        action: "structured_spec_generated",
+        summary: "Generated structured Customer360 build spec as governance input.",
+        payload_json: { spec_id: spec.spec_id, platformMode }
+      });
+    }
+    const { assessment, approvalTasks } = generateGovernanceAssessment(record, spec, store.now());
+    await store.saveGovernanceAssessment(requestId, assessment, approvalTasks);
+    await audit(store, requestId, {
+      actor_type: "uipath-agent",
+      actor_name: "Governance Agent (local)",
+      action: "governance_assessment_generated",
+      summary: `Classified request as ${assessment.risk_tier} risk with ${approvalTasks.length} approval task.`,
+      payload_json: {
+        assessment_id: assessment.assessment_id,
+        risk_tier: assessment.risk_tier,
+        required_approvals: assessment.required_approvals_json,
+        platformMode
+      }
+    });
+    const updatedRecord = await transitionStatus(
+      store,
+      requestId,
+      "awaiting_scope_approval",
+      "uipath-maestro",
+      "Maestro (local)",
+      "Governance complete; scope/data approval is required."
+    );
+
+    return {
+      statusCode: 200,
+      body: {
+        data: assessment,
+        approvalTasks: updatedRecord.approvalTasks,
+        status: updatedRecord.request.status,
+        platformMode
+      }
+    };
+  }
+
+  if (method === "POST" && action === "approve-scope") {
+    const record = await requireRecord(store, requestId);
+
+    if (!record.governanceAssessment) {
+      throw new ApiError(409, "governance_required", "Generate governance before scope approval.");
+    }
+
+    const approvalBody = ScopeApprovalRequestSchema.parse(body ?? {});
+    const task = approveScopeTask(record, store.now(), approvalBody.comments);
+    await store.saveApprovalTask(requestId, task);
+    await audit(store, requestId, {
+      actor_type: "action-center",
+      actor_name: "Action Center (local)",
+      action: "scope_approval_completed",
+      summary: "Scope and data policy approved for sandbox build.",
+      payload_json: { task_id: task.task_id, platformMode }
+    });
+    const updatedRecord = await transitionStatus(
+      store,
+      requestId,
+      "approved_for_build",
+      "uipath-maestro",
+      "Maestro (local)",
+      "Scope approved; request is approved for build."
+    );
+
+    return {
+      statusCode: 200,
+      body: {
+        data: task,
+        status: updatedRecord.request.status,
+        platformMode
+      }
+    };
+  }
+
+  if (method === "POST" && action === "manifest") {
+    const record = await requireRecord(store, requestId);
+
+    if (record.request.status !== "approved_for_build" && record.request.status !== "manifest_created") {
+      throw new ApiError(409, "approval_required", "Approve scope before creating the build manifest.");
+    }
+
+    if (!record.structuredSpec || !record.governanceAssessment) {
+      throw new ApiError(409, "spec_and_governance_required", "Generate spec and governance before manifest.");
+    }
+
+    const manifest = generateBuildManifest(record, record.structuredSpec, record.governanceAssessment, store.now());
+    await store.saveBuildManifest(requestId, manifest);
+    await audit(store, requestId, {
+      actor_type: "uipath-agent",
+      actor_name: "Build Planner Agent (local)",
+      action: "build_manifest_generated",
+      summary: `Generated sandbox build manifest ${manifest.manifest_id}.`,
+      payload_json: {
+        manifest_id: manifest.manifest_id,
+        manifest_hash: manifest.manifest_hash,
+        platformMode
+      }
+    });
+    const updatedRecord = await transitionStatus(
+      store,
+      requestId,
+      "manifest_created",
+      "uipath-maestro",
+      "Maestro (local)",
+      "Build manifest created and ready for worker queue."
+    );
+
+    return {
+      statusCode: 200,
+      body: {
+        data: manifest,
+        status: updatedRecord.request.status,
+        platformMode
+      }
+    };
+  }
+
+  if (method === "GET" && action === "timeline") {
+    await requireRecord(store, requestId);
+
+    return {
+      statusCode: 200,
+      body: {
+        data: await store.listAuditEvents(requestId),
+        platformMode
+      }
+    };
+  }
+
+  throw new ApiError(404, "not_found", `No request route for ${requestId}/${action ?? ""}`);
+}
+
+async function createBuild(store: FactoryStore, body: unknown): Promise<FactoryResponseOutput> {
+  const createBody = BuildCreateRequestSchema.parse(body ?? {});
+  const record = await requireRecord(store, createBody.request_id);
+
+  if (!record.buildManifest) {
+    throw new ApiError(409, "manifest_required", "Create a build manifest before queueing a build.");
+  }
+
+  if (createBody.manifest_id && createBody.manifest_id !== record.buildManifest.manifest_id) {
+    throw new ApiError(400, "manifest_mismatch", "Build manifest id does not match the request manifest.");
+  }
+
+  const buildRun = createQueuedBuildRun(record, store.now());
+  await store.createBuildRun(buildRun);
+  await audit(store, createBody.request_id, {
+    actor_type: "codex-worker",
+    actor_name: "Build Worker (local queue)",
+    action: "build_run_queued",
+    summary: `Queued build run ${buildRun.build_run_id}.`,
+    payload_json: { build_run_id: buildRun.build_run_id, manifest_id: buildRun.manifest_id, platformMode }
+  });
+  const updatedRecord = await transitionStatus(
+    store,
+    createBody.request_id,
+    "build_queued",
+    "uipath-maestro",
+    "Maestro (local)",
+    "Build worker queued from approved manifest."
+  );
+
   return {
-    statusCode: 404,
+    statusCode: 201,
     body: {
-      error: "not_found"
+      data: updatedRecord.buildRuns.at(-1),
+      status: updatedRecord.request.status,
+      platformMode
     }
   };
+}
+
+async function routeBuildResource(
+  store: FactoryStore,
+  method: string,
+  buildRunId: string,
+  action: string | undefined,
+  body: unknown
+): Promise<FactoryResponseOutput> {
+  if (method === "GET" && !action) {
+    const buildRun = await findBuildRun(store, buildRunId);
+
+    if (!buildRun) {
+      throw new ApiError(404, "build_not_found", `Build run not found: ${buildRunId}`);
+    }
+
+    return {
+      statusCode: 200,
+      body: {
+        data: buildRun,
+        platformMode
+      }
+    };
+  }
+
+  if ((method === "POST" || method === "PATCH") && (!action || action === "status")) {
+    const existingRun = await findBuildRun(store, buildRunId);
+
+    if (!existingRun) {
+      throw new ApiError(404, "build_not_found", `Build run not found: ${buildRunId}`);
+    }
+
+    const updateBody = BuildStatusUpdateSchema.parse(body ?? {});
+    const now = store.now();
+    const patch: Partial<BuildRun> = {
+      ...updateBody,
+      started_at: updateBody.status === "building" ? existingRun.started_at ?? now : existingRun.started_at,
+      completed_at: ["build_failed", "tests_failed", "deployed", "blocked", "cancelled"].includes(updateBody.status)
+        ? existingRun.completed_at ?? now
+        : existingRun.completed_at
+    };
+    await store.updateBuildRun(buildRunId, patch);
+    await audit(store, existingRun.request_id, {
+      actor_type: "codex-worker",
+      actor_name: updateBody.worker_id ?? "Build Worker (local)",
+      action: "build_status_updated",
+      summary: `Build run ${buildRunId} moved to ${updateBody.status}.`,
+      payload_json: {
+        build_run_id: buildRunId,
+        status: updateBody.status,
+        generated_files: updateBody.generated_files_json ?? [],
+        platformMode
+      }
+    });
+    const updatedRecord = await transitionStatus(
+      store,
+      existingRun.request_id,
+      updateBody.status,
+      "uipath-maestro",
+      "Maestro (local)",
+      `Request status mirrored from build run ${buildRunId}.`
+    );
+
+    return {
+      statusCode: 200,
+      body: {
+        data: updatedRecord.buildRuns.find((run) => run.build_run_id === buildRunId),
+        status: updatedRecord.request.status,
+        platformMode
+      }
+    };
+  }
+
+  throw new ApiError(404, "not_found", `No build route for ${buildRunId}/${action ?? ""}`);
+}
+
+async function transitionStatus(
+  store: FactoryStore,
+  requestId: string,
+  status: Parameters<FactoryStore["updateRequestStatus"]>[1],
+  actor_type: AuditEvent["actor_type"],
+  actor_name: string,
+  summary: string
+): Promise<FactoryRequestRecord> {
+  const record = await requireRecord(store, requestId);
+  const previousStatus = record.request.status;
+
+  if (previousStatus === status) {
+    return record;
+  }
+
+  const updatedRecord = await store.updateRequestStatus(requestId, status);
+  await audit(store, requestId, {
+    actor_type,
+    actor_name,
+    action: "status_changed",
+    summary,
+    payload_json: {
+      from: previousStatus,
+      to: status,
+      platformMode
+    }
+  });
+  return updatedRecord;
+}
+
+async function findBuildRun(store: FactoryStore, buildRunId: string): Promise<BuildRun | undefined> {
+  const requests = await store.listRequests();
+
+  for (const request of requests) {
+    const record = await store.getRequestRecord(request.request_id);
+    const buildRun = record?.buildRuns.find((run) => run.build_run_id === buildRunId);
+
+    if (buildRun) {
+      return buildRun;
+    }
+  }
+
+  return undefined;
+}
+
+async function requireRecord(store: FactoryStore, requestId: string): Promise<FactoryRequestRecord> {
+  const record = await store.getRequestRecord(requestId);
+
+  if (!record) {
+    throw new ApiError(404, "request_not_found", `Request not found: ${requestId}`);
+  }
+
+  return record;
+}
+
+async function audit(
+  store: FactoryStore,
+  requestId: string,
+  event: Omit<AuditEvent, "event_id" | "request_id" | "timestamp">
+): Promise<AuditEvent> {
+  return store.addAuditEvent(
+    createAuditEvent({
+      ...event,
+      event_id: store.nextAuditId(),
+      request_id: requestId,
+      timestamp: store.now()
+    })
+  );
 }
 
 async function readJson(request: IncomingMessage): Promise<unknown> {
@@ -116,7 +614,50 @@ async function readJson(request: IncomingMessage): Promise<unknown> {
 function writeJson(response: ServerResponse, statusCode: number, body: unknown) {
   response.writeHead(statusCode, {
     "content-type": "application/json; charset=utf-8",
-    "access-control-allow-origin": "*"
+    "access-control-allow-origin": "*",
+    "access-control-allow-methods": "GET,POST,PATCH,OPTIONS",
+    "access-control-allow-headers": "content-type"
   });
-  response.end(JSON.stringify(body));
+  response.end(statusCode === 204 ? "" : JSON.stringify(body));
+}
+
+function errorResponse(error: unknown): FactoryResponseOutput {
+  if (error instanceof ApiError) {
+    return {
+      statusCode: error.statusCode,
+      body: {
+        error: error.code,
+        message: error.message
+      }
+    };
+  }
+
+  if (error instanceof z.ZodError) {
+    return {
+      statusCode: 400,
+      body: {
+        error: "validation_error",
+        message: "Request body did not match the Factory API contract.",
+        issues: error.issues
+      }
+    };
+  }
+
+  return {
+    statusCode: 500,
+    body: {
+      error: "internal_error",
+      message: error instanceof Error ? error.message : "Unknown error"
+    }
+  };
+}
+
+class ApiError extends Error {
+  constructor(
+    readonly statusCode: number,
+    readonly code: string,
+    message: string
+  ) {
+    super(message);
+  }
 }
