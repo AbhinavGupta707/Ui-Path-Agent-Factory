@@ -6,8 +6,11 @@
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "scripts": {
+    "prebuild": "npm --workspace @agent-factory/shared-contracts run build",
     "build": "tsc -p tsconfig.json",
     "dev": "node --watch dist/server.js",
+    "pretest": "npm --workspace @agent-factory/shared-contracts run build",
+    "smoke": "npm run build && npm test",
     "test": "vitest run"
   },
   "dependencies": {

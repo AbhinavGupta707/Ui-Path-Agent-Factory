@@ -1,0 +1,22 @@
+{
+  "requestId": "REQ-2026-001",
+  "template": "customer360-dashboard",
+  "branchName": "factory/REQ-2026-001-customer360",
+  "outputApp": "apps/customer360-template",
+  "acceptanceCriteria": [
+    "Dashboard builds",
+    "Masked Customer360 metrics render",
+    "Metric and PII guardrail tests pass"
+  ],
+  "permissions": [],
+  "codexModel": "gpt-5.5",
+  "allowedFiles": [
+    "src/main.tsx",
+    "src/styles.css",
+    "tests/dashboard.test.tsx",
+    "public/data/customer360-current.json",
+    "README.md",
+    "deployment.json",
+    "package.json"
+  ]
+}
