@@ -1,6 +1,25 @@
 import type { BuildManifest } from "@agent-factory/shared-contracts";
 
+export {
+  classifyArtifactKind,
+  createSafeArtifactList,
+  isSafeArtifactPath,
+  normalizeWorkspaceRelativePath,
+  summarizeChecks
+} from "./artifacts/index.js";
+export type {
+  ArtifactChangeType,
+  ArtifactKind,
+  ArtifactListOptions,
+  ArtifactSourceFile,
+  BuildArtifact as EvidenceBuildArtifact,
+  EvidenceCheck,
+  EvidenceCheckStatus
+} from "./artifacts/index.js";
+export * from "./artifacts/result.js";
 export * from "./codex/index.js";
+export * from "./git/index.js";
+export * from "./github/index.js";
 export * from "./manifest.js";
 export * from "./runtime.js";
 export * from "./server.js";
