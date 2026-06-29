@@ -1,0 +1,84 @@
+{
+  "status": "uipath-live-assets-no-executions",
+  "verifiedAt": "2026-06-29T00:41:00Z",
+  "organization": "galacticus",
+  "tenant": "DefaultTenant",
+  "folder": {
+    "name": "AgentFactoryDemo",
+    "id": 7986306,
+    "key": "cba41e19-47cc-4a0a-bf73-de88b60a61be"
+  },
+  "testManager": {
+    "project": {
+      "name": "Agent Factory Quality Gates",
+      "projectKey": "AFQG",
+      "id": "2760d770-7e82-0000-66f7-0b49d3053e3f",
+      "defaultFolderKey": "cba41e19-47cc-4a0a-bf73-de88b60a61be"
+    },
+    "testSet": {
+      "name": "Customer360 Release Gate",
+      "testSetKey": "AFQG:1",
+      "id": "66cdd3ea-c873-0200-58fb-0b49d305588a",
+      "cliReportedFolderKey": ""
+    },
+    "testCases": [
+      {
+        "gateId": "AF-QG-001",
+        "testCaseKey": "AFQG:2",
+        "name": "AF-QG-001 Workspace smoke passes",
+        "evidenceCommand": "npm run smoke",
+        "required": true
+      },
+      {
+        "gateId": "AF-QG-002",
+        "testCaseKey": "AFQG:7",
+        "name": "AF-QG-002 Metric correctness checks pass",
+        "evidenceCommand": "npm --workspace @agent-factory/customer360-metrics test",
+        "required": true
+      },
+      {
+        "gateId": "AF-QG-003",
+        "testCaseKey": "AFQG:3",
+        "name": "AF-QG-003 PII masking guardrails pass",
+        "evidenceCommand": "npm --workspace @agent-factory/customer360-template test",
+        "required": true
+      },
+      {
+        "gateId": "AF-QG-004",
+        "testCaseKey": "AFQG:8",
+        "name": "AF-QG-004 Generated dashboard builds",
+        "evidenceCommand": "npm --workspace @agent-factory/customer360-template run build",
+        "required": true
+      },
+      {
+        "gateId": "AF-QG-005",
+        "testCaseKey": "AFQG:4",
+        "name": "AF-QG-005 Worker manifest validation passes",
+        "evidenceCommand": "npm --workspace @agent-factory/build-worker test",
+        "required": true
+      },
+      {
+        "gateId": "AF-QG-006",
+        "testCaseKey": "AFQG:6",
+        "name": "AF-QG-006 Release approval evidence complete",
+        "evidenceCommand": "Validate Action Center release approval payload contains buildRunId, branchName, pullRequestUrl or local diff evidence, logsUrl, testRunId, qualityGateDecision, waiver details, deployment environment, and rollback notes.",
+        "required": true
+      },
+      {
+        "gateId": "AF-QG-007",
+        "testCaseKey": "AFQG:5",
+        "name": "AF-QG-007 Failed gate blocks deployment",
+        "evidenceCommand": "Validate Maestro/Data Service release routing blocks deployment on failed required gates or requires explicit waiver approval.",
+        "required": true
+      }
+    ]
+  },
+  "liveExecutions": {
+    "status": "not-run",
+    "reason": "Live Test Manager/Test Cloud executions were not started because target automation assets and side effects require explicit approval."
+  },
+  "requirements": {
+    "status": "documented-not-created",
+    "reason": "UiPath CLI 1.195.1 exposes project, test case, test set, execution, and result commands, but no Test Manager requirements command surface."
+  }
+}

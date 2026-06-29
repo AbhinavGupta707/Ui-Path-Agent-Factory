@@ -7,7 +7,7 @@
 | Maestro And Data Service | 019f10cc-e418-7db3-95ab-23f344ebb420 | local:d9ec66ec-6cbd-4b03-8f7f-5e94728a362f | /Users/abhinavgupta/.codex/worktrees/9afa/Agent Factory | merged | Local commit `bc779eb`; Data Service proposal and Maestro BPMN assets merged first as dependency lane |
 | Agents And API Workflow | 019f10cd-043b-7092-a437-d172ff135cad | local:57339c45-827e-401e-b456-5ee1cb547189 | /Users/abhinavgupta/.codex/worktrees/db15/Agent Factory | merged | Local commit `fb5860b`; low-code agent solution and API Workflow assets merged after Maestro/Data Service |
 | Apps And Action Center | 019f10cd-21de-77e3-b92d-c24366772b4a | local:9208238e-8555-4b00-8772-b08f5a278251 | /Users/abhinavgupta/.codex/worktrees/a8e9/Agent Factory | merged | Local commit `551db75`; proposal-only Action Center and UiPath Apps contracts merged third |
-| Test Cloud And Quality Gates | 019f10cd-45be-7c03-a658-b460b7c07ede | local:1f460a39-6b25-4d58-a723-9cc8a9ba615c | /Users/abhinavgupta/.codex/worktrees/af26/Agent Factory | complete; queued for merge | Local commit `63d6168`; queued behind Apps/Action Center |
+| Test Cloud And Quality Gates | 019f10cd-45be-7c03-a658-b460b7c07ede | local:1f460a39-6b25-4d58-a723-9cc8a9ba615c | /Users/abhinavgupta/.codex/worktrees/af26/Agent Factory | merged | Local commit `63d6168`; live Test Manager catalog assets and quality-gate docs merged fourth |
 
 ## Integration Log
 
@@ -19,7 +19,6 @@
 - Test Manager had no projects at launch. The Test Cloud lane created the lane-owned `AFQG` catalog assets but did not run live executions.
 - Queued all four Checkpoint 4 workers from `main` at `819ba7f`.
 - Resolved all four workers to active Codex threads and recorded their checkout paths.
-- Test Cloud And Quality Gates completed local commit `63d6168`; orchestrator verified `git diff --check` and JSON parsing, then queued it behind dependency lanes.
 - Maestro And Data Service completed local commit `bc779eb`; orchestrator verified JSON parsing, BPMN validation, and diff hygiene before merging it first.
 - Maestro lane reran discovery on 2026-06-29: login and folder facts still matched, Data Fabric native entities and choice sets were empty, and Maestro process lists were empty.
 - Data Service schema remains proposal-only in `uipath/data-service/schema.json`; explicit approval is required before creating choice sets, choice values, entities, fields, or seed records.
@@ -31,6 +30,8 @@
 - Apps And Action Center completed local commit `551db75`; orchestrator verified owned validators and `git diff --check` before merging it third.
 - Apps And Action Center lane produced import-ready, proposal-only contracts under `uipath/action-center` and `uipath/apps`. No Action Center tasks, Coded Apps, Studio Web pushes, publishes, or deployments were created.
 - Apps And Action Center discovery confirmed Action Center task list was empty and `codedapp` is installed, while `codedapp list` is not an installed subcommand.
+- Test Cloud And Quality Gates completed local commit `63d6168`; orchestrator verified `git diff --check` and JSON parsing before merging it fourth.
+- Test Cloud lane created Test Manager project `Agent Factory Quality Gates` (`AFQG`, id `2760d770-7e82-0000-66f7-0b49d3053e3f`), set the project default folder to `AgentFactoryDemo`, created test set `Customer360 Release Gate` (`AFQG:1`, id `66cdd3ea-c873-0200-58fb-0b49d305588a`), and added seven gate test cases. No live executions were run.
 
 ## Launch Baseline
 
@@ -70,8 +71,6 @@
 ## Checks Run
 
 - Pre-launch `npm run smoke` passed across workspace builds and tests.
-- Test Cloud lane post-handoff check: `git -C /Users/abhinavgupta/.codex/worktrees/af26/Agent\ Factory diff --check 819ba7f...HEAD` passed.
-- Test Cloud lane post-handoff check: `python3 -m json.tool uipath/test-cloud/quality-gate-assets.json` passed.
 - Maestro/Data Service lane post-handoff check: `git -C /Users/abhinavgupta/.codex/worktrees/9afa/Agent\ Factory diff --check 819ba7f...HEAD` passed.
 - Maestro/Data Service lane post-handoff check: `python3 -m json.tool uipath/data-service/schema.json` passed.
 - Maestro/Data Service lane post-handoff check: `python3 -m json.tool uipath/maestro/process-contract.json` passed.
@@ -86,7 +85,12 @@
 - Apps/Action Center lane post-handoff check: `git -C /Users/abhinavgupta/.codex/worktrees/a8e9/Agent\ Factory diff --check 819ba7f...HEAD` passed.
 - Apps/Action Center lane post-handoff check: `node uipath/action-center/validate-approval-contracts.mjs` passed.
 - Apps/Action Center lane post-handoff check: `node uipath/apps/validate-companion-app.mjs` passed.
-- Apps/Action Center worker also ran read-only UiPath probes and `npm run smoke` after installing local dependencies.
+- Apps/Action Center post-merge check repeated both owned validators and `git diff --check`; all passed.
+- Test Cloud lane post-handoff check: `git -C /Users/abhinavgupta/.codex/worktrees/af26/Agent\ Factory diff --check 819ba7f...HEAD` passed.
+- Test Cloud lane post-handoff check: `python3 -m json.tool uipath/test-cloud/quality-gate-assets.json` passed.
+- Test Cloud lane read-only discovery passed for `uip --version`, `uip login status --output json`, `uip tm testcases --help --output json`, `uip tm project list --limit 5 --output json`, and `uip or folders get AgentFactoryDemo --output json`.
+- Test Cloud lane asset verification passed for `uip tm testcases list --project-key AFQG --output json`, `uip tm testsets list --project-key AFQG --output json`, and `uip tm testsets list-testcases --project-key AFQG --test-set-key AFQG:1 --output json`.
+- Test Cloud worker also ran local evidence: metrics tests, Customer360 build/tests, build-worker tests, JSON parsing, markdown fence sanity, `git diff --check`, and `npm run smoke`.
 
 ## Manual Smoke Target
 
