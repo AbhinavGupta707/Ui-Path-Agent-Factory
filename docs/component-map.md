@@ -7,7 +7,7 @@ This map helps judges and reviewers understand what each part does, where it liv
 | Component | Path | Role | Current status |
 |---|---|---|---|
 | Factory Console | `apps/factory-console` | Primary polished operator UI for intake, governance, manifest, quality, deployment, and audit. | Runnable locally. |
-| Factory API | `services/factory-api` | Local lifecycle API and in-memory state shaped for Data Service. | Preferred `dev:live` port `8887`; legacy service default `8787`. |
+| Factory API | `services/factory-api` | Local lifecycle API, UiPath live-evidence callback receiver, and in-memory state shaped for Data Service. | Preferred `dev:live` port `8887`; legacy service default `8787`. |
 | Build Worker | `services/build-worker` | Receives governed manifests, validates worker contract, records build/test/artifact status. | Preferred `dev:live` port `8890`; legacy service default `8790`; default runner blocks without injected Codex/Git execution. |
 | Customer360 dashboard | `apps/customer360-template` | Generated-dashboard target and demo artifact. | Preferred `dev:live` port `5184`; package dev default `5174`. |
 | Shared contracts | `packages/shared-contracts` | Lifecycle schemas and runtime contract types. | Built/tested locally. |
@@ -15,6 +15,7 @@ This map helps judges and reviewers understand what each part does, where it liv
 | Data mutation helper | `scripts/mutate-customer360-data.mjs` | Writes untracked Customer360 mutation evidence for refresh/deployment lanes. | Runnable locally. |
 | Live setup helper | `scripts/setup-live-env.mjs` | Prompts for local provider/runtime configuration and writes git-ignored local values. | Runnable locally; no values committed. |
 | Live stack launcher | `scripts/dev-live.mjs` | Starts the Checkpoint 7 local API, worker, Factory Console, and Customer360 stack with one command. | Runnable locally on configured ports. |
+| UiPath live spine helper | `scripts/uipath-live-spine.mjs` | Prints exact approval-gated Maestro/API Workflow activation commands and runs safe readiness checks. | Runnable locally; live mutations require explicit `AGENT_FACTORY_APPROVE_UIPATH_LIVE=true`. |
 | Demo smoke | `scripts/smoke-demo.mjs` | Runs the local no-secret demo verification bundle. | Runnable locally without UiPath mutations or provider calls. |
 
 ## UiPath Components
@@ -25,7 +26,7 @@ This map helps judges and reviewers understand what each part does, where it liv
 | Maestro BPMN | `uipath/maestro/customer360-build` | Main Track 2 lifecycle orchestration. | Validated and import-ready; not published or run; Checkpoint 7 live run requires approved HTTPS callback bridge. | Publish/run requires approval. |
 | Data Service | `uipath/data-service/schema.json` | Proposed system of record for request/spec/approvals/build/test/deploy/audit. | Proposal-only. | Schema and record creation require approval. |
 | Agents | `uipath/agents/AgentFactoryAgents` | Requirements, Clarification, Governance, Build Planner, Test Summary. | Five projects validate locally; not uploaded. | Upload/publish/deploy/run requires approval. |
-| API Workflows | `uipath/api-workflows` | Calls Build Worker, polls status, records tests, starts deployment. | Five workflows validate locally; not run; live inputs must override local base URLs with approved HTTPS endpoints. | Runtime calls and uploads require approval. |
+| API Workflows | `uipath/api-workflows` | Calls Build Worker, polls status, records tests, starts deployment, and records UiPath live evidence in Factory API. | Six workflows validate locally; not run; live inputs must override local base URLs with approved HTTPS endpoints. | Runtime calls and uploads require approval. |
 | Action Center | `uipath/action-center` | Scope/data and release approval contracts. | Proposal-only; no tasks exist. | Task creation/completion requires approval. |
 | UiPath Apps | `uipath/apps` | Companion intake/status surface. | Proposal-only; no app created or deployed. | Pack/publish/deploy requires approval. |
 | Test Manager/Test Cloud | `uipath/test-cloud`, `docs/test-cloud-quality-gates.md` | Release quality-gate catalog. | Live project, test set, and seven test cases; no execution. | Live execution requires approval. |
@@ -47,7 +48,7 @@ This map helps judges and reviewers understand what each part does, where it liv
 | Tests | `npm run smoke`, workspace tests, Customer360/build-worker smokes | Test Manager/Test Cloud release gate | Local runnable; Test Manager catalog live |
 | Release approval | Release approval contract and demo panel | Action Center release task | Contract proposal-only |
 | Deployment | Customer360 local dashboard and Factory API `POST /deploy` sandbox contract | API Workflow `AgentFactory_StartDeployment` | Local dashboard and sandbox evidence endpoint runnable; workflow runtime call approval-gated |
-| Audit | Factory API timeline | Data Service `AuditEvent` + Maestro closeout | Local runnable; Data Service proposal-only |
+| Audit | Factory API timeline and `POST /api/requests/:id/uipath-event` | API Workflow `AgentFactory_RecordUiPathEvent` + Data Service `AuditEvent` + Maestro closeout | Local runnable; live evidence callback import-ready; Data Service proposal-only |
 
 ## Checkpoint 7 Live Evidence IDs
 
@@ -69,6 +70,8 @@ npm run smoke
 npm run smoke:demo
 npm run smoke:customer360
 npm run smoke:build-worker
+npm run uipath:live-plan
+npm run uipath:readiness
 uip login status --output json
 uip tm project list --limit 5 --output json
 uip tm testcases list --project-key AFQG --output json

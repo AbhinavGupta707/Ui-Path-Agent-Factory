@@ -13,6 +13,7 @@ Workflow was created or run.
 | `AgentFactory_PostStatusUpdate` | `AgentFactory_PostStatusUpdate/Workflow.json` | Patch Factory API build status | Valid |
 | `AgentFactory_RecordTestResult` | `AgentFactory_RecordTestResult/Workflow.json` | Convert test-gate decisions into Factory API build status | Valid |
 | `AgentFactory_StartDeployment` | `AgentFactory_StartDeployment/Workflow.json` | Start approved sandbox deployment through Factory API `/deploy` | Valid/import-ready |
+| `AgentFactory_RecordUiPathEvent` | `AgentFactory_RecordUiPathEvent/Workflow.json` | Record live UiPath run/task/workflow/record ids in Factory API evidence | Valid/import-ready |
 
 ## Common Required Fields
 
@@ -38,6 +39,7 @@ UiPath Automation Cloud workflow execution.
 | `AgentFactory_PostStatusUpdate` | `PATCH` | `{factoryApiBaseUrl}/api/builds/{buildRunId}/status` | Defaults to `http://localhost:8787` |
 | `AgentFactory_RecordTestResult` | `PATCH` | `{factoryApiBaseUrl}/api/builds/{buildRunId}/status` | Maps test decisions to build statuses |
 | `AgentFactory_StartDeployment` | `POST` | `{deploymentServiceBaseUrl}/deploy` | Defaults to `http://localhost:8787`; Factory API records sandbox deployment evidence |
+| `AgentFactory_RecordUiPathEvent` | `POST` | `{factoryApiBaseUrl}/api/requests/{requestId}/uipath-event` | Records live Maestro/API Workflow/Action Center/Data Service/Test Manager evidence ids |
 
 For Checkpoint 7 live use, replace the local defaults with approved HTTPS
 callback endpoints at runtime. Do not hardcode tunnel or hosting URLs in these
@@ -89,6 +91,7 @@ uip api-workflow validate uipath/api-workflows/AgentFactory_FetchBuildStatus/Wor
 uip api-workflow validate uipath/api-workflows/AgentFactory_PostStatusUpdate/Workflow.json --output json
 uip api-workflow validate uipath/api-workflows/AgentFactory_RecordTestResult/Workflow.json --output json
 uip api-workflow validate uipath/api-workflows/AgentFactory_StartDeployment/Workflow.json --output json
+uip api-workflow validate uipath/api-workflows/AgentFactory_RecordUiPathEvent/Workflow.json --output json
 ```
 
 Each command returned:
@@ -113,5 +116,5 @@ Each command returned:
 - Start the local Factory API for status/test-result/deployment flows.
 - Start the local Customer360 dashboard or record a Vercel preview URL before
   running `AgentFactory_StartDeployment`.
-- Capture each live workflow execution id in the Factory API timeline once a
-  run is approved and actually executed.
+- Capture each live workflow execution id in the Factory API timeline with
+  `AgentFactory_RecordUiPathEvent` once a run is approved and actually executed.

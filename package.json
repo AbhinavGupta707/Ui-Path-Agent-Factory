@@ -21,6 +21,8 @@
     "demo:scan:strict": "node scripts/privacy-security-scan.mjs --strict",
     "setup:live": "node scripts/setup-live-env.mjs",
     "dev:live": "node scripts/dev-live.mjs",
+    "uipath:live-plan": "node scripts/uipath-live-spine.mjs --plan",
+    "uipath:readiness": "node scripts/uipath-live-spine.mjs --check-readiness",
     "smoke:demo": "node scripts/smoke-demo.mjs",
     "smoke:build-worker": "npm --workspace @agent-factory/build-worker run smoke",
     "smoke:customer360": "npm --workspace @agent-factory/customer360-template run smoke",

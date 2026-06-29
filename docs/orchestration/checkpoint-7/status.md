@@ -19,8 +19,8 @@ Implementation base: `4d761b6` (`Align checkpoint 7 with AgentHack Track 2`).
 | Status | Evidence |
 |---|---|
 | Live | UiPath login context for `galacticus / DefaultTenant`; Orchestrator folder `AgentFactoryDemo` id `7986306`; Test Manager project `AFQG` / `Agent Factory Quality Gates`; seven Test Manager test cases. |
-| Local runnable | Factory Console, Factory API lifecycle, Build Worker contract, Customer360 dashboard, sandbox `/deploy`, local tests, and demo smoke. |
-| Import-ready/validated | Maestro BPMN at `uipath/maestro/customer360-build/agent-factory-customer360-build.bpmn`; five API Workflow JSON assets; five low-code Agent projects. |
+| Local runnable | Factory Console, Factory API lifecycle and live-evidence callback endpoint, Build Worker contract, Customer360 dashboard, sandbox `/deploy`, local tests, and demo smoke. |
+| Import-ready/validated | Maestro BPMN at `uipath/maestro/customer360-build/agent-factory-customer360-build.bpmn`; six API Workflow JSON assets including `AgentFactory_RecordUiPathEvent`; five low-code Agent projects. |
 | Proposal-only | Data Service schema, Action Center approval contracts, and UiPath Apps companion contract. |
 | Approval-gated | Maestro publish/run, API Workflow upload/run, Action Center task creation/completion, Data Service writes, Agent upload/deploy/run, Test Cloud execution, live Codex execution, public hosting with secrets, and production release. |
 
@@ -41,6 +41,16 @@ Implementation base: `4d761b6` (`Align checkpoint 7 with AgentHack Track 2`).
 | `uip tm project list --limit 5 --output json` | Passed; project `AFQG` / `Agent Factory Quality Gates` exists and is active. |
 | `uip tm testcases list --project-key AFQG --output json` | Passed; seven test cases exist. |
 | `uip maestro bpmn validate ... --output json` | Passed; BPMN is valid with one process, one start event, and three UiPath extensions. |
+| `npm run uipath:live-plan` | Passed; prints exact approval-gated publish/run/evidence commands without mutating UiPath. |
+| `npm run uipath:readiness` | Passed; read-only UiPath login/folder/Test Manager checks plus BPMN and six API Workflow validations. |
+
+## Live Spine Hardening After Final QA
+
+- Added `POST /api/requests/:id/uipath-event` so live Maestro/API Workflow/Action Center/Data Service/Test Manager identifiers become first-class Factory API evidence.
+- Added `GET /api/uipath/readiness` for product/script readiness checks.
+- Added `AgentFactory_RecordUiPathEvent` API Workflow to post redacted live evidence into the Factory API timeline.
+- Updated Factory Console evidence so Maestro/API Workflow/human gate/Data Service/Codex rows show `uipath-live` only when real IDs exist.
+- Added `npm run uipath:live-plan` and `npm run uipath:readiness` for exact activation planning and safe validation.
 
 ## Final Demo Path
 
@@ -51,7 +61,7 @@ Implementation base: `4d761b6` (`Align checkpoint 7 with AgentHack Track 2`).
 5. Review plan, governance, PII masking, allowed files, forbidden actions, and approvals.
 6. Approve local scope/data.
 7. Start the build handoff and either show blocked Codex readiness evidence or, after separate approval, show redacted live Codex diff/test evidence.
-8. Show UiPath evidence: live Test Manager catalog, validated Maestro BPMN, import-ready API Workflows/Agents, and proposal-only Action Center/Data Service/Apps.
+8. Show UiPath evidence: live Test Manager catalog, validated Maestro BPMN, import-ready API Workflows/Agents, and the live-evidence callback surface. If approved live IDs exist, the evidence drawer should show `uipath-live`.
 9. Open the Customer360 sandbox preview.
 10. Close with the evidence drawer and final truth table.
 

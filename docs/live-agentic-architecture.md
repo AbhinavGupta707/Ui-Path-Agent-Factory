@@ -164,7 +164,7 @@ Checkpoint 7 starts the server-side graph/run shape:
 - `POST /api/requests/:id/clarify` now calls the agent runtime after request creation. It returns `questions` plus `metadata.missing_fields`, `metadata.basis`, and a redacted `metadata.trace`.
 - Clarification uses Fireworks when configured. No-key, deterministic, and provider-error fallbacks reuse the same trace envelope and label each question source with the live/degraded mode.
 - Request details include `lifecycleMetadata` with graph node/run state and optional UiPath Maestro run IDs, API Workflow execution IDs, human approval task IDs, Data Service record IDs, and Codex build evidence.
-- `POST /api/requests/:id/lifecycle-metadata` lets the Maestro/API Workflow lanes attach those external evidence IDs without changing request status.
+- `POST /api/requests/:id/uipath-event` is the preferred live callback for Maestro/API Workflow/Action Center/Data Service/Test Manager evidence. It can mark the request `uipath-live`, attach real platform IDs, and write a redacted audit event. `POST /api/requests/:id/lifecycle-metadata` remains available for passive metadata attachment.
 - The local graph abstraction is deliberately small and server-side. It defines explicit lifecycle nodes and transitions so a future LangGraph swap can replace the helper without changing the HTTP contract.
 
 Environment used by the runtime:

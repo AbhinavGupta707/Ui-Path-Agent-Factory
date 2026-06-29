@@ -1,6 +1,6 @@
 # API Workflow Validation Results
 
-Status: all Checkpoint 4 Agents/API Workflow lane workflow JSON files validated
+Status: all Checkpoint 7 API Workflow JSON files validated
 successfully with the UiPath CLI.
 
 ## Discovery Basis
@@ -23,6 +23,7 @@ successfully with the UiPath CLI.
 | `AgentFactory_PostStatusUpdate/Workflow.json` | `Status: "Valid"` |
 | `AgentFactory_RecordTestResult/Workflow.json` | `Status: "Valid"` |
 | `AgentFactory_StartDeployment/Workflow.json` | `Status: "Valid"` |
+| `AgentFactory_RecordUiPathEvent/Workflow.json` | `Status: "Valid"` |
 
 ## Commands
 
@@ -32,6 +33,7 @@ uip api-workflow validate uipath/api-workflows/AgentFactory_FetchBuildStatus/Wor
 uip api-workflow validate uipath/api-workflows/AgentFactory_PostStatusUpdate/Workflow.json --output json
 uip api-workflow validate uipath/api-workflows/AgentFactory_RecordTestResult/Workflow.json --output json
 uip api-workflow validate uipath/api-workflows/AgentFactory_StartDeployment/Workflow.json --output json
+uip api-workflow validate uipath/api-workflows/AgentFactory_RecordUiPathEvent/Workflow.json --output json
 ```
 
 No `uip api-workflow run` command was executed. Runtime calls require explicit

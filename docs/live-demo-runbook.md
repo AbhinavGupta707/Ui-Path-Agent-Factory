@@ -17,7 +17,7 @@ This is the judge-facing Checkpoint 7 path for Agent Factory. The demo story is 
 | UiPath Orchestrator | Live folder evidence from platform setup | Folder/runtime context exists; jobs, assets, and process mutations remain approval-gated. |
 | UiPath Test Manager/Test Cloud | Live catalog, no execution | Project `AFQG` and seven test cases are live. No live Test Cloud execution has been run. |
 | Maestro BPMN | Validated/import-ready | Track 2 BPMN validates locally and is ready for an approved publish/run against an HTTPS callback bridge. |
-| API Workflows | Validated/import-ready | Five workflow assets validate locally. Uploads and runtime calls require approval and approved HTTPS endpoint inputs. |
+| API Workflows | Validated/import-ready | Six workflow assets validate locally, including `AgentFactory_RecordUiPathEvent` for live evidence callbacks. Uploads and runtime calls require approval and approved HTTPS endpoint inputs. |
 | UiPath Agents | Validated/import-ready | Five low-code Agent projects validate locally; upload/deploy/run requires approval. |
 | Action Center | Proposal-only contract | Scope/data and release gates are modeled; no live task is claimed until a real task id exists. |
 | Data Service | Proposal-only schema | Source-controlled schema only; no entity or record writes without approval. |
@@ -66,6 +66,8 @@ uip or folders get AgentFactoryDemo --output json
 uip tm project list --limit 5 --output json
 uip tm testcases list --project-key AFQG --output json
 uip maestro bpmn validate uipath/maestro/customer360-build/agent-factory-customer360-build.bpmn --output json
+npm run uipath:live-plan
+npm run uipath:readiness
 ```
 
 Checkpoint 7 final QA evidence:
@@ -77,6 +79,7 @@ Checkpoint 7 final QA evidence:
 | Test Manager project | `AFQG` / `Agent Factory Quality Gates` exists and is active. |
 | Test cases | Seven cataloged test cases exist: `AF-QG-001` through `AF-QG-007`. |
 | Maestro BPMN validation | `agent-factory-customer360-build.bpmn` is valid with one process, one start event, and three UiPath extensions. |
+| API Workflow validation | Six workflows validate, including `AgentFactory_RecordUiPathEvent`. |
 
 ## Manual Demo Script
 
@@ -105,7 +108,7 @@ I am in a business and I am struggling to track customer analytics. I want a das
    Start the build handoff. In default mode, show the Build Worker blocked/readiness evidence and explain that live Codex execution requires `BUILD_WORKER_CODEX_ENABLED=true`, an approved bounded workspace, and explicit user approval. If live Codex is approved separately, show only redacted event/diff/test evidence.
 
 7. Show UiPath orchestration evidence
-   Open the evidence panel or component map. Show Maestro as the Track 2 orchestration spine, API Workflows as import-ready handoffs, Action Center as the human gate contract, Data Service as proposed audit state, and Test Manager as the live quality catalog. Do not say Maestro/API Workflow/Action Center/Data Service/Test Cloud ran live unless the evidence panel contains real platform ids.
+   Open the evidence panel or component map. Show Maestro as the Track 2 orchestration spine, API Workflows as import-ready handoffs and live-evidence callbacks, Action Center as the human gate contract, Data Service as proposed audit state, and Test Manager as the live quality catalog. Do not say Maestro/API Workflow/Action Center/Data Service/Test Cloud ran live unless the evidence panel contains real platform ids.
 
 8. Open sandbox preview
    Open the Customer360 dashboard from the output/deployment section. Verify synthetic metrics render, direct identifiers are masked, and sandbox labeling is visible.
@@ -120,6 +123,7 @@ I am in a business and I am struggling to track customer analytics. I want a das
 - "Fireworks-powered server-side agents clarify, plan, and govern when configured; deterministic fallback is labeled."
 - "Codex is the constrained builder. It receives a manifest with allowed files, forbidden actions, sandbox-only deployment, test expectations, and repair limits."
 - "The product hides most technical detail until the evidence drawer, where live/local/import-ready/proposal-only labels stay explicit."
+- "When a live UiPath run exists, the evidence drawer reads actual Maestro run IDs, API Workflow execution IDs, human task IDs, Data Service record IDs, and Test Manager execution IDs from the Factory API timeline."
 
 ## No-Secret Validation
 

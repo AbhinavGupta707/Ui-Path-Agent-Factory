@@ -7,11 +7,13 @@ import {
   IntakeRequestSchema,
   LifecycleMetadataPatchSchema,
   PlatformModeSchema,
+  UiPathEvidenceEventSchema,
   createAuditEvent,
   type AuditEvent,
   type AgentStepTraceEnvelope,
   type BuildRun,
-  type LifecycleMetadata
+  type LifecycleMetadata,
+  type UiPathEvidenceEvent
 } from "@agent-factory/shared-contracts";
 import { createAgentRuntime, type AgentRuntime } from "./agentRuntime.js";
 import {
@@ -35,6 +37,8 @@ import {
 const BuildCreateRequestSchema = z.object({
   request_id: z.string().min(1),
   manifest_id: z.string().min(1).optional(),
+  platformMode: PlatformModeSchema.default("local-simulated"),
+  api_workflow_execution_id: z.string().min(1).optional(),
   mode: z.literal("sandbox").default("sandbox")
 });
 
@@ -160,6 +164,40 @@ async function routeFactoryRequest(
       body: {
         data: runtime.getReadiness(),
         platformMode
+      }
+    };
+  }
+
+  if (method === "GET" && input.pathname === "/api/uipath/readiness") {
+    const requests = await store.listRequests();
+
+    return {
+      statusCode: 200,
+      body: {
+        platformMode: "uipath-ready",
+        readiness: {
+          track: "Track 2 Maestro BPMN",
+          folder: {
+            name: "AgentFactoryDemo",
+            id: "7986306",
+            key: "cba41e19-47cc-4a0a-bf73-de88b60a61be"
+          },
+          localLifecycleRequests: requests.length,
+          liveEvidenceRequiredForFinalClaim: [
+            "maestro_run_id",
+            "api_workflow_execution_id",
+            "action_center_task_id or Maestro human task id",
+            "sandbox deployment evidence"
+          ],
+          approvalGatedActions: [
+            "Maestro BPMN publish/run",
+            "API Workflow upload/run against approved HTTPS endpoints",
+            "Action Center task creation/completion",
+            "Data Service writes",
+            "Test Cloud execution",
+            "live Codex execution"
+          ]
+        }
       }
     };
   }
@@ -607,6 +645,10 @@ async function routeRequestResource(
     };
   }
 
+  if (method === "POST" && action === "uipath-event") {
+    return recordUiPathEvidenceEvent(store, requestId, body);
+  }
+
   if (method === "GET" && action === "timeline") {
     await requireRecord(store, requestId);
 
@@ -634,9 +676,15 @@ async function createBuild(store: FactoryStore, body: unknown): Promise<FactoryR
     throw new ApiError(400, "manifest_mismatch", "Build manifest id does not match the request manifest.");
   }
 
-  const buildRun = createQueuedBuildRun(record, store.now());
+  const buildRun = {
+    ...createQueuedBuildRun(record, store.now()),
+    platformMode: createBody.platformMode
+  };
   await store.createBuildRun(buildRun);
   await store.mergeLifecycleMetadata(createBody.request_id, {
+    api_workflow_execution_ids: createBody.api_workflow_execution_id
+      ? [createBody.api_workflow_execution_id]
+      : undefined,
     codex_build_evidence: [
       {
         build_run_id: buildRun.build_run_id,
@@ -648,20 +696,28 @@ async function createBuild(store: FactoryStore, body: unknown): Promise<FactoryR
     ],
     updated_at: store.now()
   });
+  if (createBody.platformMode === "uipath-live") {
+    await store.updateRequestPlatformMode(createBody.request_id, "uipath-live");
+  }
   await moveGraph(store, createBody.request_id, "build_queue", "Build worker queued from approved manifest.");
   await audit(store, createBody.request_id, {
-    actor_type: "codex-worker",
-    actor_name: "Build Worker (local queue)",
+    actor_type: createBody.platformMode === "uipath-live" ? "api-workflow" : "codex-worker",
+    actor_name: createBody.platformMode === "uipath-live" ? "AgentFactory_StartBuildWorker" : "Build Worker (local queue)",
     action: "build_run_queued",
     summary: `Queued build run ${buildRun.build_run_id}.`,
-    payload_json: { build_run_id: buildRun.build_run_id, manifest_id: buildRun.manifest_id, platformMode }
+    payload_json: {
+      build_run_id: buildRun.build_run_id,
+      manifest_id: buildRun.manifest_id,
+      api_workflow_execution_id: createBody.api_workflow_execution_id,
+      platformMode: createBody.platformMode
+    }
   });
   const updatedRecord = await transitionStatus(
     store,
     createBody.request_id,
     "build_queued",
     "uipath-maestro",
-    "Maestro (local)",
+    createBody.platformMode === "uipath-live" ? "UiPath Maestro" : "Maestro (local)",
     "Build worker queued from approved manifest."
   );
 
@@ -670,7 +726,7 @@ async function createBuild(store: FactoryStore, body: unknown): Promise<FactoryR
     body: {
       data: updatedRecord.buildRuns.at(-1),
       status: updatedRecord.request.status,
-      platformMode
+      platformMode: createBody.platformMode
     }
   };
 }
@@ -772,6 +828,9 @@ async function createDeployment(
   };
 
   await store.createDeploymentRecord(deployment);
+  if (deploymentBody.platformMode === "uipath-live") {
+    await store.updateRequestPlatformMode(deploymentBody.requestId, "uipath-live");
+  }
   await store.updateBuildRun(deploymentBody.buildRunId, {
     status: "deployed",
     pr_url: pullRequestUrl ?? buildRun.pr_url,
@@ -844,6 +903,7 @@ async function routeBuildResource(
     const now = store.now();
     const patch: Partial<BuildRun> = {
       ...updateBody,
+      platformMode: updateBody.platformMode ?? existingRun.platformMode,
       started_at: updateBody.status === "building" ? existingRun.started_at ?? now : existingRun.started_at,
       completed_at: ["build_failed", "tests_failed", "deployed", "blocked", "cancelled"].includes(updateBody.status)
         ? existingRun.completed_at ?? now
@@ -851,6 +911,9 @@ async function routeBuildResource(
     };
     await store.updateBuildRun(buildRunId, patch);
     await store.mergeLifecycleMetadata(existingRun.request_id, {
+      api_workflow_execution_ids: updateBody.api_workflow_execution_id
+        ? [updateBody.api_workflow_execution_id]
+        : undefined,
       codex_build_evidence: [
         {
           build_run_id: buildRunId,
@@ -866,17 +929,24 @@ async function routeBuildResource(
       ],
       updated_at: store.now()
     });
+    if (updateBody.platformMode === "uipath-live") {
+      await store.updateRequestPlatformMode(existingRun.request_id, "uipath-live");
+    }
     await moveGraph(store, existingRun.request_id, "build_worker", `Build worker reported ${updateBody.status}.`);
     await audit(store, existingRun.request_id, {
-      actor_type: "codex-worker",
-      actor_name: updateBody.worker_id ?? "Build Worker (local)",
+      actor_type: updateBody.platformMode === "uipath-live" ? "api-workflow" : "codex-worker",
+      actor_name:
+        updateBody.platformMode === "uipath-live"
+          ? updateBody.worker_id ?? "UiPath API Workflow"
+          : updateBody.worker_id ?? "Build Worker (local)",
       action: "build_status_updated",
       summary: `Build run ${buildRunId} moved to ${updateBody.status}.`,
       payload_json: {
         build_run_id: buildRunId,
         status: updateBody.status,
+        api_workflow_execution_id: updateBody.api_workflow_execution_id,
         generated_files: updateBody.generated_files_json ?? [],
-        platformMode
+        platformMode: updateBody.platformMode ?? platformMode
       }
     });
     const updatedRecord = await transitionStatus(
@@ -884,7 +954,7 @@ async function routeBuildResource(
       existingRun.request_id,
       updateBody.status,
       "uipath-maestro",
-      "Maestro (local)",
+      updateBody.platformMode === "uipath-live" ? "UiPath Maestro" : "Maestro (local)",
       `Request status mirrored from build run ${buildRunId}.`
     );
 
@@ -893,12 +963,68 @@ async function routeBuildResource(
       body: {
         data: updatedRecord.buildRuns.find((run) => run.build_run_id === buildRunId),
         status: updatedRecord.request.status,
-        platformMode
+        platformMode: updateBody.platformMode ?? platformMode
       }
     };
   }
 
   throw new ApiError(404, "not_found", `No build route for ${buildRunId}/${action ?? ""}`);
+}
+
+async function recordUiPathEvidenceEvent(
+  store: FactoryStore,
+  requestId: string,
+  body: unknown
+): Promise<FactoryResponseOutput> {
+  await requireRecord(store, requestId);
+  const event = UiPathEvidenceEventSchema.parse(body ?? {});
+  const metadataPatch = lifecycleMetadataFromUiPathEvent(event, store.now());
+  let updatedRecord = await store.mergeLifecycleMetadata(requestId, metadataPatch);
+  updatedRecord = await store.updateRequestPlatformMode(requestId, "uipath-live");
+
+  if (event.request_status) {
+    updatedRecord = await transitionStatus(
+      store,
+      requestId,
+      event.request_status,
+      actorTypeForUiPathEvent(event),
+      actorNameForUiPathEvent(event),
+      event.summary ?? `UiPath live event ${event.event_type} set request status to ${event.request_status}.`
+    );
+  }
+
+  if (event.build_run_id && event.build_status) {
+    const existingRun = await findBuildRun(store, event.build_run_id);
+
+    if (existingRun) {
+      await store.updateBuildRun(event.build_run_id, {
+        status: event.build_status,
+        platformMode: "uipath-live",
+        completed_at: ["build_failed", "tests_failed", "deployed", "blocked", "cancelled"].includes(event.build_status)
+          ? existingRun.completed_at ?? store.now()
+          : existingRun.completed_at
+      });
+    }
+  }
+
+  await audit(store, requestId, {
+    actor_type: actorTypeForUiPathEvent(event),
+    actor_name: actorNameForUiPathEvent(event),
+    action: event.event_type,
+    summary: event.summary ?? summaryForUiPathEvent(event),
+    payload_json: summarizeUiPathEvidenceEvent(event)
+  });
+
+  const detail = await store.getRequestDetail(requestId);
+
+  return {
+    statusCode: 200,
+    body: {
+      data: detail?.lifecycleMetadata ?? updatedRecord.lifecycleMetadata,
+      status: detail?.request.status ?? updatedRecord.request.status,
+      platformMode: "uipath-live"
+    }
+  };
 }
 
 async function transitionStatus(
@@ -1041,6 +1167,106 @@ function summarizeLifecycleMetadataPatch(patch: Partial<LifecycleMetadata>): Rec
       logs_uri: evidence.logs_uri
     })),
     platformMode
+  };
+}
+
+function lifecycleMetadataFromUiPathEvent(event: UiPathEvidenceEvent, now: string): Partial<LifecycleMetadata> {
+  return {
+    maestro_process_key: event.maestro_process_key,
+    maestro_run_id: event.maestro_run_id ?? event.maestro_job_key ?? event.maestro_trace_id,
+    api_workflow_execution_ids: event.api_workflow_execution_id ? [event.api_workflow_execution_id] : undefined,
+    human_approval_task_ids: event.action_center_task_id ? [event.action_center_task_id] : undefined,
+    data_service_record_ids: event.data_service_record_id ? [event.data_service_record_id] : undefined,
+    codex_build_evidence:
+      event.build_run_id || event.build_status
+        ? [
+            {
+              build_run_id: event.build_run_id ?? "uipath-live-build",
+              status: event.build_status,
+              worker_id: event.api_workflow_name,
+              logs_uri: event.api_workflow_execution_id
+                ? `uipath://api-workflows/${event.api_workflow_execution_id}`
+                : undefined,
+              generated_files_json: []
+            }
+          ]
+        : undefined,
+    updated_at: now
+  };
+}
+
+function actorTypeForUiPathEvent(event: UiPathEvidenceEvent): AuditEvent["actor_type"] {
+  if (event.event_type.startsWith("api_workflow")) {
+    return "api-workflow";
+  }
+
+  if (event.event_type.startsWith("action_center")) {
+    return "action-center";
+  }
+
+  if (event.event_type.startsWith("data_service")) {
+    return "data-service";
+  }
+
+  if (event.event_type.startsWith("test_manager")) {
+    return "test-manager";
+  }
+
+  return "uipath-maestro";
+}
+
+function actorNameForUiPathEvent(event: UiPathEvidenceEvent): string {
+  if (event.event_type.startsWith("api_workflow")) {
+    return event.api_workflow_name ?? "UiPath API Workflow";
+  }
+
+  if (event.event_type.startsWith("action_center")) {
+    return "UiPath Action Center";
+  }
+
+  if (event.event_type.startsWith("data_service")) {
+    return "UiPath Data Service";
+  }
+
+  if (event.event_type.startsWith("test_manager")) {
+    return "UiPath Test Manager";
+  }
+
+  return "UiPath Maestro";
+}
+
+function summaryForUiPathEvent(event: UiPathEvidenceEvent): string {
+  const identifiers = [
+    event.maestro_run_id,
+    event.maestro_job_key,
+    event.api_workflow_execution_id,
+    event.action_center_task_id,
+    event.data_service_record_id,
+    event.test_manager_execution_id
+  ].filter(Boolean);
+
+  return identifiers.length > 0
+    ? `Recorded ${event.event_type} live evidence: ${identifiers.join(", ")}.`
+    : `Recorded ${event.event_type} live evidence.`;
+}
+
+function summarizeUiPathEvidenceEvent(event: UiPathEvidenceEvent): Record<string, unknown> {
+  return {
+    event_type: event.event_type,
+    maestro_process_key: event.maestro_process_key,
+    maestro_run_id: event.maestro_run_id,
+    maestro_job_key: event.maestro_job_key,
+    maestro_trace_id: event.maestro_trace_id,
+    api_workflow_name: event.api_workflow_name,
+    api_workflow_execution_id: event.api_workflow_execution_id,
+    action_center_task_id: event.action_center_task_id,
+    approval_type: event.approval_type,
+    data_service_record_id: event.data_service_record_id,
+    test_manager_execution_id: event.test_manager_execution_id,
+    request_status: event.request_status,
+    build_run_id: event.build_run_id,
+    build_status: event.build_status,
+    platformMode: event.platformMode
   };
 }
 

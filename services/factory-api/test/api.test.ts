@@ -315,6 +315,109 @@ describe("factory api", () => {
     });
   });
 
+  it("records live UiPath orchestration events as product evidence", async () => {
+    const handle = createTestHandler();
+    const created = await handle({
+      method: "POST",
+      pathname: "/api/requests",
+      body: intakeBody
+    });
+    const requestId = (created.body as { request_id: string }).request_id;
+
+    const response = await handle({
+      method: "POST",
+      pathname: `/api/requests/${requestId}/uipath-event`,
+      body: {
+        event_type: "maestro_run_started",
+        platformMode: "uipath-live",
+        summary: "Maestro live run started for Customer360 request.",
+        maestro_process_key: "agent-factory-customer360-build:1.0.0",
+        maestro_job_key: "job_live_123",
+        maestro_trace_id: "trace_live_456"
+      }
+    });
+    const body = response.body as {
+      platformMode: string;
+      data: {
+        maestro_run_id: string;
+        maestro_process_key: string;
+      };
+    };
+
+    expect(response.statusCode).toBe(200);
+    expect(body.platformMode).toBe("uipath-live");
+    expect(body.data.maestro_run_id).toBe("job_live_123");
+    expect(body.data.maestro_process_key).toBe("agent-factory-customer360-build:1.0.0");
+
+    const detail = await handle({
+      method: "GET",
+      pathname: `/api/requests/${requestId}`
+    });
+    const detailBody = detail.body as {
+      data: {
+        request: { platformMode: string };
+        auditEvents: Array<{ action: string; actor_type: string; payload_json?: Record<string, unknown> }>;
+      };
+    };
+
+    expect(detailBody.data.request.platformMode).toBe("uipath-live");
+    expect(detailBody.data.auditEvents).toContainEqual(
+      expect.objectContaining({
+        action: "maestro_run_started",
+        actor_type: "uipath-maestro"
+      })
+    );
+  });
+
+  it("preserves live API Workflow execution ids on build callbacks", async () => {
+    const handle = createTestHandler();
+    const { requestId, buildRunId } = await createDeployableBuild(handle);
+
+    const response = await handle({
+      method: "PATCH",
+      pathname: `/api/builds/${buildRunId}/status`,
+      body: {
+        status: "tests_running",
+        platformMode: "uipath-live",
+        api_workflow_execution_id: "apiwf_exec_live_123",
+        worker_id: "AgentFactory_PostStatusUpdate",
+        generated_files_json: ["apps/customer360-template/src/App.tsx"]
+      }
+    });
+    const body = response.body as {
+      platformMode: string;
+      data: { platformMode: string; status: string };
+    };
+
+    expect(response.statusCode).toBe(200);
+    expect(body.platformMode).toBe("uipath-live");
+    expect(body.data.platformMode).toBe("uipath-live");
+    expect(body.data.status).toBe("tests_running");
+
+    const detail = await handle({
+      method: "GET",
+      pathname: `/api/requests/${requestId}`
+    });
+    const detailBody = detail.body as {
+      data: {
+        request: { platformMode: string };
+        lifecycleMetadata: {
+          api_workflow_execution_ids: string[];
+        };
+        auditEvents: Array<{ action: string; actor_type: string }>;
+      };
+    };
+
+    expect(detailBody.data.request.platformMode).toBe("uipath-live");
+    expect(detailBody.data.lifecycleMetadata.api_workflow_execution_ids).toContain("apiwf_exec_live_123");
+    expect(detailBody.data.auditEvents).toContainEqual(
+      expect.objectContaining({
+        action: "build_status_updated",
+        actor_type: "api-workflow"
+      })
+    );
+  });
+
   it("rejects manifest creation before scope approval", async () => {
     const handle = createTestHandler();
     const created = await handle({

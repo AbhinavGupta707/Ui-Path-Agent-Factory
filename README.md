@@ -15,7 +15,7 @@ The repository is the production implementation for the submission package, not 
 | Test Manager/Test Cloud | Live Test Manager project `Agent Factory Quality Gates`, test set `Customer360 Release Gate`, and seven test cases. No live execution has been run. |
 | Data Service | Proposal-only schema in `uipath/data-service/schema.json`; entity/choice-set creation requires explicit approval. |
 | Maestro | Validated, import-ready BPMN project; not published or run until approval. |
-| Agents/API Workflows | Validated/import-ready local assets; not uploaded, deployed, or run until approval. |
+| Agents/API Workflows | Validated/import-ready local assets, including a live-evidence callback workflow; not uploaded, deployed, or run until approval. |
 | Action Center/UiPath Apps | Proposal-only contracts; task/app creation, completion, publish, or deploy requires approval. |
 | Deployment | Sandbox/local dashboard run is available. `AgentFactory_StartDeployment` targets the local `POST /deploy` sandbox endpoint for deployment evidence. |
 
@@ -108,6 +108,8 @@ Useful targeted checks:
 ```bash
 npm run smoke:customer360
 npm run smoke:build-worker
+npm run uipath:live-plan
+npm run uipath:readiness
 uip login status --output json
 uip tm project list --limit 5 --output json
 ```
@@ -147,6 +149,7 @@ See [docs/uipath-setup.md](docs/uipath-setup.md) and [docs/component-map.md](doc
 
 - [Setup](docs/setup.md)
 - [Checkpoint 7 live demo runbook](docs/live-demo-runbook.md)
+- [UiPath live spine activation](docs/uipath-live-spine-activation.md)
 - [Demo script](docs/demo-script.md)
 - [Devpost copy](docs/devpost-submission.md)
 - [Component map](docs/component-map.md)

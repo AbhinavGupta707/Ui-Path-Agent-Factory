@@ -72,7 +72,8 @@ import {
   structuredSpec,
   testManagerCatalog,
   type ClarificationQuestion,
-  type ConsoleAuditEvent
+  type ConsoleAuditEvent,
+  type PlatformEvidence
 } from "./seedData";
 
 type ProductView = "new-request" | "build-plan" | "live-run" | "output-preview";
@@ -1141,10 +1142,25 @@ function LiveRunView({
         }))
       : buildLogEvents;
   const stageItems = [
-    { id: "maestro", label: "Maestro", status: "done", product: "BPMN spine" },
+    {
+      id: "maestro",
+      label: "Maestro",
+      status: snapshot?.detail?.lifecycleMetadata?.maestro_run_id ? "done" : "ready",
+      product: snapshot?.detail?.lifecycleMetadata?.maestro_run_id ? "Live BPMN" : "BPMN ready"
+    },
     { id: "clarify", label: "Clarify", status: "done", product: "UiPath Agents" },
-    { id: "action", label: "Human Gate", status: approvalState === "approved" ? "done" : "active", product: "Action Center" },
-    { id: "workflow", label: "API Handoff", status: buildRun ? "done" : "ready", product: "API Workflow" },
+    {
+      id: "action",
+      label: "Human Gate",
+      status: hasLiveHumanGate(snapshot) || approvalState === "approved" ? "done" : "active",
+      product: hasLiveHumanGate(snapshot) ? "Action Center live" : "Local gate"
+    },
+    {
+      id: "workflow",
+      label: "API Handoff",
+      status: hasLiveApiWorkflow(snapshot) || buildRun ? "done" : "ready",
+      product: hasLiveApiWorkflow(snapshot) ? "API Workflow live" : "API Workflow ready"
+    },
     { id: "codex", label: "Build", status: buildRun ? "active" : "waiting", product: "Codex worker" },
     { id: "deploy", label: "Preview", status: releaseApprovalState === "approved" ? "done" : "waiting", product: "Sandbox" }
   ] as const;
@@ -1400,6 +1416,8 @@ function EvidenceDrawer({
   open: boolean;
   snapshot: LifecycleSnapshot | null;
 }) {
+  const platformItems = createPlatformEvidence(snapshot, apiStatus);
+
   return (
     <aside className="evidence-drawer" aria-hidden={!open} data-open={open}>
       <div className="drawer-header">
@@ -1438,7 +1456,7 @@ function EvidenceDrawer({
         <section>
           <h2>Platform evidence</h2>
           <div className="platform-evidence-list">
-            {platformEvidence.map((item) => (
+            {platformItems.map((item) => (
               <div className="platform-evidence-row" data-status={item.status} key={item.product}>
                 <span>
                   <strong>{item.product}</strong>
@@ -1454,6 +1472,83 @@ function EvidenceDrawer({
       </div>
     </aside>
   );
+}
+
+function createPlatformEvidence(snapshot: LifecycleSnapshot | null, apiStatus: FactoryApiStatus): PlatformEvidence[] {
+  const metadata = snapshot?.detail?.lifecycleMetadata;
+  const liveHumanTaskIds = (metadata?.human_approval_task_ids ?? []).filter(isLiveHumanTaskId);
+  const liveBuildEvidence = (metadata?.codex_build_evidence ?? []).find((item) => item.codex_session_id);
+  const fallback = platformEvidence.find((item) => item.product === "Test Manager catalog");
+
+  return [
+    {
+      product: "Factory Console + API",
+      mode: apiStatus.mode === "online" ? "uipath-ready" : "local-simulated",
+      status: apiStatus.mode === "online" ? "active" : "pending",
+      detail:
+        apiStatus.mode === "online"
+          ? `Lifecycle API online at ${apiStatus.apiBaseUrl}.`
+          : "Lifecycle API is unavailable; UI is in offline rehearsal mode."
+    },
+    {
+      product: "Maestro BPMN",
+      mode: metadata?.maestro_run_id ? "uipath-live" : "uipath-ready",
+      status: metadata?.maestro_run_id ? "active" : "ready",
+      detail: metadata?.maestro_run_id
+        ? `Live run ${metadata.maestro_run_id} for ${metadata.maestro_process_key ?? "Agent Factory process"}.`
+        : "Validated/import-ready; publish/run approval is still required for live Track 2 evidence."
+    },
+    {
+      product: "API Workflows",
+      mode: metadata?.api_workflow_execution_ids?.length ? "uipath-live" : "uipath-ready",
+      status: metadata?.api_workflow_execution_ids?.length ? "active" : "ready",
+      detail: metadata?.api_workflow_execution_ids?.length
+        ? `Live executions: ${metadata.api_workflow_execution_ids.join(", ")}.`
+        : "Workflow assets validate and can call approved HTTPS Factory API/Build Worker endpoints."
+    },
+    {
+      product: "Human gate",
+      mode: liveHumanTaskIds.length ? "uipath-live" : "uipath-ready",
+      status: liveHumanTaskIds.length ? "active" : "pending",
+      detail: liveHumanTaskIds.length
+        ? `Live task ids: ${liveHumanTaskIds.join(", ")}.`
+        : "Local approval is available; Action Center or Maestro human task creation still needs approval."
+    },
+    {
+      product: "Data Service",
+      mode: metadata?.data_service_record_ids?.length ? "uipath-live" : "uipath-ready",
+      status: metadata?.data_service_record_ids?.length ? "active" : "pending",
+      detail: metadata?.data_service_record_ids?.length
+        ? `Live records: ${metadata.data_service_record_ids.join(", ")}.`
+        : "Schema is proposal/import-ready; record writes remain approval-gated."
+    },
+    {
+      product: "Test Manager catalog",
+      mode: "uipath-live",
+      status: "catalog-live",
+      detail: fallback?.detail ?? "AFQG project and gate cases exist; live Test Cloud execution is approval-gated."
+    },
+    {
+      product: "Codex worker",
+      mode: liveBuildEvidence ? "uipath-live" : "uipath-ready",
+      status: liveBuildEvidence ? "active" : "ready",
+      detail: liveBuildEvidence
+        ? `Live Codex session ${liveBuildEvidence.codex_session_id}.`
+        : "Build Worker contract is live-run capable, but Codex execution requires explicit approval."
+    }
+  ];
+}
+
+function hasLiveApiWorkflow(snapshot: LifecycleSnapshot | null): boolean {
+  return Boolean(snapshot?.detail?.lifecycleMetadata?.api_workflow_execution_ids?.length);
+}
+
+function hasLiveHumanGate(snapshot: LifecycleSnapshot | null): boolean {
+  return Boolean(snapshot?.detail?.lifecycleMetadata?.human_approval_task_ids?.some(isLiveHumanTaskId));
+}
+
+function isLiveHumanTaskId(taskId: string): boolean {
+  return !taskId.startsWith("TASK-");
 }
 
 function PanelHeader({

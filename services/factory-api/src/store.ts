@@ -56,6 +56,7 @@ export interface FactoryStore {
   getRequestDetail(requestId: string): Promise<AutomationRequestDetail | undefined>;
   createRequest(input: CreateAutomationRequest): Promise<FactoryRequestRecord>;
   updateRequestStatus(requestId: string, status: AutomationRequestStatus): Promise<FactoryRequestRecord>;
+  updateRequestPlatformMode(requestId: string, platformMode: PlatformMode): Promise<FactoryRequestRecord>;
   saveClarificationQuestions(
     requestId: string,
     questions: ClarificationQuestion[]
@@ -167,6 +168,17 @@ class InMemoryFactoryStore implements FactoryStore {
     record.request = {
       ...record.request,
       status,
+      updated_at: this.now()
+    };
+    this.records.set(requestId, record);
+    return record;
+  }
+
+  async updateRequestPlatformMode(requestId: string, platformMode: PlatformMode): Promise<FactoryRequestRecord> {
+    const record = this.requireRecord(requestId);
+    record.request = {
+      ...record.request,
+      platformMode,
       updated_at: this.now()
     };
     this.records.set(requestId, record);

@@ -37,6 +37,10 @@
             "default": "uipath-ready",
             "description": "local-simulated, uipath-ready, or uipath-live. Use uipath-live only after real platform execution."
           },
+          "apiWorkflowExecutionId": {
+            "type": "string",
+            "description": "Live UiPath API Workflow execution id. Set only after Automation Cloud execution."
+          },
           "folderKey": {
             "type": "string",
             "default": "cba41e19-47cc-4a0a-bf73-de88b60a61be"
@@ -129,7 +133,7 @@
             "StatusPayload": {
               "run": {
                 "script": {
-                  "code": "const extra = $workflow.input.statusPayload ?? {};\nreturn { ...extra, status: $workflow.input.status };",
+                  "code": "const extra = $workflow.input.statusPayload ?? {};\nreturn {\n  ...extra,\n  status: $workflow.input.status,\n  platformMode: $workflow.input.platformMode ?? extra.platformMode,\n  api_workflow_execution_id: $workflow.input.apiWorkflowExecutionId ?? extra.api_workflow_execution_id\n};",
                   "language": "javascript",
                   "arguments": "${{ \"$context\": $context, \"$workflow\": $workflow, \"$input\": $input }}"
                 }

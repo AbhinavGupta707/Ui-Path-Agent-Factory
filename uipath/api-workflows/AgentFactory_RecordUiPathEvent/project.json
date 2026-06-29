@@ -1,0 +1,11 @@
+{
+  "name": "AgentFactory_RecordUiPathEvent",
+  "type": "Api",
+  "main": "Workflow.json",
+  "platformMode": "uipath-ready",
+  "runMode": "no-auth-local-http",
+  "folderName": "AgentFactoryDemo",
+  "folderKey": "cba41e19-47cc-4a0a-bf73-de88b60a61be",
+  "folderId": 7986306,
+  "description": "No-auth HTTP workflow that records live UiPath orchestration evidence into the Factory API request timeline."
+}

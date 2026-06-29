@@ -33,7 +33,7 @@ Current as of Checkpoint 7 final QA on 2026-06-29.
 - [x] Data Service schema is proposal-only and source-controlled.
 - [x] Maestro BPMN is validated/import-ready.
 - [x] Low-code Agent projects are validated/import-ready.
-- [x] API Workflow JSON assets are validated/import-ready.
+- [x] Six API Workflow JSON assets are validated/import-ready, including live UiPath evidence callback recording.
 - [x] Action Center approval contracts are proposal-only.
 - [x] UiPath Apps companion contract is proposal-only.
 
@@ -41,7 +41,7 @@ Current as of Checkpoint 7 final QA on 2026-06-29.
 
 - [x] Live: UiPath login context for `galacticus / DefaultTenant`, Orchestrator folder `AgentFactoryDemo`, Test Manager project `AFQG`, and seven Test Manager test cases.
 - [x] Local: Factory Console, Factory API lifecycle, Build Worker contract, Customer360 dashboard, tests, sandbox `/deploy`, and demo smoke.
-- [x] Import-ready: Maestro BPMN, five UiPath API Workflow JSON assets, and five low-code Agent projects.
+- [x] Import-ready: Maestro BPMN, six UiPath API Workflow JSON assets, and five low-code Agent projects.
 - [x] Proposal-only: Data Service schema, Action Center approval contracts, and UiPath Apps companion contract.
 - [x] Approval-gated: Maestro publish/run, API Workflow upload/run, Action Center task creation/completion, Data Service writes, Agent upload/deploy/run, Test Cloud execution, live Codex execution, public hosting with secrets, and production release.
 

@@ -26,6 +26,7 @@ live Automation Cloud API Workflow asset was created.
 | `AgentFactory_PostStatusUpdate` | Mirror build/deploy status into Factory API | `uipath/api-workflows/AgentFactory_PostStatusUpdate/Workflow.json` | No-auth/local when Factory API runs on `http://localhost:8787` |
 | `AgentFactory_RecordTestResult` | Map test-gate decisions to Factory API build status | `uipath/api-workflows/AgentFactory_RecordTestResult/Workflow.json` | No-auth/local when Factory API runs on `http://localhost:8787` |
 | `AgentFactory_StartDeployment` | Start approved sandbox deployment | `uipath/api-workflows/AgentFactory_StartDeployment/Workflow.json` | No-auth/local when Factory API runs on `http://localhost:8787` |
+| `AgentFactory_RecordUiPathEvent` | Record live UiPath evidence ids in Factory API | `uipath/api-workflows/AgentFactory_RecordUiPathEvent/Workflow.json` | No-auth/local when Factory API runs on `http://localhost:8787` |
 
 `AgentFactory_SyncDataServiceRecord` remains a future Data Service mirror
 workflow. This lane did not create it because Data Service schema and live entity
@@ -71,6 +72,10 @@ The Factory API timeline should capture these live ids when available:
 - Action Center task id for scope and release decisions,
 - Data Service record ids for mirrored request/build/test/deployment/audit rows,
 - Test Manager/Test Cloud execution id if the quality gate is run live.
+
+`POST /api/requests/{requestId}/uipath-event` is the preferred product callback
+for those ids. It accepts redacted `UiPathEvidenceEvent` payloads and updates
+the request evidence drawer to `uipath-live` only when real ids are present.
 
 ## AgentFactory_StartBuildWorker
 
@@ -274,6 +279,7 @@ uip api-workflow validate uipath/api-workflows/AgentFactory_FetchBuildStatus/Wor
 uip api-workflow validate uipath/api-workflows/AgentFactory_PostStatusUpdate/Workflow.json --output json
 uip api-workflow validate uipath/api-workflows/AgentFactory_RecordTestResult/Workflow.json --output json
 uip api-workflow validate uipath/api-workflows/AgentFactory_StartDeployment/Workflow.json --output json
+uip api-workflow validate uipath/api-workflows/AgentFactory_RecordUiPathEvent/Workflow.json --output json
 ```
 
 No `uip api-workflow run` command was executed. Runtime execution, especially

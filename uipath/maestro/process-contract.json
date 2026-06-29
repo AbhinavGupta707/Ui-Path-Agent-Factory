@@ -30,7 +30,8 @@
       "AgentFactory_FetchBuildStatus.buildWorkerBaseUrl": "https://<approved-build-worker-host>",
       "AgentFactory_PostStatusUpdate.factoryApiBaseUrl": "https://<approved-factory-api-host>",
       "AgentFactory_RecordTestResult.factoryApiBaseUrl": "https://<approved-factory-api-host>",
-      "AgentFactory_StartDeployment.deploymentServiceBaseUrl": "https://<approved-factory-api-host>"
+      "AgentFactory_StartDeployment.deploymentServiceBaseUrl": "https://<approved-factory-api-host>",
+      "AgentFactory_RecordUiPathEvent.factoryApiBaseUrl": "https://<approved-factory-api-host>"
     },
     "timelineEvidenceIdsToCapture": [
       "maestroProcessId",

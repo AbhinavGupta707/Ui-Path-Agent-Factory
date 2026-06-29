@@ -54,6 +54,17 @@ export const agentStepIds = [
   "build_plan"
 ] as const;
 
+export const uipathEvidenceEventTypes = [
+  "maestro_process_published",
+  "maestro_run_started",
+  "maestro_run_completed",
+  "api_workflow_executed",
+  "action_center_task_created",
+  "action_center_task_completed",
+  "data_service_record_written",
+  "test_manager_execution_recorded"
+] as const;
+
 export const UiPathContextSchema = z.object({
   baseUrl: z.string().url(),
   organization: z.string().min(1),
@@ -160,6 +171,27 @@ export const LifecycleMetadataSchema = z.object({
 
 export const LifecycleMetadataPatchSchema = LifecycleMetadataSchema.partial();
 
+export const UiPathEvidenceEventTypeSchema = z.enum(uipathEvidenceEventTypes);
+
+export const UiPathEvidenceEventSchema = z.object({
+  event_type: UiPathEvidenceEventTypeSchema,
+  platformMode: z.literal("uipath-live"),
+  summary: z.string().min(1).optional(),
+  maestro_process_key: z.string().min(1).optional(),
+  maestro_run_id: z.string().min(1).optional(),
+  maestro_job_key: z.string().min(1).optional(),
+  maestro_trace_id: z.string().min(1).optional(),
+  api_workflow_name: z.string().min(1).optional(),
+  api_workflow_execution_id: z.string().min(1).optional(),
+  action_center_task_id: z.string().min(1).optional(),
+  approval_type: z.string().min(1).optional(),
+  data_service_record_id: z.string().min(1).optional(),
+  test_manager_execution_id: z.string().min(1).optional(),
+  request_status: z.enum(automationRequestStatuses).optional(),
+  build_run_id: z.string().min(1).optional(),
+  build_status: z.enum(buildRunStatuses).optional()
+});
+
 export const StructuredSpecSchema = z.object({
   spec_id: z.string().min(1),
   request_id: z.string().min(1),
@@ -248,6 +280,8 @@ export const BuildRunSchema = z.object({
 
 export const BuildStatusUpdateSchema = z.object({
   status: z.enum(buildRunStatuses),
+  platformMode: PlatformModeSchema.optional(),
+  api_workflow_execution_id: z.string().optional(),
   worker_id: z.string().optional(),
   codex_session_id: z.string().optional(),
   branch_name: z.string().optional(),
@@ -355,7 +389,17 @@ export const BuildPlanAgentOutputSchema = z.object({
 export const AuditEventSchema = z.object({
   event_id: z.string().min(1),
   request_id: z.string().min(1),
-  actor_type: z.enum(["user", "factory-api", "uipath-maestro", "uipath-agent", "action-center", "codex-worker"]),
+  actor_type: z.enum([
+    "user",
+    "factory-api",
+    "uipath-maestro",
+    "uipath-agent",
+    "api-workflow",
+    "action-center",
+    "data-service",
+    "test-manager",
+    "codex-worker"
+  ]),
   actor_name: z.string().min(1),
   action: z.string().min(1),
   summary: z.string().min(1),
@@ -413,6 +457,8 @@ export type CodexBuildEvidence = z.infer<typeof CodexBuildEvidenceSchema>;
 export type LifecycleGraphTransition = z.infer<typeof LifecycleGraphTransitionSchema>;
 export type LifecycleMetadata = z.infer<typeof LifecycleMetadataSchema>;
 export type LifecycleMetadataPatch = z.infer<typeof LifecycleMetadataPatchSchema>;
+export type UiPathEvidenceEventType = z.infer<typeof UiPathEvidenceEventTypeSchema>;
+export type UiPathEvidenceEvent = z.infer<typeof UiPathEvidenceEventSchema>;
 export type StructuredSpec = z.infer<typeof StructuredSpecSchema>;
 export type GovernanceAssessment = z.infer<typeof GovernanceAssessmentSchema>;
 export type ApprovalTask = z.infer<typeof ApprovalTaskSchema>;

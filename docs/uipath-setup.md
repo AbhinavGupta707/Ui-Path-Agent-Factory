@@ -22,7 +22,7 @@ This document records the current UiPath facts for `galacticus / DefaultTenant /
 | Data Service | Proposal-only schema in `uipath/data-service/schema.json`. | Choice sets, entities, fields, and seed records must not be created without approval. |
 | Maestro BPMN | Validated, import-ready project in `uipath/maestro/customer360-build`. | Publish or run only after approval and after required dependencies are ready. |
 | UiPath Agents | Five local low-code Agent Builder projects validate with `uip agent validate`. | Upload, publish, deploy, or run only after approval. |
-| API Workflows | Five workflow JSON assets validate with `uip api-workflow validate`. | Upload or runtime execution only after approval; live use must override local base URLs with an approved HTTPS Factory API/Build Worker callback bridge. |
+| API Workflows | Six workflow JSON assets validate with `uip api-workflow validate`, including `AgentFactory_RecordUiPathEvent`. | Upload or runtime execution only after approval; live use must override local base URLs with an approved HTTPS Factory API/Build Worker callback bridge. |
 | Action Center | Scope and release approval contracts are proposal-only. No live tasks were created or completed. | Task creation and completion are live business decisions and need approval. |
 | UiPath Apps / Coded App | Companion app contract is proposal-only. | Pack/publish/deploy only after approval. |
 | Integration Service | GitHub connector is discoverable; no connection is configured. | Do not invent connection IDs or perform OAuth/connection setup without approval. |
