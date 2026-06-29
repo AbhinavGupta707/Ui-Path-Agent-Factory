@@ -6,15 +6,18 @@ Worker IDs are filled in by the orchestrator after thread creation.
 
 | Lane | Thread | Pending ID | Worktree | Status | Notes |
 |---|---|---|---|---|---|
-| Deployment And Runtime | pending | pending | pending | preparing | Owns sandbox deployment endpoint/config and deployment evidence docs |
-| Demo UX Polish | pending | pending | pending | preparing | Owns Factory Console and Customer360 visual/demo states |
-| Submission Package | pending | pending | pending | preparing | Owns README, demo script, Devpost copy, and runbooks |
-| Final QA And E2E | pending | pending | pending | preparing | Owns demo smoke, browser checklist, scans, and final QA |
+| Deployment And Runtime | CLI worker pending approval | n/a | /private/tmp/agent-factory-cp5/deployment-runtime | blocked | Worktree branch `checkpoint-5-deployment-runtime`; Codex CLI launch requires explicit approval to send repo context to the model service |
+| Demo UX Polish | CLI worker pending approval | n/a | /private/tmp/agent-factory-cp5/demo-ux-polish | blocked | Worktree branch `checkpoint-5-demo-ux-polish`; Codex CLI launch requires explicit approval to send repo context to the model service |
+| Submission Package | CLI worker pending approval | n/a | /private/tmp/agent-factory-cp5/submission-package | blocked | Worktree branch `checkpoint-5-submission-package`; Codex CLI launch requires explicit approval to send repo context to the model service |
+| Final QA And E2E | CLI worker pending approval | n/a | /private/tmp/agent-factory-cp5/final-qa-e2e | blocked | Worktree branch `checkpoint-5-final-qa-e2e`; Codex CLI launch requires explicit approval to send repo context to the model service |
 
 ## Integration Log
 
 - Created Checkpoint 5 orchestration docs and worker prompts from `main` after Checkpoint 4 completion.
-- Launch base commit: pending worker launch.
+- Launch base commit: `5f6bb16`.
+- Created four local git worktrees under `/private/tmp/agent-factory-cp5` from launch base `5f6bb16`.
+- In-app `list_projects`/`create_thread` handlers were unavailable in this session, so the orchestrator prepared a CLI-worker fallback.
+- Codex CLI worker launch is paused pending explicit user approval because it sends repository context and checkpoint instructions to the Codex model service.
 - Pre-launch `npm run smoke` passed across workspace builds and tests.
 - Pre-launch CLI probes confirmed:
   - `uip login status --output json` passed for `galacticus / DefaultTenant`.
@@ -27,8 +30,8 @@ Worker IDs are filled in by the orchestrator after thread creation.
 | Item | Value |
 |---|---|
 | Branch | `main` |
-| Base commit | pending worker launch |
-| Launch time UTC | pending worker launch |
+| Base commit | `5f6bb16` |
+| Launch time UTC | `2026-06-29T01:34:28Z` |
 | UiPath CLI | `1.195.1` |
 | GitHub CLI | `2.89.0` |
 | Vercel CLI | `54.9.1` |
@@ -45,6 +48,8 @@ Worker IDs are filled in by the orchestrator after thread creation.
 - Pre-launch `gh --version` passed.
 - Pre-launch `vercel --version` passed.
 - Pre-launch `git remote -v` passed.
+- Worktree preparation passed for all four Checkpoint 5 lanes.
+- Worker execution is blocked pending explicit approval for Codex CLI model-service use.
 
 ## Manual Smoke Target
 
