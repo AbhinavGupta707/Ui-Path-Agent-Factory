@@ -6,11 +6,12 @@ The repository is the production implementation for the submission package, not 
 
 ## Current Status
 
-| Area | Checkpoint 5 truth |
+| Area | Current truth |
 |---|---|
-| Local Factory Console/API | Runnable local demo for intake, clarification, governance, scope approval, manifest, build queue/status, and audit timeline. |
+| Local Factory Console/API | Runnable local product flow for intake, clarification, governance, scope approval, live run progress, output preview, deployment evidence, and audit timeline. |
 | Customer360 dashboard | Runnable React/Vite dashboard with synthetic data, masked PII, refresh/degraded/empty states, and metric tests. |
 | Build Worker | Runnable service contract for `/build` and `/build/:id`; default runtime blocks honestly until a live Codex/Git runner is injected. |
+| Fireworks/LangSmith | Provider-ready through local/deployment configuration. Provider values and trace payloads must stay out of git, docs, screenshots, and logs. |
 | Test Manager/Test Cloud | Live Test Manager project `Agent Factory Quality Gates`, test set `Customer360 Release Gate`, and seven test cases. No live execution has been run. |
 | Data Service | Proposal-only schema in `uipath/data-service/schema.json`; entity/choice-set creation requires explicit approval. |
 | Maestro | Validated, import-ready BPMN project; not published or run until approval. |
@@ -27,7 +28,7 @@ request -> clarifications -> governance -> scope approval -> manifest -> build w
   -> tests -> release approval -> sandbox dashboard -> audit
 ```
 
-Use [docs/demo-script.md](docs/demo-script.md) for the timed script and [docs/submission-checklist.md](docs/submission-checklist.md) for the current readiness checklist.
+Use [docs/live-demo-runbook.md](docs/live-demo-runbook.md) for the Checkpoint 6 runbook, [docs/demo-script.md](docs/demo-script.md) for the timed script, and [docs/submission-checklist.md](docs/submission-checklist.md) for the current readiness checklist.
 
 ## Quick Start
 
@@ -47,7 +48,19 @@ npm install
 npm run smoke
 ```
 
-Run the local demo in separate terminals after `npm run smoke` or `npm run build` has created service `dist/` output:
+For Checkpoint 6 local provider rehearsal, create git-ignored local configuration and start the full stack:
+
+```bash
+npm run setup:live
+```
+
+```bash
+npm run dev:live
+```
+
+`dev:live` defaults to `8887`, `8890`, `5183`, and `5184`. It prints the active URLs when it starts.
+
+The older separate-terminal path remains available after `npm run smoke` or `npm run build` has created service `dist/` output:
 
 ```bash
 npm run dev:api
@@ -130,6 +143,7 @@ See [docs/uipath-setup.md](docs/uipath-setup.md) and [docs/component-map.md](doc
 ## Submission Docs
 
 - [Setup](docs/setup.md)
+- [Checkpoint 6 live demo runbook](docs/live-demo-runbook.md)
 - [Demo script](docs/demo-script.md)
 - [Devpost copy](docs/devpost-submission.md)
 - [Component map](docs/component-map.md)

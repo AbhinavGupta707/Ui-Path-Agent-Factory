@@ -13,6 +13,9 @@ This map helps judges and reviewers understand what each part does, where it liv
 | Shared contracts | `packages/shared-contracts` | Lifecycle schemas and runtime contract types. | Built/tested locally. |
 | Customer360 metrics | `packages/customer360-metrics` | Synthetic dataset metrics, mutation, and PII checks. | Built/tested locally. |
 | Data mutation helper | `scripts/mutate-customer360-data.mjs` | Writes untracked Customer360 mutation evidence for refresh/deployment lanes. | Runnable locally. |
+| Live setup helper | `scripts/setup-live-env.mjs` | Prompts for local provider/runtime configuration and writes git-ignored local values. | Runnable locally; no values committed. |
+| Live stack launcher | `scripts/dev-live.mjs` | Starts the Checkpoint 6 local API, worker, Factory Console, and Customer360 stack with one command. | Runnable locally on configured ports. |
+| Demo smoke | `scripts/smoke-demo.mjs` | Runs the local no-secret demo verification bundle. | Runnable locally without UiPath mutations or provider calls. |
 
 ## UiPath Components
 
@@ -28,6 +31,8 @@ This map helps judges and reviewers understand what each part does, where it liv
 | Test Manager/Test Cloud | `uipath/test-cloud`, `docs/test-cloud-quality-gates.md` | Release quality-gate catalog. | Live project, test set, and seven test cases; no execution. | Live execution requires approval. |
 | Integration Service | `docs/api-workflow-contract.md` | HTTP connector for workflow calls; future GitHub connection. | Connector discovered; no connections configured. | OAuth/connection setup requires approval. |
 | UiPath for Coding Agents | `docs/setup.md`, `docs/uipath-setup.md` | Local Codex skills path. | Setup command documented. | Generated skill bundles must stay out of git. |
+| Fireworks provider | `docs/live-agentic-architecture.md`, `docs/live-demo-runbook.md` | Server-side model profiles for coded agent reasoning. | Provider-ready through local/deployment config; no UI claim of direct browser calls. | Provider values and paid calls require owner-approved environment. |
+| LangSmith provider | `docs/live-agentic-architecture.md`, `docs/live-demo-runbook.md` | Trace and evaluation evidence for agent runs. | Provider-ready through local/deployment config; not a product state store. | Trace sharing requires sanitized payload review. |
 
 ## End-To-End State Mapping
 
@@ -41,13 +46,14 @@ This map helps judges and reviewers understand what each part does, where it liv
 | Build worker | `POST /api/builds`, Build Worker `/build` | API Workflow `AgentFactory_StartBuildWorker` | API runnable; workflow import-ready |
 | Tests | `npm run smoke`, workspace tests, Customer360/build-worker smokes | Test Manager/Test Cloud release gate | Local runnable; Test Manager catalog live |
 | Release approval | Release approval contract and demo panel | Action Center release task | Contract proposal-only |
-| Deployment | Customer360 local dashboard, future sandbox handoff | API Workflow `AgentFactory_StartDeployment` | Local dashboard runnable; `/deploy` endpoint pending |
+| Deployment | Customer360 local dashboard and Factory API `POST /deploy` sandbox contract | API Workflow `AgentFactory_StartDeployment` | Local dashboard and sandbox evidence endpoint runnable; workflow runtime call approval-gated |
 | Audit | Factory API timeline | Data Service `AuditEvent` + Maestro closeout | Local runnable; Data Service proposal-only |
 
 ## Evidence Commands
 
 ```bash
 npm run smoke
+npm run smoke:demo
 npm run smoke:customer360
 npm run smoke:build-worker
 uip login status --output json

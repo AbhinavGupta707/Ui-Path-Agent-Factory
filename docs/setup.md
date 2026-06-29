@@ -1,6 +1,6 @@
 # Setup
 
-This guide gets a reviewer from a fresh clone to the local Checkpoint 5 demo. It also lists the safe UiPath read-only checks that prove the Automation Cloud context without mutating live assets.
+This guide gets a reviewer from a fresh clone to the current local demo. It also lists the safe UiPath read-only checks that prove the Automation Cloud context without mutating live assets.
 
 ## 1. Local Prerequisites
 
@@ -33,7 +33,28 @@ npm run smoke
 
 ## 3. Run The Local Demo
 
-Start each service in a separate terminal after `npm run smoke` or `npm run build`:
+Checkpoint 6 preferred startup:
+
+```bash
+npm run setup:live
+```
+
+```bash
+npm run dev:live
+```
+
+`setup:live` writes git-ignored local configuration and masks provider prompts. `dev:live` builds the shared packages/services and starts the API, worker, Factory Console, and Customer360 dashboard together.
+
+Default Checkpoint 6 endpoints:
+
+| Surface | URL |
+|---|---|
+| Factory API health | `http://localhost:8887/health` |
+| Build Worker health | `http://localhost:8890/health` |
+| Factory Console | `http://localhost:5183` |
+| Customer360 dashboard | `http://localhost:5184` |
+
+If you need the older separate-terminal path, start each service after `npm run smoke` or `npm run build`:
 
 Build before starting the Factory API because its dev command watches compiled output:
 
@@ -54,7 +75,7 @@ npm run dev:console
 npm run dev:customer360
 ```
 
-Default endpoints:
+Default separate-terminal endpoints:
 
 | Surface | URL |
 |---|---|
@@ -64,6 +85,8 @@ Default endpoints:
 | Customer360 dashboard | `http://localhost:5174` |
 
 The Factory API uses an in-memory store. Restarting `npm run dev:api` resets local request state.
+
+See [Checkpoint 6 live demo runbook](live-demo-runbook.md) for the manual workflow, provider validation posture, demo-video narration notes, and claim boundaries.
 
 ## 4. Optional API Rehearsal
 
@@ -156,7 +179,18 @@ uip skills install --agent codex --local
 
 Generated skill bundles are intentionally ignored by git.
 
-## 8. Approval Boundaries
+## 8. Provider And Trace Checks
+
+Fireworks and LangSmith belong in server-side runtime configuration, not in UI copy or docs. Check only registration and activation state first:
+
+```bash
+npm run demo:scan
+npm run smoke:demo
+```
+
+Then confirm local provider setup with the owner of the configured environment. Record model profile names, project name, HTTP status, and sanitized trace links only. Do not paste provider values, local configuration contents, or full trace payloads into docs, chat, terminal transcripts, or screenshots.
+
+## 9. Approval Boundaries
 
 These actions are live mutations or side-effecting runtime calls and require explicit approval:
 

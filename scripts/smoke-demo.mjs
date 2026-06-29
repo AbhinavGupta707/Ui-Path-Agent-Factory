@@ -13,6 +13,16 @@ const checks = [
     args: ["scripts/privacy-security-scan.mjs"]
   },
   {
+    label: "Build shared contracts",
+    command: "npm",
+    args: ["--workspace", "@agent-factory/shared-contracts", "run", "build"]
+  },
+  {
+    label: "Build Customer360 metrics",
+    command: "npm",
+    args: ["--workspace", "@agent-factory/customer360-metrics", "run", "build"]
+  },
+  {
     label: "Factory API lifecycle tests",
     command: "npm",
     args: ["--workspace", "@agent-factory/factory-api", "run", "test"]

@@ -28,6 +28,7 @@ Goal: turn Checkpoint 5 from a local proof console into a live, premium-feeling 
    - Redesign Factory Console around the reference images and connect it to lifecycle state instead of static proof panels.
 4. **Integration QA And Live Runbook**
    - Validate the full local lifecycle, provider checks, privacy/security, docs, and manual demo path.
+   - Canonical output: `docs/live-demo-runbook.md`.
 
 ## Merge Order
 
@@ -51,3 +52,7 @@ git diff --check
 ```
 
 Use browser/Chrome verification for the final UI pass on laptop-oriented widths.
+
+## Demo Runbook
+
+Use [../../live-demo-runbook.md](../../live-demo-runbook.md) as the Checkpoint 6 demo source of truth. It separates local, live, import-ready, proposal-only, and approval-gated states and includes the no-secret validation and narration notes for recorded demos.
