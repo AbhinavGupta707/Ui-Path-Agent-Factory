@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { createBuildPlan, createCodexExecArgs } from "../src/index.js";
+import { createBuildPlan, createCodexExecArgs, createCodexProcessEnv } from "../src/index.js";
 
 const secretPatterns = [
   /GITHUB_PAT_TOKEN\s*=\s*[\w.-]+/gi,
@@ -133,6 +133,24 @@ describe("Codex command safety", () => {
     expect(redacted).not.toContain("token-build-worker-test");
     expect(redacted).not.toContain("avery.customer@example.test");
     expect(scanWorkerEvidence([redacted])).toEqual([]);
+  });
+
+  it("does not pass provider keys or platform tokens into the spawned Codex process", () => {
+    const env = createCodexProcessEnv({
+      PATH: "/usr/bin",
+      HOME: "/Users/test",
+      FIREWORKS_API_KEY: "fw-secret",
+      GITHUB_PAT_TOKEN: "gh-secret",
+      UIPATH_CLIENT_SECRET: "uipath-secret",
+      LANGSMITH_API_KEY: "ls-secret",
+      OPENAI_API_KEY: "openai-secret",
+      CODEX_MODEL: "gpt-5.5"
+    });
+
+    expect(env).toEqual({
+      HOME: "/Users/test",
+      PATH: "/usr/bin"
+    });
   });
 
   it("allows one bounded repair attempt and redacts the failed transcript", async () => {

@@ -127,6 +127,7 @@ describe("build worker HTTP handler", () => {
     expect(readField(data, "status")).toBe("awaiting_release_approval");
     expect(readField(data, "generatedFiles")).toEqual(["README.md"]);
     expect(readField(readField(data, "evidence"), "generatedFiles")).toEqual(["README.md"]);
+    expect(readField(readField(data, "evidence"), "failureReason")).toBeUndefined();
   });
 
   it("reports safe degraded runner configuration from the default runtime", async () => {
