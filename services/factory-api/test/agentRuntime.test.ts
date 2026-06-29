@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { createAgentRuntime } from "../src/agentRuntime.js";
-import type { ChatCompletionClient } from "../src/fireworksClient.js";
+import { FireworksChatClient, type ChatCompletionClient } from "../src/fireworksClient.js";
 import {
   generateClarificationQuestions,
   generateGovernanceAssessment,
@@ -87,6 +87,69 @@ describe("agent runtime provider wiring", () => {
     expect(output.confidence).toBe(0.91);
   });
 
+  it("normalizes provider intake complexity labels", async () => {
+    const store = createInMemoryFactoryStore({ now: () => "2026-06-28T10:00:00.000Z" });
+    const record = await store.createRequest(intakeBody);
+    const client: ChatCompletionClient = {
+      async complete() {
+        return {
+          model: "accounts/fireworks/models/glm-5p2",
+          content: JSON.stringify({
+            complexity: "medium-to-high",
+            confidence: "87%",
+            pii_likelihood: "moderate",
+            missing_information: [{ description: "approval owner" }],
+            inferred_source_systems: [{ name: "synthetic_customers_csv" }],
+            inferred_metrics: [{ metric: "revenue" }],
+            summary: "The request needs governed source and approval details."
+          })
+        };
+      }
+    };
+    const runtime = createAgentRuntime({
+      config: loadAgentProviderConfig({
+        FIREWORKS_API_KEY: "fw_unit_test_key_not_real"
+      }),
+      client
+    });
+
+    const output = await runtime.classifyIntake(record, store.now());
+
+    expect(output.trace.mode).toBe("live");
+    expect(output.complexity).toBe("high");
+    expect(output.confidence).toBe(0.87);
+    expect(output.pii_likelihood).toBe("possible");
+  });
+
+  it("times out slow Fireworks requests so the runtime can degrade", async () => {
+    const originalFetch = globalThis.fetch;
+    globalThis.fetch = ((_input, init) =>
+      new Promise((_resolve, reject) => {
+        const signal = init?.signal;
+        if (signal) {
+          signal.addEventListener("abort", () => reject(new DOMException("Aborted", "AbortError")));
+        }
+      })) as typeof fetch;
+
+    try {
+      const client = new FireworksChatClient(
+        loadAgentProviderConfig({
+          FIREWORKS_API_KEY: "fw_unit_test_key_not_real",
+          FIREWORKS_TIMEOUT_MS: "1"
+        })
+      );
+
+      await expect(
+        client.complete({
+          profile: "fast",
+          messages: [{ role: "user", content: "Return JSON." }]
+        })
+      ).rejects.toMatchObject({ code: "fireworks_request_timeout" });
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  });
+
   it("generates degraded no-key clarification questions with labeled deterministic fallback", async () => {
     const store = createInMemoryFactoryStore({ now: () => "2026-06-28T10:00:00.000Z" });
     const record = await store.createRequest({
@@ -166,13 +229,146 @@ describe("agent runtime provider wiring", () => {
     expect(output.questions.map((question) => question.id)).toEqual([
       "refresh_cadence",
       "metric_definition",
-      "release_owner"
+      "release_owner",
+      "pii_policy",
+      "approved_sources",
+      "approved_metrics",
+      "required_filters"
     ]);
     expect(output.questions[0]?.source).toContain("Fireworks live");
     expect(output.trace.redaction.raw_prompt_stored).toBe(false);
     expect(output.trace.redaction.raw_response_stored).toBe(false);
     expect(prompts.join("\n")).not.toContain(intakeBody.requester_email);
     expect(prompts.join("\n")).not.toContain(intakeBody.owner_email);
+  });
+
+  it("accepts provider clarification questions without defaults and caps long lists", async () => {
+    const store = createInMemoryFactoryStore({ now: () => "2026-06-28T10:00:00.000Z" });
+    const record = await store.createRequest(intakeBody);
+    const client: ChatCompletionClient = {
+      async complete() {
+        return {
+          model: "accounts/fireworks/models/glm-5p2",
+          content: JSON.stringify({
+            questions: Array.from({ length: 9 }, (_, index) => ({
+              id: `Q${index + 1}`,
+              question: `Which sandbox governance detail ${index + 1} should be confirmed before build?`
+            })),
+            missing_fields: ["approval owner"],
+            selected_sources: ["synthetic_customers_csv"],
+            requested_metrics: ["revenue"],
+            constraints: ["sandbox-only preview"]
+          })
+        };
+      }
+    };
+    const runtime = createAgentRuntime({
+      config: loadAgentProviderConfig({
+        FIREWORKS_API_KEY: "fw_unit_test_key_not_real"
+      }),
+      client
+    });
+
+    const output = await runtime.generateClarificationQuestions(record, store.now());
+
+    expect(output.trace.mode).toBe("live");
+    expect(output.questions).toHaveLength(7);
+    expect(output.questions[0]?.default).toContain("approved sandbox default");
+  });
+
+  it("normalizes provider clarification question text aliases and required flags", async () => {
+    const store = createInMemoryFactoryStore({ now: () => "2026-06-28T10:00:00.000Z" });
+    const record = await store.createRequest(intakeBody);
+    const client: ChatCompletionClient = {
+      async complete() {
+        return {
+          model: "accounts/fireworks/models/glm-5p2",
+          content: JSON.stringify({
+            questions: [
+              {
+                key: "source-owner",
+                text: "Which owner approved the Customer360 source mapping for the sandbox build?",
+                default_answer: "Revenue Ops director",
+                required: "yes"
+              },
+              {
+                id: "metric-window",
+                prompt: "Which reporting window should revenue and retention metrics use for the demo?",
+                suggested_answer: "Last two quarters",
+                mandatory: "true"
+              },
+              {
+                clarification_question: "Should direct identifiers stay masked in every generated table and card?",
+                recommended_default: "Yes, mask names, emails, and phones.",
+                is_required: "1"
+              }
+            ],
+            missing_fields: ["approval owner"],
+            selected_sources: ["synthetic_customers_csv"],
+            requested_metrics: ["revenue"],
+            constraints: ["sandbox-only preview"]
+          })
+        };
+      }
+    };
+    const runtime = createAgentRuntime({
+      config: loadAgentProviderConfig({
+        FIREWORKS_API_KEY: "fw_unit_test_key_not_real"
+      }),
+      client
+    });
+
+    const output = await runtime.generateClarificationQuestions(record, store.now());
+
+    expect(output.trace.mode).toBe("live");
+    expect(output.questions.map((question) => question.id)).toEqual([
+      "source_owner",
+      "metric_window",
+      "should_direct_identifiers_stay_masked_in_every_g",
+      "pii_policy",
+      "approved_sources",
+      "approved_metrics",
+      "required_filters"
+    ]);
+    expect(output.questions.every((question) => question.required)).toBe(true);
+    expect(output.questions[0]?.default).toBe("Revenue Ops director");
+  });
+
+  it("tops up partial live clarification questions with deterministic guardrail questions", async () => {
+    const store = createInMemoryFactoryStore({ now: () => "2026-06-28T10:00:00.000Z" });
+    const record = await store.createRequest(intakeBody);
+    const client: ChatCompletionClient = {
+      async complete() {
+        return {
+          model: "accounts/fireworks/models/glm-5p2",
+          content: JSON.stringify({
+            questions: [
+              {
+                question: "Which executive approver owns the sandbox Customer360 dashboard release?",
+                default: "Revenue Ops director"
+              }
+            ],
+            missing_fields: ["approval owner"],
+            selected_sources: ["synthetic_customers_csv"],
+            requested_metrics: ["revenue"],
+            constraints: ["sandbox-only preview"]
+          })
+        };
+      }
+    };
+    const runtime = createAgentRuntime({
+      config: loadAgentProviderConfig({
+        FIREWORKS_API_KEY: "fw_unit_test_key_not_real"
+      }),
+      client
+    });
+
+    const output = await runtime.generateClarificationQuestions(record, store.now());
+
+    expect(output.trace.mode).toBe("live");
+    expect(output.questions).toHaveLength(6);
+    expect(output.questions[0]?.source).toContain("Fireworks live");
+    expect(output.questions.slice(1).some((question) => question.source.includes("deterministic fallback"))).toBe(true);
   });
 
   it("falls back to deterministic clarification questions when provider schema validation fails", async () => {
@@ -296,6 +492,34 @@ describe("agent runtime provider wiring", () => {
     expect(output.inferred_metrics).toEqual(["revenue"]);
   });
 
+  it("parses final JSON from channel-style provider text", async () => {
+    const store = createInMemoryFactoryStore({ now: () => "2026-06-28T10:00:00.000Z" });
+    const record = await store.createRequest(intakeBody);
+    const client: ChatCompletionClient = {
+      async complete() {
+        return {
+          model: "accounts/fireworks/models/gpt-oss-120b",
+          content: [
+            '<|channel|>analysis<|message|>The requested shape is {"complexity":"low"}.',
+            '<|channel|>final<|message|>{"complexity":"medium","confidence":0.92,"pii_likelihood":"possible","missing_information":["approval owner"],"inferred_source_systems":["synthetic_customers_csv"],"inferred_metrics":["revenue"],"summary":"Parsed final JSON object."}'
+          ].join("\\n")
+        };
+      }
+    };
+    const runtime = createAgentRuntime({
+      config: loadAgentProviderConfig({
+        FIREWORKS_API_KEY: "fw_unit_test_key_not_real"
+      }),
+      client
+    });
+
+    const output = await runtime.classifyIntake(record, store.now());
+
+    expect(output.trace.mode).toBe("live");
+    expect(output.confidence).toBe(0.92);
+    expect(output.summary).toBe("Parsed final JSON object.");
+  });
+
   it("normalizes object-shaped requirements lists from provider output", async () => {
     const store = createInMemoryFactoryStore({ now: () => "2026-06-28T10:00:00.000Z" });
     const initialRecord = await store.createRequest(intakeBody);
@@ -340,6 +564,41 @@ describe("agent runtime provider wiring", () => {
     expect(output.spec.filters_json).toEqual(["segment"]);
     expect(output.spec.constraints_json).toContain("sandbox deployment only");
     expect(output.assumptions).toEqual(["Synthetic-ready data is available."]);
+  });
+
+  it("coerces provider governance PII field lists into pii_detected", async () => {
+    const store = createInMemoryFactoryStore({ now: () => "2026-06-28T10:00:00.000Z" });
+    const initialRecord = await store.createRequest(intakeBody);
+    const spec = generateStructuredSpec(initialRecord, store.now());
+    const record = await store.saveStructuredSpec(initialRecord.request.request_id, spec);
+    const client: ChatCompletionClient = {
+      async complete() {
+        return {
+          model: "accounts/fireworks/models/glm-5p2",
+          content: JSON.stringify({
+            risk_tier: "medium",
+            pii_detected: ["email", "name", "phone"],
+            pii_policy: "Mask direct identifiers before sandbox display.",
+            forbidden_actions_json: ["production deployment"],
+            required_approvals_json: ["Data owner approval"],
+            policy_decisions_json: ["Sandbox-only build approved"],
+            policy_violations_json: []
+          })
+        };
+      }
+    };
+    const runtime = createAgentRuntime({
+      config: loadAgentProviderConfig({
+        FIREWORKS_API_KEY: "fw_unit_test_key_not_real"
+      }),
+      client
+    });
+
+    const output = await runtime.generateGovernance(record, store.now());
+
+    expect(output.trace.mode).toBe("live");
+    expect(output.assessment.pii_detected).toBe(true);
+    expect(output.assessment.pii_policy).toBe("Mask direct identifiers before sandbox display.");
   });
 
   it("normalizes object-shaped build plan instructions from provider output", async () => {

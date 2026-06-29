@@ -44,7 +44,7 @@ function normalizedStringListSchema(...preferredKeys: string[]) {
 }
 
 const classificationPayloadSchema = z.object({
-  complexity: z.enum(["low", "medium", "high"]),
+  complexity: z.preprocess(coerceComplexity, z.enum(["low", "medium", "high"])),
   confidence: z.preprocess(coerceConfidence, z.number().min(0).max(1)),
   pii_likelihood: z.preprocess(coercePiiLikelihood, z.enum(["none", "possible", "likely"])),
   missing_information: normalizedStringListSchema("missing_information", "question", "description", "text"),
@@ -56,12 +56,16 @@ const classificationPayloadSchema = z.object({
 const clarificationQuestionPayloadSchema = z.object({
   id: z.string().min(1).optional(),
   question: z.string().min(8),
-  default: z.string().min(1),
-  required: z.boolean().default(true)
+  default: z.string().min(1).optional(),
+  required: z.preprocess(coerceBoolean, z.boolean()).default(true)
 });
+type ClarificationQuestionPayload = z.infer<typeof clarificationQuestionPayloadSchema>;
 
 const clarificationPayloadSchema = z.object({
-  questions: z.array(clarificationQuestionPayloadSchema).min(3).max(7),
+  questions: z.preprocess(
+    normalizeQuestionList,
+    z.array(clarificationQuestionPayloadSchema).min(1).max(15)
+  ) as z.ZodType<ClarificationQuestionPayload[]>,
   missing_fields: normalizedStringListSchema("field", "missing_field", "description", "text"),
   selected_sources: normalizedStringListSchema("name", "source", "system", "data_source"),
   requested_metrics: normalizedStringListSchema("metric", "name", "kpi", "description"),
@@ -79,7 +83,7 @@ const requirementsPayloadSchema = z.object({
 
 const governancePayloadSchema = z.object({
   risk_tier: z.enum(["low", "medium", "high"]),
-  pii_detected: z.boolean(),
+  pii_detected: z.preprocess(coerceBoolean, z.boolean()),
   pii_policy: z.string().min(1),
   forbidden_actions_json: normalizedStringListSchema("action", "forbidden_action", "description", "rule"),
   required_approvals_json: normalizedStringListSchema("approval", "role", "approver", "description"),
@@ -208,10 +212,16 @@ export class AgentRuntime {
     const missingFields =
       providerResult.payload.missing_fields.length > 0 ? providerResult.payload.missing_fields : basis.missing_fields;
 
+    const providerQuestions = normalizeProviderQuestions(providerResult.payload.questions, trace);
+    const fallbackQuestions = deterministicClarificationQuestions(record, {
+      ...trace,
+      mode: "deterministic-fallback"
+    });
+
     return ClarificationGenerationOutputSchema.parse({
       output_id: `CLARIFY-${record.request.request_id}`,
       request_id: record.request.request_id,
-      questions: normalizeProviderQuestions(providerResult.payload.questions, trace),
+      questions: mergeClarificationQuestions(providerQuestions, fallbackQuestions),
       missing_fields: missingFields,
       basis: providerBasis,
       trace
@@ -594,6 +604,47 @@ function normalizeStringListItem(item: unknown, preferredKeys: string[]): string
   return fallbackKey ? trimToValue(record[fallbackKey]) : undefined;
 }
 
+function normalizeQuestionList(value: unknown): unknown {
+  if (!Array.isArray(value)) {
+    return value;
+  }
+
+  return value.map((item) => {
+    if (typeof item === "string") {
+      return { question: item };
+    }
+
+    if (!item || typeof item !== "object" || Array.isArray(item)) {
+      return item;
+    }
+
+    const record = item as Record<string, unknown>;
+    const question =
+      readStringField(record, "question") ??
+      readStringField(record, "text") ??
+      readStringField(record, "prompt") ??
+      readStringField(record, "clarification_question") ??
+      readStringField(record, "description");
+
+    return {
+      id: readStringField(record, "id") ?? readStringField(record, "key"),
+      question,
+      default:
+        readStringField(record, "default") ??
+        readStringField(record, "default_answer") ??
+        readStringField(record, "suggested_answer") ??
+        readStringField(record, "recommended_default"),
+      required: record.required ?? record.is_required ?? record.mandatory ?? true
+    };
+  });
+}
+
+function readStringField(record: Record<string, unknown>, key: string): string | undefined {
+  const value = record[key];
+
+  return typeof value === "string" ? trimToValue(value) : undefined;
+}
+
 function pairStringFields(record: Record<string, unknown>, firstKey: string, secondKey: string): string | undefined {
   const first = record[firstKey];
   const second = record[secondKey];
@@ -611,6 +662,25 @@ function trimToValue(value: unknown): string | undefined {
   return typeof value === "string" && value.trim().length > 0 ? value.trim() : undefined;
 }
 
+function coerceComplexity(value: unknown): unknown {
+  if (typeof value !== "string") {
+    return value;
+  }
+
+  const normalized = value.trim().toLowerCase();
+  if (normalized.includes("high")) {
+    return "high";
+  }
+  if (normalized.includes("medium") || normalized.includes("moderate")) {
+    return "medium";
+  }
+  if (normalized.includes("low") || normalized.includes("simple")) {
+    return "low";
+  }
+
+  return value;
+}
+
 function coerceConfidence(value: unknown): unknown {
   if (typeof value === "number") {
     return value;
@@ -621,6 +691,13 @@ function coerceConfidence(value: unknown): unknown {
   }
 
   const normalized = value.trim().toLowerCase();
+  if (normalized.endsWith("%")) {
+    const percentage = Number(normalized.slice(0, -1));
+    if (Number.isFinite(percentage)) {
+      return percentage / 100;
+    }
+  }
+
   const numeric = Number(normalized);
   if (Number.isFinite(numeric)) {
     return numeric > 1 ? numeric / 100 : numeric;
@@ -658,6 +735,28 @@ function coercePiiLikelihood(value: unknown): unknown {
   return value;
 }
 
+function coerceBoolean(value: unknown): unknown {
+  if (typeof value === "boolean") {
+    return value;
+  }
+
+  if (Array.isArray(value)) {
+    return value.length > 0;
+  }
+
+  if (typeof value === "string") {
+    const normalized = value.trim().toLowerCase();
+    if (["true", "yes", "y", "1", "likely", "detected", "present"].includes(normalized)) {
+      return true;
+    }
+    if (["false", "no", "n", "0", "none", "not detected", "absent"].includes(normalized)) {
+      return false;
+    }
+  }
+
+  return value;
+}
+
 function parseProviderJson(content: string): unknown {
   try {
     return JSON.parse(content);
@@ -671,10 +770,60 @@ function parseProviderJson(content: string): unknown {
   const firstBrace = content.indexOf("{");
   const lastBrace = content.lastIndexOf("}");
   if (firstBrace >= 0 && lastBrace > firstBrace) {
-    return JSON.parse(content.slice(firstBrace, lastBrace + 1));
+    for (const candidate of extractJsonObjectCandidates(content).reverse()) {
+      try {
+        return JSON.parse(candidate);
+      } catch {}
+    }
   }
 
   throw new Error("provider_json_parse_failed");
+}
+
+function extractJsonObjectCandidates(content: string): string[] {
+  const candidates: string[] = [];
+  let depth = 0;
+  let start = -1;
+  let inString = false;
+  let escaped = false;
+
+  for (let index = 0; index < content.length; index += 1) {
+    const char = content[index];
+
+    if (inString) {
+      if (escaped) {
+        escaped = false;
+      } else if (char === "\\") {
+        escaped = true;
+      } else if (char === "\"") {
+        inString = false;
+      }
+      continue;
+    }
+
+    if (char === "\"") {
+      inString = true;
+      continue;
+    }
+
+    if (char === "{") {
+      if (depth === 0) {
+        start = index;
+      }
+      depth += 1;
+      continue;
+    }
+
+    if (char === "}" && depth > 0) {
+      depth -= 1;
+      if (depth === 0 && start >= 0) {
+        candidates.push(content.slice(start, index + 1));
+        start = -1;
+      }
+    }
+  }
+
+  return candidates;
 }
 
 function maxTokensForStep(stepId: AgentStepId): number {
@@ -729,22 +878,43 @@ function deterministicClarificationQuestions(
 }
 
 function normalizeProviderQuestions(
-  questions: Array<{ id?: string; question: string; default: string; required?: boolean }>,
+  questions: Array<{ id?: string; question: string; default?: string; required?: boolean }>,
   trace: AgentStepTraceEnvelope
 ): ClarificationQuestion[] {
   const seen = new Set<string>();
 
-  return questions.map((question, index) => {
+  return questions.slice(0, 7).map((question, index) => {
     const id = uniqueQuestionId(question.id ?? question.question, index, seen);
 
     return ClarificationQuestionSchema.parse({
       id,
       question: question.question,
-      default: question.default,
+      default: question.default ?? "Use the approved sandbox default unless the approver specifies otherwise.",
       required: question.required ?? true,
       source: clarificationSourceLabel(trace.mode)
     });
   });
+}
+
+function mergeClarificationQuestions(
+  primaryQuestions: ClarificationQuestion[],
+  fallbackQuestions: ClarificationQuestion[]
+): ClarificationQuestion[] {
+  const merged: ClarificationQuestion[] = [];
+  const seen = new Set<string>();
+
+  for (const question of [...primaryQuestions, ...fallbackQuestions]) {
+    if (seen.has(question.id)) {
+      continue;
+    }
+    seen.add(question.id);
+    merged.push(question);
+    if (merged.length >= 7) {
+      break;
+    }
+  }
+
+  return merged;
 }
 
 function uniqueQuestionId(raw: string, index: number, seen: Set<string>): string {

@@ -173,10 +173,11 @@ Environment used by the runtime:
 AGENT_RUNTIME_MODE=auto # auto | live | deterministic
 FIREWORKS_API_KEY=
 FIREWORKS_BASE_URL=https://api.fireworks.ai/inference/v1
-AGENT_MODEL_FAST=accounts/fireworks/models/gpt-oss-120b
-AGENT_MODEL_REASONING=accounts/fireworks/models/deepseek-v4-pro
-AGENT_MODEL_CODE=accounts/fireworks/models/kimi-k2p6
+AGENT_MODEL_FAST=accounts/fireworks/models/glm-5p2
+AGENT_MODEL_REASONING=accounts/fireworks/models/glm-5p2
+AGENT_MODEL_CODE=accounts/fireworks/models/glm-5p2
 AGENT_MODEL_FALLBACK=accounts/fireworks/models/glm-5p2
+FIREWORKS_TIMEOUT_MS=20000
 LANGSMITH_TRACING=true
 LANGSMITH_API_KEY=
 LANGSMITH_PROJECT=agent-factory-live

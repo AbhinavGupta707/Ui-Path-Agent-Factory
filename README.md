@@ -28,7 +28,7 @@ request -> clarifications -> governance -> scope approval -> manifest -> build w
   -> tests -> release approval -> sandbox dashboard -> audit
 ```
 
-Use [docs/live-demo-runbook.md](docs/live-demo-runbook.md) for the Checkpoint 7 demo runbook, [docs/demo-script.md](docs/demo-script.md) for the timed script, and [docs/submission-checklist.md](docs/submission-checklist.md) for the current readiness checklist.
+Use [docs/live-demo-runbook.md](docs/live-demo-runbook.md) for the Checkpoint 7 demo runbook, [docs/demo-script.md](docs/demo-script.md) for the timed script, [docs/demo-script-blue-sky.md](docs/demo-script-blue-sky.md) for the shorter pitch version, and [docs/submission-checklist.md](docs/submission-checklist.md) for the current readiness checklist.
 
 ## Quick Start
 
@@ -59,6 +59,13 @@ npm run dev:live
 ```
 
 `dev:live` defaults to `8887`, `8890`, `5183`, and `5184`. It prints the active URLs when it starts.
+Inline environment overrides win over `.env.local`, so use alternate ports when another project is already running locally.
+
+```bash
+FACTORY_API_PORT=8897 BUILD_WORKER_PORT=8898 FACTORY_CONSOLE_URL=http://localhost:5193 CUSTOMER360_TEMPLATE_URL=http://localhost:5194 npm run dev:live
+```
+
+Provider calls are bounded by `FIREWORKS_TIMEOUT_MS`; the verified local default is `20000`.
 
 The older separate-terminal path remains available after `npm run smoke` or `npm run build` has created service `dist/` output:
 
@@ -148,6 +155,7 @@ See [docs/uipath-setup.md](docs/uipath-setup.md) and [docs/component-map.md](doc
 - [Setup](docs/setup.md)
 - [Checkpoint 7 live demo runbook](docs/live-demo-runbook.md)
 - [Demo script](docs/demo-script.md)
+- [Blue-sky demo script](docs/demo-script-blue-sky.md)
 - [Devpost copy](docs/devpost-submission.md)
 - [Component map](docs/component-map.md)
 - [Submission checklist](docs/submission-checklist.md)

@@ -10,7 +10,7 @@ Current as of Checkpoint 7 final QA on 2026-06-29.
 - [x] Setup runbook exists in `docs/setup.md`.
 - [x] Component map exists in `docs/component-map.md`.
 - [x] Devpost draft copy exists in `docs/devpost-submission.md`.
-- [x] Five-minute demo script exists in `docs/demo-script.md`.
+- [x] Five-minute demo script exists in `docs/demo-script.md`; shorter blue-sky version exists in `docs/demo-script-blue-sky.md`.
 
 ## Local Demo
 
@@ -72,4 +72,4 @@ Current as of Checkpoint 7 final QA on 2026-06-29.
 - `AgentFactory_StartDeployment` targets `POST /deploy`, which is implemented locally for sandbox evidence.
 - Build Worker default runtime reports `blocked` until a live Codex/Git runner is injected.
 - Final QA refreshed the demo runbook, browser/check evidence, and final risk register.
-- If another lane changes ports, deployment behavior, or platform status, update README, `docs/setup.md`, `docs/demo-script.md`, `docs/devpost-submission.md`, and `docs/component-map.md`.
+- If another lane changes ports, deployment behavior, or platform status, update README, `docs/setup.md`, `docs/demo-script.md`, `docs/demo-script-blue-sky.md`, `docs/devpost-submission.md`, and `docs/component-map.md`.
