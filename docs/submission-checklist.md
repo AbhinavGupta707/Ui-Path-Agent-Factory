@@ -18,9 +18,9 @@ Current as of Checkpoint 5 docs lane on 2026-06-29.
 - [x] Factory API runs locally.
 - [x] Build Worker service contract runs locally.
 - [x] Customer360 dashboard runs locally.
-- [x] Customer360 dashboard uses synthetic data and masks raw PII.
+- [x] Customer360 dashboard uses synthetic data and masks direct identifiers.
 - [x] Local tests cover metrics, PII masking, API lifecycle, worker contracts, and dashboard build/smoke behavior.
-- [ ] Final QA may add a single `npm run smoke:demo` wrapper.
+- [x] Final QA smoke wrapper `npm run smoke:demo` exists and passes.
 
 ## UiPath Assets
 
@@ -58,8 +58,8 @@ Current as of Checkpoint 5 docs lane on 2026-06-29.
 
 ## Known Open Facts For Integration
 
-- Deployment/Runtime owns exact sandbox deployment commands and any hosted preview URL.
-- `AgentFactory_StartDeployment` currently expects `POST /deploy`; this docs lane did not implement it.
+- Deployment/Runtime added exact sandbox deployment commands and the local `/deploy` endpoint.
+- `AgentFactory_StartDeployment` targets `POST /deploy`, which is implemented locally for sandbox evidence.
 - Build Worker default runtime reports `blocked` until a live Codex/Git runner is injected.
-- Final QA owns any new smoke scripts, browser checklist, CI changes, and final risk register.
+- Final QA added the demo smoke scripts, browser checklist, and final risk register.
 - If another lane changes ports, deployment behavior, or platform status, update README, `docs/setup.md`, `docs/demo-script.md`, `docs/devpost-submission.md`, and `docs/component-map.md`.

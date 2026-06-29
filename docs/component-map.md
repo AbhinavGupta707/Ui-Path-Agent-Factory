@@ -58,6 +58,6 @@ uip maestro bpmn validate uipath/maestro/customer360-build/agent-factory-custome
 
 ## Known Integration Notes
 
-- Final QA may add `npm run smoke:demo`; this docs lane did not add scripts.
-- Deployment/Runtime may add the `/deploy` endpoint or hosted preview commands; update README, setup, demo script, Devpost copy, component map, and checklist when that lands.
+- Final QA added `npm run smoke:demo` during Checkpoint 5 integration.
+- Deployment/Runtime added the sandbox `/deploy` endpoint and local dry-run command; hosted production deployment still requires explicit approval.
 - Do not copy from superseded scratch worktrees under `/private/tmp/agent-factory-cp5`.

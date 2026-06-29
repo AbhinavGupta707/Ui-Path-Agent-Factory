@@ -42,36 +42,36 @@ Default local targets:
 
 | Check | Desktop | Mobile |
 |---|---|---|
-| App loads with "Customer360 build control plane" visible | Manual visual check required | Manual visual check required |
-| UiPath stack shows Maestro, Agents, Action Center, Data Service, API Workflow, Orchestrator, Test Cloud | Manual visual check required | Manual visual check required |
-| API mode is honest: online when Factory API is running, degraded/local-simulated when it is not | Manual visual check required | Manual visual check required |
-| Submit intake captures or simulates request without credentials | Manual visual check required | Manual visual check required |
-| Approve button changes scope approval state | Manual visual check required | Manual visual check required |
-| Clarify, Spec, Manifest, and Audit tabs are accessible | Manual visual check required | Manual visual check required |
-| Manifest view shows `sandbox_only: true` and blocked actions | Manual visual check required | Manual visual check required |
-| Quality gate panel shows metric, PII, smoke, and Test Cloud-ready evidence | Manual visual check required | Manual visual check required |
-| No raw customer names, emails, or phone numbers appear in rendered UI | Manual visual check required | Manual visual check required |
-| Console logs contain no runtime errors during basic navigation | Manual visual check required | Manual visual check required |
+| App loads with "Customer360 build control plane" visible | Passed in Chrome | Manual visual check required |
+| UiPath stack shows Maestro, Agents, Action Center, Data Service, API Workflow, Orchestrator, Test Cloud | Passed in Chrome | Manual visual check required |
+| API mode is honest: online when Factory API is running, degraded/local-simulated when it is not | Passed in Chrome | Manual visual check required |
+| Submit intake captures or simulates request without credentials | Passed in Chrome | Manual visual check required |
+| Approve button changes scope approval state | Passed in Chrome | Manual visual check required |
+| Clarify, Spec, Manifest, and Audit tabs are accessible | Passed in Chrome | Manual visual check required |
+| Manifest view shows `sandbox_only: true` and blocked actions | Passed in Chrome | Manual visual check required |
+| Quality gate panel shows metric, PII, smoke, and Test Cloud-ready evidence | Passed in Chrome | Manual visual check required |
+| No raw customer names, emails, or phone numbers appear in rendered UI | Passed in Chrome | Manual visual check required |
+| Console logs contain no runtime errors during basic navigation | Passed in Chrome | Manual visual check required |
 
 ## Customer360 Browser Checks
 
 | Check | Desktop | Mobile |
 |---|---|---|
-| App loads with "Customer360 Insight Dashboard" visible | Manual visual check required | Manual visual check required |
-| KPI strip, revenue trend, segment revenue, retention proxy, behaviour funnel, category mix, and risk table render | Manual visual check required | Manual visual check required |
-| Data protection rail shows PII masking enabled and synthetic row counts | Manual visual check required | Manual visual check required |
-| Refresh changes the timestamp and recalculates local synthetic metrics | Manual visual check required | Manual visual check required |
-| Degraded feed mode shows a partial-feed warning without crashing | Manual visual check required | Manual visual check required |
-| Empty dataset mode shows zeroed KPI state and restore action | Manual visual check required | Manual visual check required |
-| Rendered customer labels remain tokenized or masked | Manual visual check required | Manual visual check required |
-| No external network or secret prompt is required | Manual visual check required | Manual visual check required |
-| Console logs contain no runtime errors during basic navigation | Manual visual check required | Manual visual check required |
+| App loads with "Customer360 Insight Dashboard" visible | Passed in Chrome | Manual visual check required |
+| KPI strip, revenue trend, segment revenue, retention proxy, behaviour funnel, category mix, and risk table render | Passed in Chrome | Manual visual check required |
+| Data protection rail shows PII masking enabled and synthetic row counts | Passed in Chrome | Manual visual check required |
+| Refresh changes the timestamp and recalculates local synthetic metrics | Passed in Chrome | Manual visual check required |
+| Degraded feed mode shows a partial-feed warning without crashing | Passed in Chrome | Manual visual check required |
+| Empty dataset mode shows zeroed KPI state and restore action | Passed in Chrome | Manual visual check required |
+| Rendered customer labels remain tokenized or masked | Passed in Chrome | Manual visual check required |
+| No external network or secret prompt is required | Passed in Chrome | Manual visual check required |
+| Console logs contain no runtime errors during basic navigation | Passed in Chrome | Manual visual check required |
 
 ## Latest Local UI Smoke Evidence
 
 Run date: 2026-06-29.
 
-Browser automation status: blocked. The browser-use Node REPL tool was available, but the in-app browser backend was not discoverable in this session. A Chrome-specific control tool was also not exposed. Visual desktop/mobile viewport checks therefore remain manual.
+Browser automation status: desktop Chrome pass complete. The browser-use Node REPL tool was available, but the in-app browser backend was not discoverable. The orchestrator used the Chrome extension instead. Mobile viewport checks remain manual because the attached Chrome page wrapper did not expose viewport resizing for existing tabs.
 
 Automated localhost evidence:
 
@@ -80,6 +80,8 @@ Automated localhost evidence:
 | Factory API `http://127.0.0.1:8787/health` | Passed | HTTP 200; `syntheticDataOnly: true`. |
 | Factory Console `http://127.0.0.1:5173/` | Passed | HTTP 200 app shell; source-marker check found control-plane, UiPath stack, sandbox, quality, and Action Center markers. |
 | Customer360 `http://127.0.0.1:5174/` | Passed | HTTP 200 app shell; source-marker check found dashboard, PII masking, retention, funnel, and risk-table markers. |
+| Factory Console desktop Chrome flow | Passed | Deploy tab rendered deployment evidence, demo approval, rollback, preview URL, and sandbox-only state with no console warnings/errors. |
+| Customer360 desktop Chrome flow | Passed | Refresh, degraded, empty, and baseline modes rendered with no console warnings/errors and no raw direct identifiers. |
 
 ## Privacy And Security Scan Coverage
 
@@ -91,7 +93,7 @@ The scanner checks demo-facing source and docs for:
 - customer display wording that does not make masking explicit;
 - stale baseline copy that no longer reflects the governed CP5 implementation.
 
-Run strict mode after Submission Package copy lands:
+Strict mode should pass after the Checkpoint 5 integration fixes:
 
 ```bash
 npm run demo:scan:strict
