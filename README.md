@@ -28,7 +28,7 @@ request -> clarifications -> governance -> scope approval -> manifest -> build w
   -> tests -> release approval -> sandbox dashboard -> audit
 ```
 
-Use [docs/live-demo-runbook.md](docs/live-demo-runbook.md) for the Checkpoint 6 runbook, [docs/demo-script.md](docs/demo-script.md) for the timed script, and [docs/submission-checklist.md](docs/submission-checklist.md) for the current readiness checklist.
+Use [docs/live-demo-runbook.md](docs/live-demo-runbook.md) for the Checkpoint 7 demo runbook, [docs/demo-script.md](docs/demo-script.md) for the timed script, and [docs/submission-checklist.md](docs/submission-checklist.md) for the current readiness checklist.
 
 ## Quick Start
 
@@ -48,7 +48,7 @@ npm install
 npm run smoke
 ```
 
-For Checkpoint 6 local provider rehearsal, create git-ignored local configuration and start the full stack:
+For Checkpoint 7 local provider rehearsal, create git-ignored local configuration and start the full stack:
 
 ```bash
 npm run setup:live
@@ -146,7 +146,7 @@ See [docs/uipath-setup.md](docs/uipath-setup.md) and [docs/component-map.md](doc
 ## Submission Docs
 
 - [Setup](docs/setup.md)
-- [Checkpoint 6 live demo runbook](docs/live-demo-runbook.md)
+- [Checkpoint 7 live demo runbook](docs/live-demo-runbook.md)
 - [Demo script](docs/demo-script.md)
 - [Devpost copy](docs/devpost-submission.md)
 - [Component map](docs/component-map.md)

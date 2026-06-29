@@ -1,6 +1,6 @@
 # Submission Checklist
 
-Current as of Checkpoint 5 docs lane on 2026-06-29.
+Current as of Checkpoint 7 final QA on 2026-06-29.
 
 ## Repository And License
 
@@ -21,6 +21,7 @@ Current as of Checkpoint 5 docs lane on 2026-06-29.
 - [x] Customer360 dashboard uses synthetic data and masks direct identifiers.
 - [x] Local tests cover metrics, PII masking, API lifecycle, worker contracts, and dashboard build/smoke behavior.
 - [x] Final QA smoke wrapper `npm run smoke:demo` exists and passes.
+- [x] Full Checkpoint 7 verification suite passed locally after dependency install.
 
 ## UiPath Assets
 
@@ -35,6 +36,14 @@ Current as of Checkpoint 5 docs lane on 2026-06-29.
 - [x] API Workflow JSON assets are validated/import-ready.
 - [x] Action Center approval contracts are proposal-only.
 - [x] UiPath Apps companion contract is proposal-only.
+
+## Final Truth Table
+
+- [x] Live: UiPath login context for `galacticus / DefaultTenant`, Orchestrator folder `AgentFactoryDemo`, Test Manager project `AFQG`, and seven Test Manager test cases.
+- [x] Local: Factory Console, Factory API lifecycle, Build Worker contract, Customer360 dashboard, tests, sandbox `/deploy`, and demo smoke.
+- [x] Import-ready: Maestro BPMN, five UiPath API Workflow JSON assets, and five low-code Agent projects.
+- [x] Proposal-only: Data Service schema, Action Center approval contracts, and UiPath Apps companion contract.
+- [x] Approval-gated: Maestro publish/run, API Workflow upload/run, Action Center task creation/completion, Data Service writes, Agent upload/deploy/run, Test Cloud execution, live Codex execution, public hosting with secrets, and production release.
 
 ## Approval Boundaries
 
@@ -58,8 +67,9 @@ Current as of Checkpoint 5 docs lane on 2026-06-29.
 
 ## Known Open Facts For Integration
 
+- Final QA verified Checkpoint 7 from `d463f1f` after the four implementation lanes merged.
 - Deployment/Runtime added exact sandbox deployment commands and the local `/deploy` endpoint.
 - `AgentFactory_StartDeployment` targets `POST /deploy`, which is implemented locally for sandbox evidence.
 - Build Worker default runtime reports `blocked` until a live Codex/Git runner is injected.
-- Final QA added the demo smoke scripts, browser checklist, and final risk register.
+- Final QA refreshed the demo runbook, browser/check evidence, and final risk register.
 - If another lane changes ports, deployment behavior, or platform status, update README, `docs/setup.md`, `docs/demo-script.md`, `docs/devpost-submission.md`, and `docs/component-map.md`.

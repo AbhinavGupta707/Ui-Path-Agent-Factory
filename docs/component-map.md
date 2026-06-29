@@ -14,7 +14,7 @@ This map helps judges and reviewers understand what each part does, where it liv
 | Customer360 metrics | `packages/customer360-metrics` | Synthetic dataset metrics, mutation, and PII checks. | Built/tested locally. |
 | Data mutation helper | `scripts/mutate-customer360-data.mjs` | Writes untracked Customer360 mutation evidence for refresh/deployment lanes. | Runnable locally. |
 | Live setup helper | `scripts/setup-live-env.mjs` | Prompts for local provider/runtime configuration and writes git-ignored local values. | Runnable locally; no values committed. |
-| Live stack launcher | `scripts/dev-live.mjs` | Starts the Checkpoint 6 local API, worker, Factory Console, and Customer360 stack with one command. | Runnable locally on configured ports. |
+| Live stack launcher | `scripts/dev-live.mjs` | Starts the Checkpoint 7 local API, worker, Factory Console, and Customer360 stack with one command. | Runnable locally on configured ports. |
 | Demo smoke | `scripts/smoke-demo.mjs` | Runs the local no-secret demo verification bundle. | Runnable locally without UiPath mutations or provider calls. |
 
 ## UiPath Components
@@ -39,7 +39,7 @@ This map helps judges and reviewers understand what each part does, where it liv
 | Demo step | Local implementation | UiPath mapping | Current truth |
 |---|---|---|---|
 | Intake | Factory Console and `POST /api/requests` or `POST /api/intake` | UiPath Apps + Maestro start event | Local runnable; UiPath Apps proposal-only |
-| Clarification | Deterministic API questions and console state | Requirements + Clarification Agents | Local runnable; Agents validate locally |
+| Clarification | Post-submit agent runtime questions with deterministic/degraded fallback metadata | Requirements + Clarification Agents | Local runnable; provider-ready; Agents validate locally |
 | Governance | Governance assessment, PII policy, forbidden actions | Governance Agent + Data Service | Local runnable; Data Service proposal-only |
 | Scope approval | `POST /approve-scope` and approval panel | Action Center scope/data task | Local runnable; live task not created |
 | Manifest | `POST /manifest` | Build Planner Agent + Data Service record | Local runnable; Agent validates locally |
@@ -77,6 +77,6 @@ uip maestro bpmn validate uipath/maestro/customer360-build/agent-factory-custome
 
 ## Known Integration Notes
 
-- Final QA added `npm run smoke:demo` during Checkpoint 5 integration.
+- Checkpoint 7 Final QA verified `npm run smoke:demo` after the implementation merges.
 - Deployment/Runtime added the sandbox `/deploy` endpoint and local dry-run command; hosted production deployment still requires explicit approval.
 - Do not copy from superseded scratch worktrees under `/private/tmp/agent-factory-cp5`.

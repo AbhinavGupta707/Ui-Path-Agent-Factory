@@ -1,57 +1,74 @@
 # Checkpoint 7 Status
 
-Started: 2026-06-29. Four implementation lanes launched as app-managed worktree sessions; final QA lane intentionally held until implementation lanes land.
+Started: 2026-06-29. Final QA completed from `d463f1f` (`Record checkpoint 7 implementation merges`) after all four implementation lanes were merged into `main`.
 
 Implementation base: `4d761b6` (`Align checkpoint 7 with AgentHack Track 2`).
 
-Planning objective: prepare the live Track 2 Maestro product loop checkpoint and worker prompts before spawning implementation worktrees.
-
-## Lanes
+## Lane State
 
 | Lane | Worker | Thread | Worktree | State | Notes |
 |---|---|---|---|---|---|
-| Agent Graph And Clarification | local:6f481250-eb46-4db6-9de6-d4d95d2a4c15 | 019f1453-4f3a-76a0-a68e-3a31af8561df | `/Users/abhinavgupta/.codex/worktrees/98aa/Agent Factory` | merged | Lane commit `e00599f`; merged by `b649400`. Provider-backed questions after submit; graph-shaped lifecycle. |
-| Product UI Live Flow | local:e5efcafb-3017-4af7-a2d0-90108cbeed79 | 019f1453-9a9f-7643-b050-964c3ddfaa41 | `/Users/abhinavgupta/.codex/worktrees/22c7/Agent Factory` | merged | Lane commit `75bfca5`; merged by `c0cdf52`. Reference-style UI wired to real endpoints. |
-| Codex Worker Live Execution | local:9f8fac2d-85f9-4be4-b122-460231e785e5 | 019f1453-d10b-7522-a9e9-db97960792fc | `/Users/abhinavgupta/.codex/worktrees/5821/Agent Factory` | merged | Lane commit `7088401`; merged by `6f113d1`. Safe opt-in live Codex runner evidence. |
-| Maestro Cloud Orchestration | local:a69eff27-32a0-48d9-be8b-660b04533735 | 019f1454-0ac3-7712-9d06-04b2a0ce1042 | `/Users/abhinavgupta/.codex/worktrees/a8bf/Agent Factory` | merged | Lane commit `425e61d`; merged by `e6d25f5`. Track 2 target: live or approved runnable Maestro BPMN path, with exact approval before live UiPath mutation/execution. |
-| QA, Evidence, And Submission Runbook | TBD | TBD | TBD | planned | Final checks, docs, screenshots, runbook. |
+| Agent Graph And Clarification | local:6f481250-eb46-4db6-9de6-d4d95d2a4c15 | 019f1453-4f3a-76a0-a68e-3a31af8561df | `/Users/abhinavgupta/.codex/worktrees/98aa/Agent Factory` | merged | Lane commit `e00599f`; merged by `b649400`. Provider-backed questions after submit with deterministic/degraded fallback metadata. |
+| Product UI Live Flow | local:e5efcafb-3017-4af7-a2d0-90108cbeed79 | 019f1453-9a9f-7643-b050-964c3ddfaa41 | `/Users/abhinavgupta/.codex/worktrees/22c7/Agent Factory` | merged | Lane commit `75bfca5`; merged by `c0cdf52`. Reference-style UI wired to real lifecycle endpoints. |
+| Codex Worker Live Execution | local:9f8fac2d-85f9-4be4-b122-460231e785e5 | 019f1453-d10b-7522-a9e9-db97960792fc | `/Users/abhinavgupta/.codex/worktrees/5821/Agent Factory` | merged | Lane commit `7088401`; merged by `6f113d1`. Safe opt-in live Codex runner evidence and default blocked state. |
+| Maestro Cloud Orchestration | local:a69eff27-32a0-48d9-be8b-660b04533735 | 019f1454-0ac3-7712-9d06-04b2a0ce1042 | `/Users/abhinavgupta/.codex/worktrees/a8bf/Agent Factory` | merged | Lane commit `425e61d`; merged by `e6d25f5`. Track 2 Maestro BPMN path is validated/import-ready; live mutations remain approval-gated. |
+| QA, Evidence, And Submission Runbook | local final QA lane | 019f0ff5-72fb-7390-b4d0-613600a3c2cf delegated lane | `/Users/abhinavgupta/.codex/worktrees/9694/Agent Factory` | complete | Refreshed runbook/truth tables/status docs and ran full local verification plus safe read-only UiPath checks. |
 
-## Current Facts
+## Final Truth Table
 
-- Checkpoint 6 merged and pushed at `5ade6e9`.
-- Fireworks and LangSmith local setup has been configured through git-ignored `.env.local`.
-- Fireworks live lifecycle was previously verified for intake classification, requirements spec, governance, and build planning.
-- Clarification remains deterministic in the current Factory API.
-- Build Worker live Codex execution remains disabled unless `BUILD_WORKER_CODEX_ENABLED=true`.
-- UiPath live assets currently verified: tenant/folder and Test Manager catalog/test cases.
-- Devpost requirements analysis changes the Checkpoint 7 target from one UiPath proof point to a Track 2 Maestro BPMN orchestration spine.
-- UiPath live mutations remain approval-gated.
-- `Ui References/` contains four local reference images and remains untracked.
-- Implementation lanes were launched from pushed `main` at `4d761b6`.
-- Pending worktree ids resolved to active thread ids and paths on 2026-06-29.
-- Implementation lanes merged locally in dependency order through `e6d25f5`.
-- Targeted checks after merges passed:
-  - shared contracts build,
-  - Factory API test/build,
-  - Build Worker test/build and `smoke:build-worker`,
-  - Factory Console typecheck/build,
-  - API Workflow JSON validation,
-  - `uip api-workflow validate` for five workflows,
-  - `uip maestro bpmn validate` for `uipath/maestro/customer360-build/agent-factory-customer360-build.bpmn`,
-  - read-only `uip login status` and Test Manager project list.
+| Status | Evidence |
+|---|---|
+| Live | UiPath login context for `galacticus / DefaultTenant`; Orchestrator folder `AgentFactoryDemo` id `7986306`; Test Manager project `AFQG` / `Agent Factory Quality Gates`; seven Test Manager test cases. |
+| Local runnable | Factory Console, Factory API lifecycle, Build Worker contract, Customer360 dashboard, sandbox `/deploy`, local tests, and demo smoke. |
+| Import-ready/validated | Maestro BPMN at `uipath/maestro/customer360-build/agent-factory-customer360-build.bpmn`; five API Workflow JSON assets; five low-code Agent projects. |
+| Proposal-only | Data Service schema, Action Center approval contracts, and UiPath Apps companion contract. |
+| Approval-gated | Maestro publish/run, API Workflow upload/run, Action Center task creation/completion, Data Service writes, Agent upload/deploy/run, Test Cloud execution, live Codex execution, public hosting with secrets, and production release. |
 
-## Planning Changes In This Pass
+## Final QA Verification
 
-- Align preview/deployment default URLs with the `dev:live` stack.
-- Add `docs/checkpoint-7-live-product-plan.md`.
-- Add `docs/hackathon-requirements-analysis.md` from the user-provided Devpost page.
-- Add Checkpoint 7 orchestration README, status, and worker prompts.
-- Rename the UiPath lane to `Maestro Cloud Orchestration`.
+| Check | Result |
+|---|---|
+| `npm install` | Passed; installed missing dependencies for this worktree; audit reported 0 vulnerabilities. |
+| `npm run lint` | Passed; privacy/security scan checked 71 files with 0 errors and 0 warnings. |
+| `npm run typecheck` | Passed after dependency install. |
+| `npm test` | Passed across Customer360 metrics, shared contracts, Build Worker, Factory API, and Customer360 template. |
+| `npm run build` | Passed across all workspaces, including both Vite apps. |
+| `npm run smoke` | Passed; build plus test suite completed. |
+| `npm run smoke:demo` | Passed without secrets, live UiPath mutation, or external deployment. |
+| `git diff --check` | Passed after final QA docs edits. |
+| `uip login status --output json` | Passed; logged into `https://cloud.uipath.com`, org `galacticus`, tenant `DefaultTenant`. |
+| `uip or folders get AgentFactoryDemo --output json` | Passed; folder id `7986306`, key `cba41e19-47cc-4a0a-bf73-de88b60a61be`. |
+| `uip tm project list --limit 5 --output json` | Passed; project `AFQG` / `Agent Factory Quality Gates` exists and is active. |
+| `uip tm testcases list --project-key AFQG --output json` | Passed; seven test cases exist. |
+| `uip maestro bpmn validate ... --output json` | Passed; BPMN is valid with one process, one start event, and three UiPath extensions. |
 
-## Prelaunch Checklist
+## Final Demo Path
 
-- [x] Commit Devpost-aligned planning docs.
-- [x] Confirm whether user approves starting Checkpoint 7 worktree lanes.
-- [ ] Confirm live Codex execution boundary.
-- [ ] Confirm first live Maestro/API Workflow/Action Center activation target.
-- [ ] Confirm hosted endpoint strategy.
+1. Run `npm run dev:live`.
+2. Open the Factory Console at the printed URL, usually `http://localhost:5183`.
+3. Submit the Customer360 analytics request from `docs/live-demo-runbook.md`.
+4. Answer generated clarification questions.
+5. Review plan, governance, PII masking, allowed files, forbidden actions, and approvals.
+6. Approve local scope/data.
+7. Start the build handoff and either show blocked Codex readiness evidence or, after separate approval, show redacted live Codex diff/test evidence.
+8. Show UiPath evidence: live Test Manager catalog, validated Maestro BPMN, import-ready API Workflows/Agents, and proposal-only Action Center/Data Service/Apps.
+9. Open the Customer360 sandbox preview.
+10. Close with the evidence drawer and final truth table.
+
+## Residual Risks
+
+- No live Maestro publish/run, API Workflow runtime call, Action Center task, Data Service write, Test Cloud execution, public hosted callback bridge, or live Codex execution was performed in final QA.
+- The local demo depends on local ports being free. Use the URLs printed by `npm run dev:live`.
+- Provider-backed Fireworks/LangSmith behavior requires owner-managed local/deployment configuration and sanitized trace review.
+- Demo screenshots/video remain unchecked until captured; crop setup prompts, terminal secrets, provider dashboards, and trace payloads.
+
+## Exact Approvals Still Required
+
+- Approve the HTTPS callback bridge strategy and exact host/tunnel command before exposing local services to Automation Cloud.
+- Approve exact `uip maestro bpmn` publish/run commands before live Track 2 execution.
+- Approve exact API Workflow upload/run commands with endpoint inputs.
+- Approve any Action Center task creation/completion commands.
+- Approve any Data Service schema/entity/record write commands.
+- Approve any live Test Manager/Test Cloud execution command.
+- Approve `BUILD_WORKER_CODEX_ENABLED=true` live Codex execution, workspace path, allowed files, and redaction policy before running it.
+- Approve any public hosting with secrets or production release command.
