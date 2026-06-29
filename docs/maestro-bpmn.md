@@ -1,8 +1,8 @@
 # Maestro BPMN Mapping
 
-This is the Checkpoint 4 Maestro implementation guide for the Customer360 local
-lifecycle. A validated, import-ready BPMN project now exists in the repo, but no
-live Maestro process has been published or run yet.
+This is the Checkpoint 7 Maestro implementation guide for the Customer360
+request-to-release lifecycle. A validated, import-ready BPMN project exists in
+the repo, but no live Maestro process has been published or run yet.
 
 ## Process Identity
 
@@ -19,6 +19,37 @@ live Maestro process has been published or run yet.
 | BPMN source | `uipath/maestro/customer360-build/agent-factory-customer360-build.bpmn` |
 | Entry point | `Event_RequestSubmitted` |
 | Entry point unique id | `9c7261e3-6e10-4e21-97b5-e45d6632bc11` |
+
+## Checkpoint 7 Live Activation Plan
+
+Maestro is the primary Track 2 target for Agent Factory. The local BPMN is the
+source-controlled process spine, and Automation Cloud live mode begins only
+after these prerequisites are true:
+
+1. Registration/discovery passes for login, tenant, folder, Maestro, API
+   Workflow, Action Center, Data Service, and Test Manager surfaces.
+2. Factory API and Build Worker are reachable from Automation Cloud through an
+   approved HTTPS host or tunnel. Do not use `localhost` for live callbacks.
+3. API Workflow inputs are overridden with the approved endpoint values:
+   `buildWorkerBaseUrl`, `factoryApiBaseUrl`, and
+   `deploymentServiceBaseUrl`.
+4. Scope and release approval task schemas are confirmed from
+   `uipath/action-center/approval-contracts.json`.
+5. Data Service mirroring remains stretch evidence until schema creation and
+   record writes are explicitly approved.
+6. The operator approves the exact `uip maestro bpmn publish` or
+   `uip maestro bpmn run` command before it is executed.
+
+Live ids to capture back into Factory API timeline events:
+
+| Evidence | Field name to preserve in timeline/audit payloads |
+|---|---|
+| Maestro process | `maestroProcessId` |
+| Maestro run/process instance | `maestroRunId` |
+| API Workflow handoff | `apiWorkflowExecutionId` |
+| Scope/release human gate | `actionCenterTaskId` |
+| Data Service mirror rows | `dataServiceRecordId` |
+| Test Manager/Test Cloud run | `testExecutionId` |
 
 ## State Map
 

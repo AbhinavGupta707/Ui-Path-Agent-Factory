@@ -22,10 +22,10 @@ This map helps judges and reviewers understand what each part does, where it liv
 | UiPath area | Path | Product role | Current status | Approval boundary |
 |---|---|---|---|---|
 | Orchestrator | `docs/uipath-setup.md` | Folder, runtime, assets, and credential control. | Folder `AgentFactoryDemo` is live. | Jobs/assets/process mutations require approval. |
-| Maestro BPMN | `uipath/maestro/customer360-build` | Main lifecycle orchestration. | Validated and import-ready; not published or run. | Publish/run requires approval. |
+| Maestro BPMN | `uipath/maestro/customer360-build` | Main Track 2 lifecycle orchestration. | Validated and import-ready; not published or run; Checkpoint 7 live run requires approved HTTPS callback bridge. | Publish/run requires approval. |
 | Data Service | `uipath/data-service/schema.json` | Proposed system of record for request/spec/approvals/build/test/deploy/audit. | Proposal-only. | Schema and record creation require approval. |
 | Agents | `uipath/agents/AgentFactoryAgents` | Requirements, Clarification, Governance, Build Planner, Test Summary. | Five projects validate locally; not uploaded. | Upload/publish/deploy/run requires approval. |
-| API Workflows | `uipath/api-workflows` | Calls Build Worker, polls status, records tests, starts deployment. | Five workflows validate locally; not run. | Runtime calls and uploads require approval. |
+| API Workflows | `uipath/api-workflows` | Calls Build Worker, polls status, records tests, starts deployment. | Five workflows validate locally; not run; live inputs must override local base URLs with approved HTTPS endpoints. | Runtime calls and uploads require approval. |
 | Action Center | `uipath/action-center` | Scope/data and release approval contracts. | Proposal-only; no tasks exist. | Task creation/completion requires approval. |
 | UiPath Apps | `uipath/apps` | Companion intake/status surface. | Proposal-only; no app created or deployed. | Pack/publish/deploy requires approval. |
 | Test Manager/Test Cloud | `uipath/test-cloud`, `docs/test-cloud-quality-gates.md` | Release quality-gate catalog. | Live project, test set, and seven test cases; no execution. | Live execution requires approval. |
@@ -48,6 +48,19 @@ This map helps judges and reviewers understand what each part does, where it liv
 | Release approval | Release approval contract and demo panel | Action Center release task | Contract proposal-only |
 | Deployment | Customer360 local dashboard and Factory API `POST /deploy` sandbox contract | API Workflow `AgentFactory_StartDeployment` | Local dashboard and sandbox evidence endpoint runnable; workflow runtime call approval-gated |
 | Audit | Factory API timeline | Data Service `AuditEvent` + Maestro closeout | Local runnable; Data Service proposal-only |
+
+## Checkpoint 7 Live Evidence IDs
+
+When the live path is approved and executed, preserve these ids in the Factory
+API timeline and final demo evidence:
+
+| UiPath evidence | Source |
+|---|---|
+| Maestro process id and run/process-instance id | `uip maestro bpmn` publish/run output or Maestro portal |
+| API Workflow execution id | `uip api-workflow run` output or Automation Cloud workflow execution details |
+| Scope/release `actionCenterTaskId` | `uip tasks list/get` after task creation |
+| Data Service record ids | `uip df records insert/get/list` after approved writes |
+| Test Manager project/test set/test execution ids | `uip tm project/testsets/executions` readouts |
 
 ## Evidence Commands
 

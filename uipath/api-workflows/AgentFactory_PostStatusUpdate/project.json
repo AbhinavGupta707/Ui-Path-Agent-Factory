@@ -7,5 +7,5 @@
   "folderName": "AgentFactoryDemo",
   "folderKey": "cba41e19-47cc-4a0a-bf73-de88b60a61be",
   "folderId": 7986306,
-  "description": "No-auth local HTTP workflow that mirrors worker status into the Factory API build status endpoint."
+  "description": "No-auth HTTP workflow that mirrors worker status into the Factory API build status endpoint. Defaults to local HTTP; Checkpoint 7 live use must override factoryApiBaseUrl with an approved HTTPS tunnel or hosted endpoint."
 }
