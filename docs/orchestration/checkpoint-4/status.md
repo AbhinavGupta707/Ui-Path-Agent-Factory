@@ -9,7 +9,7 @@ Worker IDs are filled in by the orchestrator after thread creation.
 | Maestro And Data Service | pending | pending | pending | preparing | Owns Data Service schema and Maestro BPMN/process assets |
 | Agents And API Workflow | pending | pending | pending | preparing | Owns Agent Builder contracts and API Workflow assets |
 | Apps And Action Center | pending | pending | pending | preparing | Owns UiPath Apps companion and Action Center approval contracts |
-| Test Cloud And Quality Gates | pending | pending | pending | preparing | Owns Test Manager/Test Cloud quality-gate assets |
+| Test Cloud And Quality Gates | pending | pending | pending | completed | Created live Test Manager project `AFQG`, test set `AFQG:1`, and seven quality-gate test cases; no live executions run |
 
 ## Integration Log
 
@@ -18,7 +18,8 @@ Worker IDs are filled in by the orchestrator after thread creation.
 - Pre-launch UiPath readiness probes succeeded for auth, folder, installed tool surface, Data Service, Maestro, Agents, Action Center, API Workflow, Coded Apps, and Test Manager discovery.
 - Integration Service has no configured connections. API Workflow work must avoid fake connection IDs and must not use vendor connector placeholders without explicit approval.
 - Data Service has no native entities yet. Entity creation must follow the schema proposal approval rule before live mutation.
-- Test Manager has no projects yet. Test Cloud lane should create/import if permitted, otherwise keep the fallback clearly labeled `Test Cloud-ready`.
+- At launch, Test Manager had no projects. Test Cloud lane should create/import if permitted, otherwise keep the fallback clearly labeled `Test Cloud-ready`.
+- Test Cloud lane created Test Manager project `Agent Factory Quality Gates` (`AFQG`, id `2760d770-7e82-0000-66f7-0b49d3053e3f`), set the project default folder to `AgentFactoryDemo`, created test set `Customer360 Release Gate` (`AFQG:1`, id `66cdd3ea-c873-0200-58fb-0b49d305588a`), and added seven gate test cases. No live executions were run.
 
 ## Launch Baseline
 
@@ -58,6 +59,10 @@ Worker IDs are filled in by the orchestrator after thread creation.
 ## Checks Run
 
 - Pre-launch `npm run smoke` passed across workspace builds and tests.
+- Test Cloud lane read-only discovery passed for `uip --version`, `uip login status --output json`, `uip tm testcases --help --output json`, `uip tm project list --limit 5 --output json`, and `uip or folders get AgentFactoryDemo --output json`.
+- Test Cloud lane asset verification passed for `uip tm testcases list --project-key AFQG --output json`, `uip tm testsets list --project-key AFQG --output json`, and `uip tm testsets list-testcases --project-key AFQG --test-set-key AFQG:1 --output json`.
+- Test Cloud lane local evidence passed for `npm --workspace @agent-factory/customer360-metrics test`, `npm --workspace @agent-factory/customer360-template run build`, `npm --workspace @agent-factory/customer360-template test`, `npm --workspace @agent-factory/build-worker test`, and `npm run smoke`.
+- `node -e "JSON.parse(...quality-gate-assets.json...)"` and `git diff --check` passed.
 
 ## Manual Smoke Target
 
