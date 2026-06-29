@@ -24,3 +24,6 @@ jobs:
 
       - name: Smoke
         run: npm run smoke
+
+      - name: Demo Smoke
+        run: npm run smoke:demo
