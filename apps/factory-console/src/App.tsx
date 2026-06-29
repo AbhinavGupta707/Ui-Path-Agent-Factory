@@ -2,21 +2,27 @@ import { useEffect, useMemo, useState, type ChangeEvent, type ReactNode } from "
 import {
   AlertTriangle,
   CheckCircle2,
+  ClipboardCheck,
   Circle,
   CircleDot,
   Clock3,
   Code2,
   Database,
+  ExternalLink,
   FileJson,
   FlaskConical,
+  GitBranch,
   Loader2,
   MessageSquareText,
   Play,
   RefreshCw,
+  Rocket,
   ScrollText,
   Send,
   ShieldCheck,
   SlidersHorizontal,
+  Terminal,
+  Undo2,
   UserCheck,
   Workflow,
   XCircle,
@@ -31,31 +37,40 @@ import {
 import {
   auditEvents,
   buildArtifacts,
+  buildLogEvents,
   buildManifest,
+  buildRunEvidence,
   clarificationQuestions,
   createConsoleAudit,
   createLocalRequest,
+  deploymentEvidence,
   governanceAssessment,
   lifecycleSteps,
   manifestDocument,
   metricOptions,
   piiPolicies,
+  platformEvidence,
   policyDecisions,
   qualityGates,
+  releaseApprovalEvidence,
   seedIntake,
   seedRequest,
   sourceSystems,
-  structuredSpec
+  structuredSpec,
+  testManagerCatalog
 } from "./seedData";
 
-type WorkspaceTab = "clarification" | "spec" | "manifest" | "audit";
+type WorkspaceTab = "clarification" | "spec" | "manifest" | "build" | "deployment" | "audit";
 type SubmitState = "idle" | "loading" | "success" | "error";
 type ApprovalState = "pending" | "approved" | "changes";
+type ReleaseApprovalState = "pending" | "approved";
 
 const workspaceTabs: Array<{ id: WorkspaceTab; label: string; icon: LucideIcon }> = [
   { id: "clarification", label: "Clarify", icon: MessageSquareText },
   { id: "spec", label: "Spec", icon: ScrollText },
   { id: "manifest", label: "Manifest", icon: FileJson },
+  { id: "build", label: "Build", icon: Terminal },
+  { id: "deployment", label: "Deploy", icon: Rocket },
   { id: "audit", label: "Audit", icon: Clock3 }
 ];
 
@@ -71,9 +86,26 @@ const lifecycleIcons: Record<string, LucideIcon> = {
   intake: Send,
   clarification: MessageSquareText,
   governance: ShieldCheck,
+  scope: UserCheck,
   manifest: FileJson,
   build: Code2,
-  quality: FlaskConical
+  quality: FlaskConical,
+  release: ClipboardCheck,
+  deployment: Rocket,
+  audit: ScrollText
+};
+
+const lifecycleTabMap: Record<string, WorkspaceTab> = {
+  intake: "clarification",
+  clarification: "clarification",
+  governance: "spec",
+  scope: "spec",
+  manifest: "manifest",
+  build: "build",
+  quality: "build",
+  release: "deployment",
+  deployment: "deployment",
+  audit: "audit"
 };
 
 export function App() {
@@ -89,6 +121,7 @@ export function App() {
   const [activeTab, setActiveTab] = useState<WorkspaceTab>("clarification");
   const [submitState, setSubmitState] = useState<SubmitState>("idle");
   const [approvalState, setApprovalState] = useState<ApprovalState>("pending");
+  const [releaseApprovalState, setReleaseApprovalState] = useState<ReleaseApprovalState>("pending");
   const [auditLog, setAuditLog] = useState(auditEvents);
 
   useEffect(() => {
@@ -238,6 +271,7 @@ export function App() {
         <div className="mode-panel" data-mode={apiStatus.mode}>
           <span>{apiStatus.platformMode}</span>
           <strong>{apiStatus.label}</strong>
+          <small>{apiStatus.detail}</small>
           <small>{apiStatus.apiBaseUrl}</small>
         </div>
 
@@ -251,12 +285,7 @@ export function App() {
                 data-status={step.status}
                 key={step.id}
                 type="button"
-                onClick={() => {
-                  if (step.id === "manifest") setActiveTab("manifest");
-                  if (step.id === "clarification") setActiveTab("clarification");
-                  if (step.id === "governance") setActiveTab("spec");
-                  if (step.id === "quality") setActiveTab("audit");
-                }}
+                onClick={() => setActiveTab(lifecycleTabMap[step.id] ?? "audit")}
               >
                 <Icon size={17} aria-hidden="true" />
                 <span>
@@ -287,11 +316,11 @@ export function App() {
       <section className="console-shell">
         <header className="command-bar">
           <div>
-            <p className="eyeline">Checkpoint 1 Factory Console</p>
+            <p className="eyeline">Checkpoint 5 Demo Console</p>
             <h1>Customer360 build control plane</h1>
             <p>
-              Request intake, clarification, governance, manifest preview, approval state, and audit
-              evidence in one operations surface.
+              Governed intake, clarification, approvals, manifest, build-worker evidence, Test Manager
+              gates, release, sandbox deployment, and audit in one operator surface.
             </p>
           </div>
           <div className="command-actions">
@@ -315,7 +344,19 @@ export function App() {
           <StatusMetric label="Clarifications" value={`${answeredCount}/${clarificationQuestions.length} answered`} icon={MessageSquareText} />
           <StatusMetric label="Sources ready" value={`${sourceReadyCount}/${selectedSources.size || 1}`} icon={Database} tone="green" />
           <StatusMetric label="Approval" value={approvalState === "approved" ? "Scope approved" : "Pending"} icon={UserCheck} tone={approvalState === "approved" ? "green" : "amber"} />
+          <StatusMetric label="Quality" value="AFQG catalog live" icon={FlaskConical} tone="green" />
+          <StatusMetric label="Deploy" value={deploymentEvidence.status.replaceAll("-", " ")} icon={Rocket} tone="amber" />
         </section>
+
+        {apiStatus.mode === "checking" ? (
+          <div className="system-banner" role="status">
+            <Loader2 className="spin-icon" size={18} aria-hidden="true" />
+            <div>
+              <strong>{apiStatus.label}</strong>
+              <span>{apiStatus.detail}</span>
+            </div>
+          </div>
+        ) : null}
 
         {apiStatus.mode === "degraded" ? (
           <div className="system-banner" role="status">
@@ -528,6 +569,119 @@ export function App() {
               </div>
             ) : null}
 
+            {activeTab === "build" ? (
+              <div className="build-layout">
+                <div className="build-summary-grid">
+                  <div>
+                    <h2>Build worker evidence</h2>
+                    <p>
+                      Codex output is treated as reviewable sandbox evidence. GitHub PR automation may
+                      be unavailable, so the demo keeps a local diff fallback visible.
+                    </p>
+                    <KeyValueList
+                      rows={[
+                        ["Build run", buildRunEvidence.buildRunId],
+                        ["Worker", buildRunEvidence.workerId],
+                        ["Status", formatStatus(buildRunEvidence.status)],
+                        ["Branch", buildRunEvidence.branchName],
+                        ["Diff", buildRunEvidence.pullRequestUrl],
+                        ["Mode", buildRunEvidence.platformMode]
+                      ]}
+                    />
+                  </div>
+                  <div className="artifact-table">
+                    <div className="table-heading">
+                      <span>Evidence artifacts</span>
+                      <small>Reviewable output</small>
+                    </div>
+                    {buildArtifacts.map((artifact) => (
+                      <div className="artifact-row" key={artifact.path}>
+                        <GitBranch size={15} aria-hidden="true" />
+                        <span>{artifact.path}</span>
+                        <small>
+                          {artifact.owner} / {artifact.status}
+                        </small>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="log-stream" aria-label="Build worker log stream">
+                  {buildLogEvents.map((event) => (
+                    <div className="log-row" data-level={event.level} key={event.id}>
+                      <span>{event.time}</span>
+                      <strong>{event.source}</strong>
+                      <p>{event.message}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ) : null}
+
+            {activeTab === "deployment" ? (
+              <div className="deployment-layout">
+                <section className="release-card">
+                  <div className="release-card-heading">
+                    <ClipboardCheck size={18} aria-hidden="true" />
+                    <div>
+                      <h2>Release approval</h2>
+                      <small>Action Center contract / no live task completion</small>
+                    </div>
+                    <Pill tone={releaseApprovalState === "approved" ? "success" : "warning"}>
+                      {releaseApprovalState === "approved" ? "demo approved" : releaseApprovalEvidence.status}
+                    </Pill>
+                  </div>
+                  <p>{releaseApprovalEvidence.summary}</p>
+                  <div className="approval-actions release-actions">
+                    <button type="button" onClick={() => setReleaseApprovalState("approved")}>
+                      <CheckCircle2 size={16} aria-hidden="true" />
+                      Approve sandbox release
+                    </button>
+                    <button type="button" onClick={() => setReleaseApprovalState("pending")}>
+                      <Clock3 size={16} aria-hidden="true" />
+                      Keep pending
+                    </button>
+                  </div>
+                  <ListBlock title="Approval payload includes" items={releaseApprovalEvidence.payloadIncludes} />
+                </section>
+
+                <section className="deployment-card">
+                  <div className="release-card-heading">
+                    <Rocket size={18} aria-hidden="true" />
+                    <div>
+                      <h2>Deployment evidence</h2>
+                      <small>Sandbox preview / pending live StartDeployment run</small>
+                    </div>
+                    <Pill tone="warning">{deploymentEvidence.status}</Pill>
+                  </div>
+                  <KeyValueList
+                    rows={[
+                      ["Deployment", deploymentEvidence.deploymentId],
+                      ["Environment", deploymentEvidence.environment],
+                      ["Provider", deploymentEvidence.provider],
+                      ["Platform mode", deploymentEvidence.platformMode],
+                      ["Preview URL", deploymentEvidence.url]
+                    ]}
+                  />
+                  <a className="preview-link" href={deploymentEvidence.url} target="_blank" rel="noreferrer">
+                    <ExternalLink size={16} aria-hidden="true" />
+                    Open sandbox preview
+                  </a>
+                </section>
+
+                <section className="rollback-card">
+                  <div className="release-card-heading">
+                    <Undo2 size={18} aria-hidden="true" />
+                    <div>
+                      <h2>Rollback notes</h2>
+                      <small>{deploymentEvidence.rollbackRef}</small>
+                    </div>
+                  </div>
+                  <p>{deploymentEvidence.rollbackNotes}</p>
+                </section>
+              </div>
+            ) : null}
+
             {activeTab === "audit" ? <AuditTable auditLog={auditLog} /> : null}
           </section>
 
@@ -581,7 +735,8 @@ export function App() {
                   ["Tenant", defaultUiPathContext.tenant],
                   ["Folder", defaultUiPathContext.folderName],
                   ["Maestro", "Request-to-release lifecycle"],
-                  ["API Workflow", "TriggerBuildWorker ready"]
+                  ["API Workflow", "StartBuildWorker + StartDeployment ready"],
+                  ["Test Manager", `${testManagerCatalog.projectKey} catalog live`]
                 ]}
               />
             </div>
@@ -590,16 +745,25 @@ export function App() {
 
         <section className="lower-grid">
           <div className="panel quality-panel">
-            <PanelHeader icon={FlaskConical} title="Quality gate" meta="Test Cloud-ready placeholder" />
+            <PanelHeader
+              icon={FlaskConical}
+              title="Quality gates"
+              meta={`${testManagerCatalog.projectKey} / ${testManagerCatalog.testSetKey} / execution ${testManagerCatalog.liveExecutionStatus}`}
+              action={<Pill tone="success">catalog live</Pill>}
+            />
+            <div className="catalog-callout">
+              <strong>{testManagerCatalog.projectName}</strong>
+              <span>{testManagerCatalog.note}</span>
+            </div>
             <div className="quality-grid">
               {qualityGates.map((gate) => (
                 <div className="quality-row" data-status={gate.status} key={gate.name}>
                   {gate.status === "passed" ? <CheckCircle2 size={17} aria-hidden="true" /> : <CircleDot size={17} aria-hidden="true" />}
                   <span>
                     <strong>{gate.name}</strong>
-                    <small>{gate.provider}</small>
+                    <small>{gate.testCaseKey ? `${gate.provider} / ${gate.testCaseKey}` : gate.provider}</small>
                   </span>
-                  <em>{gate.detail}</em>
+                  <em>{gate.evidenceCommand ?? gate.detail}</em>
                 </div>
               ))}
             </div>
@@ -608,6 +772,23 @@ export function App() {
           <div className="panel audit-panel">
             <PanelHeader icon={ScrollText} title="Timeline and audit" meta="Data Service event stream" />
             <AuditTable auditLog={auditLog.slice(-4)} compact />
+          </div>
+
+          <div className="panel platform-panel">
+            <PanelHeader icon={Workflow} title="Platform evidence" meta="Live, ready, pending, and local labels" />
+            <div className="platform-evidence-list">
+              {platformEvidence.map((item) => (
+                <div className="platform-evidence-row" data-status={item.status} key={item.product}>
+                  <div>
+                    <strong>{item.product}</strong>
+                    <span>{item.detail}</span>
+                  </div>
+                  <Pill tone={item.mode === "uipath-live" ? "success" : item.status === "pending" ? "warning" : "neutral"}>
+                    {item.mode}
+                  </Pill>
+                </div>
+              ))}
+            </div>
           </div>
         </section>
       </section>

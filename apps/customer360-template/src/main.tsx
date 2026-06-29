@@ -75,6 +75,12 @@ interface DashboardModel {
   warnings: string[];
 }
 
+interface EvidenceMetric {
+  label: string;
+  value: string;
+  detail: string;
+}
+
 const modeLabels: Record<DataMode, string> = {
   ready: "Baseline dataset",
   degraded: "Degraded feed",
@@ -96,6 +102,15 @@ function formatPercent(value: number): string {
 
 function formatRatio(value: number): string {
   return formatPercent(value * 100);
+}
+
+function formatSignedCurrency(value: number): string {
+  if (value === 0) {
+    return "$0";
+  }
+
+  const formatted = formatCurrency(Math.abs(value));
+  return `${value > 0 ? "+" : "-"}${formatted}`;
 }
 
 function riskLabel(tier: "low" | "medium" | "high"): RiskRow["risk"] {
@@ -306,8 +321,34 @@ export function App() {
     [lastRefresh, mode, refreshRevision]
   );
   const model = useMemo(() => buildDashboardModel(dataset), [dataset]);
+  const baselineRevenue = useMemo(() => buildDashboardModel(datasetForMode("ready")).totalRevenue, []);
   const isEmpty = dataset.customers.length === 0;
   const isDegraded = mode === "degraded";
+  const evidenceMetrics: EvidenceMetric[] = [
+    {
+      label: "Artifact",
+      value: "Sandbox generated",
+      detail: "Factory request REQ-2026-001 / Customer360 template"
+    },
+    {
+      label: "Refresh mutation",
+      value: refreshRevision === 0 ? "Baseline seed" : `Revision ${refreshRevision}`,
+      detail:
+        refreshRevision === 0
+          ? "Click refresh to mutate synthetic rows"
+          : `${formatSignedCurrency(model.totalRevenue - baselineRevenue)} revenue delta from baseline`
+    },
+    {
+      label: "Quality evidence",
+      value: "PII + metric tests",
+      detail: "Masking, empty/degraded states, and mutation smoke covered"
+    },
+    {
+      label: "Data contract",
+      value: "No external fetch",
+      detail: `${dataset.customers.length} customers / ${dataset.orders.length} orders / ${dataset.events.length} events`
+    }
+  ];
 
   const handleRefresh = () => {
     setRefreshState("loading");
@@ -331,6 +372,7 @@ export function App() {
       {refreshState === "loading" ? <LoadingState /> : null}
 
       <StatusRail datasetId={model.datasetId} freshness={model.freshness} mode={mode} warnings={model.warnings} />
+      <EvidenceRail items={evidenceMetrics} />
 
       {isDegraded ? (
         <section className="alert-band" aria-label="Degraded data notice">
@@ -398,11 +440,25 @@ function Header({ mode, refreshState, lastRefresh, onModeChange, onRefresh }: He
           ))}
         </div>
         <button className="refresh-button" disabled={refreshState === "loading"} onClick={onRefresh} type="button">
-          {refreshState === "loading" ? "Refreshing" : "Refresh"}
+          {refreshState === "loading" ? "Refreshing" : "Refresh synthetic data"}
         </button>
         <span className="refresh-time">Updated {lastRefresh.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</span>
       </div>
     </header>
+  );
+}
+
+function EvidenceRail({ items }: { items: EvidenceMetric[] }) {
+  return (
+    <section className="evidence-rail" aria-label="Demo evidence">
+      {items.map((item) => (
+        <article className="evidence-item" key={item.label}>
+          <span>{item.label}</span>
+          <strong>{item.value}</strong>
+          <small>{item.detail}</small>
+        </article>
+      ))}
+    </section>
   );
 }
 

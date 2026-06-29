@@ -151,10 +151,11 @@ h1 {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 12px;
-  margin-bottom: 16px;
+  margin-bottom: 12px;
 }
 
 .status-item,
+.evidence-item,
 .kpi-card,
 .panel,
 .risk-section,
@@ -172,6 +173,7 @@ h1 {
 }
 
 .status-item span,
+.evidence-item span,
 .kpi-card span,
 .chart-summary span,
 .segment-meta,
@@ -185,12 +187,14 @@ h1 {
 }
 
 .status-item span,
+.evidence-item span,
 .kpi-card span,
 .chart-summary span {
   text-transform: uppercase;
 }
 
-.status-item strong {
+.status-item strong,
+.evidence-item strong {
   display: block;
   margin: 8px 0 4px;
   color: #17231f;
@@ -199,9 +203,29 @@ h1 {
 }
 
 .status-item small,
+.evidence-item small,
 .kpi-card small {
   display: block;
   line-height: 1.35;
+}
+
+.evidence-rail {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.evidence-item {
+  min-height: 92px;
+  padding: 14px 15px;
+  background: #fbfcfb;
+  box-shadow: none;
+}
+
+.evidence-item strong {
+  color: #1f6f63;
+  font-size: 16px;
 }
 
 .loading-strip,
@@ -654,6 +678,7 @@ tr:last-child td {
 
   .mode-toggle,
   .status-rail,
+  .evidence-rail,
   .kpi-strip {
     grid-template-columns: 1fr;
   }
