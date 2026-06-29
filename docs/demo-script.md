@@ -50,7 +50,7 @@ Open the Factory Console and Customer360 dashboard from the Vite URLs printed by
 | 1:25-1:50 | Governance panel | The Governance agent path classifies risk, detects Customer360/CRM-style PII, requires masking, forbids production deploy and secret access, and routes to approval. |
 | 1:50-2:10 | Scope approval | Show the Action Center-shaped scope/data approval. In this repo it is local/proposal-backed unless a live Action Center task has been explicitly created. |
 | 2:10-2:40 | Build manifest | Show the manifest: approved template, allowed files, sandbox-only flag, approved metrics, PII policy, and max one repair attempt. Codex receives this manifest, not vague instructions. |
-| 2:40-3:15 | Build Worker evidence | Show the build worker contract and status. The service exposes `/build` and `/build/:id`; the default runtime blocks honestly without an injected live Codex/Git runner. |
+| 2:40-3:15 | Build Worker evidence | Show the build worker contract and status. The service exposes `/build` and `/build/:id`; the default runtime blocks honestly, and the approved activation run produced live Codex session `019f14f9-8e3b-7232-9d59-6ee2c428279f`, 14 generated files, and passed guardrail checks. |
 | 3:15-3:50 | Quality gates | Show local smoke/tests plus live Test Manager catalog `AFQG` / `Customer360 Release Gate`. Emphasize that live Test Cloud execution was not run without approval. |
 | 3:50-4:15 | Release approval | Show the release approval contract: diff/branch or PR evidence, generated files, test results, PII scan, sandbox target, rollback notes. |
 | 4:15-4:40 | Customer360 dashboard | Open the dashboard. Show revenue, repeat purchase, return rate, cohort/retention proxy, behavior funnel, category mix, churn risk, PII masking, and freshness. Use Refresh or dataset mode controls to prove output is not a static screenshot. |
@@ -64,9 +64,9 @@ Show these in the UI, terminal, or docs:
 - Agent Builder projects validate locally for Requirements, Clarification, Governance, Build Planner, and Test Summary.
 - Action Center contracts define scope and release approval payloads.
 - Data Service schema defines the future state/audit system of record.
-- API Workflows validate for StartBuildWorker, FetchBuildStatus, PostStatusUpdate, RecordTestResult, and StartDeployment.
+- API Workflows validate for StartBuildWorker, FetchBuildStatus, PostStatusUpdate, RecordTestResult, and StartDeployment; `AgentFactory_StartBuildWorker` also succeeded through the local UiPath API Workflow runner.
 - Test Manager project/test set/test cases are live.
-- UiPath for Coding Agents setup is available through `uip skills install --agent codex --local`.
+- UiPath for Coding Agents setup is available through `uip skills install --agent codex --local`, and the 2026-06-29 activation captured a live Codex readiness/build session.
 
 ## Current Boundaries To Say Out Loud
 

@@ -18,11 +18,11 @@ Implementation base: `4d761b6` (`Align checkpoint 7 with AgentHack Track 2`).
 
 | Status | Evidence |
 |---|---|
-| Live | UiPath login context for `galacticus / DefaultTenant`; Orchestrator folder `AgentFactoryDemo` id `7986306`; Test Manager project `AFQG` / `Agent Factory Quality Gates`; seven Test Manager test cases. |
-| Local runnable | Factory Console, Factory API lifecycle and live-evidence callback endpoint, Build Worker contract, Customer360 dashboard, sandbox `/deploy`, local tests, and demo smoke. |
+| Live | UiPath login context for `galacticus / DefaultTenant`; Orchestrator folder `AgentFactoryDemo` id `7986306`; Test Manager project `AFQG` / `Agent Factory Quality Gates`; seven Test Manager test cases; live Codex CLI readiness/build through the Build Worker isolated workspace. |
+| Local runnable | Factory Console, Factory API lifecycle and live-evidence callback endpoint, Build Worker contract, API Workflow local runner handoff, Customer360 dashboard, sandbox `/deploy`, local tests, and demo smoke. |
 | Import-ready/validated | Maestro BPMN at `uipath/maestro/customer360-build/agent-factory-customer360-build.bpmn`; six API Workflow JSON assets including `AgentFactory_RecordUiPathEvent`; five low-code Agent projects. |
 | Proposal-only | Data Service schema, Action Center approval contracts, and UiPath Apps companion contract. |
-| Approval-gated | Maestro publish/run, API Workflow upload/run, Action Center task creation/completion, Data Service writes, Agent upload/deploy/run, Test Cloud execution, live Codex execution, public hosting with secrets, and production release. |
+| Blocked or still approval-sensitive | Maestro publish/run is blocked by UiPath `Invalid argument 'Period'`; Action Center task creation depends on a live Maestro/human task route; Data Service writes remain deferred to avoid shared-tenant collisions; Test Cloud execution and production release were not run. |
 
 ## Final QA Verification
 
@@ -43,6 +43,7 @@ Implementation base: `4d761b6` (`Align checkpoint 7 with AgentHack Track 2`).
 | `uip maestro bpmn validate ... --output json` | Passed; BPMN is valid with one process, one start event, and three UiPath extensions. |
 | `npm run uipath:live-plan` | Passed; prints exact approval-gated publish/run/evidence commands without mutating UiPath. |
 | `npm run uipath:readiness` | Passed; read-only UiPath login/folder/Test Manager checks plus BPMN and six API Workflow validations. |
+| Live activation attempt | Partial; see `docs/orchestration/checkpoint-7/live-activation-evidence-2026-06-29.md`. API Workflow local runner -> Build Worker -> live Codex -> sandbox deployment succeeded. Maestro publish/debug did not produce a cloud process instance. |
 
 ## Live Spine Hardening After Final QA
 
@@ -51,6 +52,7 @@ Implementation base: `4d761b6` (`Align checkpoint 7 with AgentHack Track 2`).
 - Added `AgentFactory_RecordUiPathEvent` API Workflow to post redacted live evidence into the Factory API timeline.
 - Updated Factory Console evidence so Maestro/API Workflow/human gate/Data Service/Codex rows show `uipath-live` only when real IDs exist.
 - Added `npm run uipath:live-plan` and `npm run uipath:readiness` for exact activation planning and safe validation.
+- Ran an approved live activation attempt on 2026-06-29. The local API Workflow runner queued `BUILD-REQ-2026-001-001`; live Codex readiness passed with session `019f14f9-8e3b-7232-9d59-6ee2c428279f`; the worker generated 14 files and passed all five guardrail checks; Factory API recorded sandbox deployment `DEP-REQ-2026-001-001`.
 
 ## Final Demo Path
 
@@ -60,25 +62,26 @@ Implementation base: `4d761b6` (`Align checkpoint 7 with AgentHack Track 2`).
 4. Answer generated clarification questions.
 5. Review plan, governance, PII masking, allowed files, forbidden actions, and approvals.
 6. Approve local scope/data.
-7. Start the build handoff and either show blocked Codex readiness evidence or, after separate approval, show redacted live Codex diff/test evidence.
-8. Show UiPath evidence: live Test Manager catalog, validated Maestro BPMN, import-ready API Workflows/Agents, and the live-evidence callback surface. If approved live IDs exist, the evidence drawer should show `uipath-live`.
+7. Start the build handoff. The latest activation evidence shows live Codex readiness/build passed through the Build Worker isolated workspace; rerun only with bounded manifest approval.
+8. Show UiPath evidence: live Test Manager catalog, validated Maestro BPMN, import-ready API Workflows/Agents, and the live-evidence callback surface. Do not claim a live Maestro process instance or Action Center task until the publish/debug blocker is resolved and real platform ids exist.
 9. Open the Customer360 sandbox preview.
 10. Close with the evidence drawer and final truth table.
 
 ## Residual Risks
 
-- No live Maestro publish/run, API Workflow runtime call, Action Center task, Data Service write, Test Cloud execution, public hosted callback bridge, or live Codex execution was performed in final QA.
+- Maestro cloud activation is blocked before process-instance creation: `uip maestro bpmn process publish` returns `HTTP 400: Invalid argument 'Period'`, and the official debug path did not produce a recent instance.
+- API Workflow assets can validate and run through the local UiPath runner, but these JSON assets are not full packaged cloud API Workflow projects.
+- Public ngrok payload egress was blocked by policy; use a trusted hosted bridge with access controls before sending request/manifest payloads from Automation Cloud.
+- No Action Center task, Data Service write, or Test Cloud execution was performed in the activation pass.
 - The local demo depends on local ports being free. Use the URLs printed by `npm run dev:live`.
 - Provider-backed Fireworks/LangSmith behavior requires owner-managed local/deployment configuration and sanitized trace review.
 - Demo screenshots/video remain unchecked until captured; crop setup prompts, terminal secrets, provider dashboards, and trace payloads.
 
 ## Exact Approvals Still Required
 
-- Approve the HTTPS callback bridge strategy and exact host/tunnel command before exposing local services to Automation Cloud.
-- Approve exact `uip maestro bpmn` publish/run commands before live Track 2 execution.
-- Approve exact API Workflow upload/run commands with endpoint inputs.
-- Approve any Action Center task creation/completion commands.
-- Approve any Data Service schema/entity/record write commands.
+- Resolve the UiPath Maestro `Invalid argument 'Period'` publish/debug blocker with UiPath CLI/platform support or a Studio Web-authored ProcessOrchestration package.
+- Approve a trusted HTTPS callback bridge before sending request/manifest payloads from Automation Cloud.
+- Approve any Action Center task creation/completion command after Maestro reaches a real user task.
+- Approve any AgentFactory Data Service schema/entity/record write command after materializing unique names and choice-set IDs.
 - Approve any live Test Manager/Test Cloud execution command.
-- Approve `BUILD_WORKER_CODEX_ENABLED=true` live Codex execution, workspace path, allowed files, and redaction policy before running it.
 - Approve any public hosting with secrets or production release command.

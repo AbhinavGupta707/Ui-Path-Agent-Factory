@@ -10,14 +10,14 @@ This is the judge-facing Checkpoint 7 path for Agent Factory. The demo story is 
 |---|---|---|
 | Factory Console | Local runnable | Operator UI for intake, generated clarifications, governance review, approvals, live run progress, sandbox preview, and evidence. |
 | Factory API | Local runnable | Lifecycle API for requests, graph metadata, approvals, manifests, build/deploy callbacks, and audit state. |
-| Build Worker | Local runnable, live Codex approval-gated | Validates governed manifests and records build evidence. Default mode blocks until a live Codex/Git runner is explicitly enabled. |
+| Build Worker | Local runnable, live Codex evidence exists | Validates governed manifests and records build evidence. Default mode blocks unless `BUILD_WORKER_CODEX_ENABLED=true`; the approved 2026-06-29 activation passed live Codex readiness/build in an isolated workspace. |
 | Customer360 dashboard | Local runnable | Sandbox output with synthetic data, masked PII, refresh/degraded/empty states, and quality checks. |
 | Fireworks | Provider-ready | Server-side model profiles can generate clarification/spec/governance/planning outputs when configured; fallback is labeled deterministic/degraded. |
 | LangSmith | Provider-ready | Trace/evaluation evidence only. Share links only after payloads are reviewed and sanitized. |
 | UiPath Orchestrator | Live folder evidence from platform setup | Folder/runtime context exists; jobs, assets, and process mutations remain approval-gated. |
 | UiPath Test Manager/Test Cloud | Live catalog, no execution | Project `AFQG` and seven test cases are live. No live Test Cloud execution has been run. |
-| Maestro BPMN | Validated/import-ready | Track 2 BPMN validates locally and is ready for an approved publish/run against an HTTPS callback bridge. |
-| API Workflows | Validated/import-ready | Six workflow assets validate locally, including `AgentFactory_RecordUiPathEvent` for live evidence callbacks. Uploads and runtime calls require approval and approved HTTPS endpoint inputs. |
+| Maestro BPMN | Validated/import-ready, cloud activation blocked | Track 2 BPMN validates locally, but approved publish/debug attempts failed before instance creation with UiPath `Invalid argument 'Period'`. |
+| API Workflows | Validated/import-ready, local runner exercised | Six workflow assets validate locally, including `AgentFactory_RecordUiPathEvent`; `AgentFactory_StartBuildWorker` successfully ran through the local UiPath API Workflow runner against `127.0.0.1`. Cloud packaging/upload is not claimed. |
 | UiPath Agents | Validated/import-ready | Five low-code Agent projects validate locally; upload/deploy/run requires approval. |
 | Action Center | Proposal-only contract | Scope/data and release gates are modeled; no live task is claimed until a real task id exists. |
 | Data Service | Proposal-only schema | Source-controlled schema only; no entity or record writes without approval. |
@@ -104,11 +104,11 @@ I am in a business and I am struggling to track customer analytics. I want a das
 5. Approve scope
    Use the local approval control. Say this is the local approval implementation unless a live Action Center task id has been created by an explicitly approved run.
 
-6. Build or explain blocked state
-   Start the build handoff. In default mode, show the Build Worker blocked/readiness evidence and explain that live Codex execution requires `BUILD_WORKER_CODEX_ENABLED=true`, an approved bounded workspace, and explicit user approval. If live Codex is approved separately, show only redacted event/diff/test evidence.
+6. Build or explain current build evidence
+   Start the build handoff. In default mode, show the Build Worker blocked/readiness evidence. For the 2026-06-29 activation, show `BUILD-REQ-2026-001-001`, Codex readiness session `019f14f9-8e3b-7232-9d59-6ee2c428279f`, 14 generated files, five passed guardrail checks, and sandbox deployment `DEP-REQ-2026-001-001`.
 
 7. Show UiPath orchestration evidence
-   Open the evidence panel or component map. Show Maestro as the Track 2 orchestration spine, API Workflows as import-ready handoffs and live-evidence callbacks, Action Center as the human gate contract, Data Service as proposed audit state, and Test Manager as the live quality catalog. Do not say Maestro/API Workflow/Action Center/Data Service/Test Cloud ran live unless the evidence panel contains real platform ids.
+   Open the evidence panel or component map. Show Maestro as the intended Track 2 orchestration spine, API Workflows as validated handoffs with a local-runner build handoff, Action Center as the human gate contract, Data Service as proposed audit state, and Test Manager as the live quality catalog. Do not say Maestro/Action Center/Data Service/Test Cloud ran live unless the evidence panel contains real platform ids.
 
 8. Open sandbox preview
    Open the Customer360 dashboard from the output/deployment section. Verify synthetic metrics render, direct identifiers are masked, and sandbox labeling is visible.
@@ -152,7 +152,7 @@ Do not perform these without explicit approval for the exact command and target:
 - Agent upload, publish, deploy, or run.
 - UiPath Apps pack, publish, or deploy.
 - Live Test Manager/Test Cloud execution.
-- Live Codex execution that uses paid/account-bound resources.
+- Future live Codex execution that uses paid/account-bound resources beyond the bounded 2026-06-29 activation.
 - Public hosting with secrets or any production release.
 
 ## Handoff Checklist

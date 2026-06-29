@@ -10,12 +10,12 @@ The repository is the production implementation for the submission package, not 
 |---|---|
 | Local Factory Console/API | Runnable local product flow for intake, clarification, governance, scope approval, live run progress, output preview, deployment evidence, and audit timeline. |
 | Customer360 dashboard | Runnable React/Vite dashboard with synthetic data, masked PII, refresh/degraded/empty states, and metric tests. |
-| Build Worker | Runnable service contract for `/build` and `/build/:id`; default runtime blocks honestly until a live Codex/Git runner is injected. |
+| Build Worker | Runnable service contract for `/build` and `/build/:id`; default runtime blocks honestly, and the approved 2026-06-29 activation passed live Codex readiness/build in an isolated workspace. |
 | Fireworks/LangSmith | Provider-ready through local/deployment configuration. Provider values and trace payloads must stay out of git, docs, screenshots, and logs. |
 | Test Manager/Test Cloud | Live Test Manager project `Agent Factory Quality Gates`, test set `Customer360 Release Gate`, and seven test cases. No live execution has been run. |
 | Data Service | Proposal-only schema in `uipath/data-service/schema.json`; entity/choice-set creation requires explicit approval. |
-| Maestro | Validated, import-ready BPMN project; not published or run until approval. |
-| Agents/API Workflows | Validated/import-ready local assets, including a live-evidence callback workflow; not uploaded, deployed, or run until approval. |
+| Maestro | Validated/import-ready BPMN project; approved publish/debug activation was attempted but UiPath returned `Invalid argument 'Period'`, so no cloud process instance is claimed. |
+| Agents/API Workflows | Validated/import-ready local assets, including a live-evidence callback workflow; `AgentFactory_StartBuildWorker` ran through the local UiPath API Workflow runner, while cloud packaging/upload remains unresolved. |
 | Action Center/UiPath Apps | Proposal-only contracts; task/app creation, completion, publish, or deploy requires approval. |
 | Deployment | Sandbox/local dashboard run is available. `AgentFactory_StartDeployment` targets the local `POST /deploy` sandbox endpoint for deployment evidence. |
 

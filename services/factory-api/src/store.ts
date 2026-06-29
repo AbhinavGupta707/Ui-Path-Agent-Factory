@@ -257,10 +257,10 @@ class InMemoryFactoryStore implements FactoryStore {
         record.lifecycleMetadata?.data_service_record_ids,
         patch.data_service_record_ids
       ),
-      codex_build_evidence: [
-        ...(record.lifecycleMetadata?.codex_build_evidence ?? []),
-        ...(patch.codex_build_evidence ?? [])
-      ],
+      codex_build_evidence: mergeCodexBuildEvidence(
+        record.lifecycleMetadata?.codex_build_evidence,
+        patch.codex_build_evidence
+      ),
       updated_at: patch.updated_at ?? this.now()
     };
     record.request.updated_at = this.now();
@@ -345,4 +345,24 @@ class InMemoryFactoryStore implements FactoryStore {
 
 function mergeUnique(existing: string[] | undefined, incoming: string[] | undefined): string[] {
   return [...new Set([...(existing ?? []), ...(incoming ?? [])])];
+}
+
+function mergeCodexBuildEvidence(
+  existing: LifecycleMetadata["codex_build_evidence"] | undefined,
+  incoming: LifecycleMetadataPatch["codex_build_evidence"] | undefined
+): LifecycleMetadata["codex_build_evidence"] {
+  const merged = new Map<string, NonNullable<LifecycleMetadata["codex_build_evidence"]>[number]>();
+
+  for (const evidence of [...(existing ?? []), ...(incoming ?? [])]) {
+    const key = [
+      evidence.build_run_id,
+      evidence.codex_session_id ?? "",
+      evidence.status ?? "",
+      evidence.logs_uri ?? "",
+      evidence.generated_files_json.join("\u0000")
+    ].join("\u0001");
+    merged.set(key, evidence);
+  }
+
+  return [...merged.values()];
 }

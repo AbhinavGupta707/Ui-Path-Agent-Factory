@@ -313,6 +313,43 @@ describe("factory api", () => {
       build_run_id: `BUILD-${requestId}-001`,
       status: "blocked"
     });
+
+    const duplicateResponse = await handle({
+      method: "POST",
+      pathname: `/api/requests/${requestId}/lifecycle-metadata`,
+      body: {
+        api_workflow_execution_ids: ["apiwf_exec_456", "apiwf_exec_999"],
+        human_approval_task_ids: ["action_task_789"],
+        codex_build_evidence: [
+          {
+            build_run_id: `BUILD-${requestId}-001`,
+            status: "blocked",
+            logs_uri: "local://builds/blocked"
+          },
+          {
+            build_run_id: `BUILD-${requestId}-002`,
+            status: "awaiting_release_approval",
+            codex_session_id: "codex_session_123",
+            generated_files_json: ["src/index.html"]
+          }
+        ]
+      }
+    });
+    const duplicateBody = duplicateResponse.body as {
+      data: {
+        api_workflow_execution_ids: string[];
+        human_approval_task_ids: string[];
+        codex_build_evidence: Array<{ build_run_id: string; status: string }>;
+      };
+    };
+
+    expect(duplicateBody.data.api_workflow_execution_ids).toEqual(["apiwf_exec_456", "apiwf_exec_999"]);
+    expect(duplicateBody.data.human_approval_task_ids).toEqual(["action_task_789"]);
+    expect(duplicateBody.data.codex_build_evidence).toHaveLength(2);
+    expect(duplicateBody.data.codex_build_evidence.map((evidence) => evidence.build_run_id)).toEqual([
+      `BUILD-${requestId}-001`,
+      `BUILD-${requestId}-002`
+    ]);
   });
 
   it("records live UiPath orchestration events as product evidence", async () => {

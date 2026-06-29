@@ -24,7 +24,7 @@ Coding agents make it easy to generate internal tools quickly. That creates a ne
 - Generates clarification questions for data sources, metrics, filters, PII policy, and ownership.
 - Classifies governance risk and requires scope/data approval.
 - Creates a machine-readable build manifest with approved templates, allowed files, forbidden actions, and sandbox-only policy.
-- Routes the manifest to a Build Worker contract for Codex execution.
+- Routes the manifest through the API Workflow contract to a Build Worker for bounded Codex execution.
 - Runs metric, PII masking, build, and smoke tests.
 - Uses release approval before sandbox deployment.
 - Shows a working Customer360 dashboard with synthetic data, masked PII, refresh proof, and audit linkage.
@@ -56,11 +56,11 @@ The repo is a TypeScript monorepo with:
 
 ## What Is Live Vs. Ready
 
-- Live: Orchestrator folder and Test Manager project/test set/test cases.
-- Runnable locally: Factory Console, Factory API, Build Worker contract, Customer360 dashboard, tests.
+- Live: Orchestrator folder, Test Manager project/test set/test cases, and approved live Codex readiness/build evidence through the Build Worker.
+- Runnable locally: Factory Console, Factory API, Build Worker contract, Customer360 dashboard, tests, sandbox deployment evidence, and API Workflow local-runner handoff.
 - Import-ready/validated: Maestro BPMN, low-code Agent projects, API Workflow JSON assets.
 - Proposal-only until approval: Data Service schema, Action Center contracts, UiPath Apps companion contract.
-- Not claimed: production deployment, live Action Center task completion, live Data Service records, live Maestro run, live API Workflow runtime calls, live Test Cloud execution.
+- Not claimed: production deployment, live Action Center task completion, live Data Service records, live Maestro run, cloud-packaged API Workflow execution, live Test Cloud execution.
 
 ## Track Alignment
 
@@ -92,11 +92,11 @@ The factory addresses coding-agent sprawl inside enterprises. Teams can still mo
 ## Known Limitations
 
 - Data Service schema creation is not run until explicitly approved.
-- Maestro BPMN is validated/import-ready but not published or run.
-- Low-code agents and API Workflows validate locally but are not uploaded or run.
+- Maestro BPMN is validated/import-ready, but approved publish/debug attempts failed before process-instance creation with UiPath `Invalid argument 'Period'`.
+- Low-code agents validate locally but are not uploaded or run; API Workflow JSON assets validate locally and `AgentFactory_StartBuildWorker` succeeded through the local UiPath API Workflow runner.
 - Action Center and UiPath Apps remain proposal-only contracts.
 - `AgentFactory_StartDeployment` targets the implemented local `POST /deploy` sandbox endpoint for deployment evidence.
-- The default Build Worker runtime reports `blocked` until a live Codex/Git runner is injected.
+- The default Build Worker runtime reports `blocked` until a live Codex/Git runner is injected; the approved activation run passed live Codex readiness/build and generated sandbox evidence.
 - The demo uses synthetic Customer360 data only.
 
 ## Links To Fill In
