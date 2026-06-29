@@ -49,7 +49,7 @@ const rules = [
     pattern: /\b(read|access|load|print|log|expose|display|use)\b[^\n]{0,120}\b(secret|credential|token|keychain|browser storage|\.env)\b/gi,
     allowPath: /\/redaction\.ts$/,
     allowContext:
-      /\b(do not|never|no|not|without|block|blocked|forbid|forbidden|redact|redacted|scan|guardrail|avoid|outside|ignore|ignored|example|requires approval|must not|sensitiveKeyPattern|sanitized)\b/i,
+      /\b(do not|never|no|not|without|block|blocked|forbid|forbidden|redact|redacted|scan|guardrail|avoid|outside|ignore|ignored|example|requires approval|must not|sensitiveKeyPattern|sanitized|x-agent-factory-bridge-token|access-control-allow-headers)\b/i,
     message: "Secret, credential, token, browser storage, or .env access is claimed without an explicit guardrail."
   },
   {

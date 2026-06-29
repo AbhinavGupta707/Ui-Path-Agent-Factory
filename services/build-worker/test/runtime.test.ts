@@ -1,6 +1,6 @@
 import { tmpdir } from "node:os";
 import path from "node:path";
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
 import {
   createBuildWorkerRequestHandler,
   createBuildWorkerRuntime,
@@ -18,6 +18,10 @@ const safeManifestPayload = {
     allowed_files_json: ["src/**", "tests/**", "public/data/**", "README.md"]
   }
 };
+
+afterEach(() => {
+  delete process.env.AGENT_FACTORY_BRIDGE_TOKEN;
+});
 
 describe("build worker runtime", () => {
   it("queues, executes, and records lifecycle events through an injected runner", async () => {
@@ -128,6 +132,38 @@ describe("build worker HTTP handler", () => {
     expect(readField(data, "generatedFiles")).toEqual(["README.md"]);
     expect(readField(readField(data, "evidence"), "generatedFiles")).toEqual(["README.md"]);
     expect(readField(readField(data, "evidence"), "failureReason")).toBeUndefined();
+  });
+
+  it("requires bridge token for build routes only when configured", async () => {
+    process.env.AGENT_FACTORY_BRIDGE_TOKEN = "bridge-secret";
+    const runtime = createBuildWorkerRuntime({
+      workspaceRoot: path.join(tmpdir(), "agent-factory-build-worker-bridge-token"),
+      runner: async () => ({
+        status: "awaiting_release_approval"
+      })
+    });
+    const handler = createBuildWorkerRequestHandler(runtime);
+
+    const health = await handler({ method: "GET", pathname: "/health" });
+    expect(health.statusCode).toBe(200);
+
+    const rejected = await handler({
+      method: "POST",
+      pathname: "/build",
+      body: safeManifestPayload
+    });
+    expect(rejected.statusCode).toBe(401);
+    expect(readField(rejected.body, "error")).toBe("bridge_token_required");
+
+    const accepted = await handler({
+      method: "POST",
+      pathname: "/build",
+      headers: {
+        "x-agent-factory-bridge-token": "bridge-secret"
+      },
+      body: safeManifestPayload
+    });
+    expect(accepted.statusCode).toBe(202);
   });
 
   it("reports safe degraded runner configuration from the default runtime", async () => {

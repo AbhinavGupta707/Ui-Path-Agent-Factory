@@ -50,6 +50,11 @@
             "default": "http://localhost:8787",
             "description": "Base URL for the Factory API sandbox deployment endpoint. Defaults to local HTTP; live Automation Cloud runs must use an approved HTTPS tunnel or hosted endpoint."
           },
+          "bridgeToken": {
+            "type": "string",
+            "default": "",
+            "description": "Optional shared bridge token sent as x-agent-factory-bridge-token when the trusted HTTPS bridge requires it."
+          },
           "buildRunId": {
             "type": "string"
           },
@@ -195,7 +200,8 @@
                   "url": "${$workflow.input.deploymentServiceBaseUrl + '/deploy'}",
                   "headers": {
                     "content-type": "application/json",
-                    "x-agent-factory-operation-id": "${$workflow.input.operationId}"
+                    "x-agent-factory-operation-id": "${$workflow.input.operationId}",
+                    "x-agent-factory-bridge-token": "${$workflow.input.bridgeToken}"
                   },
                   "body": "${$context.outputs.DeploymentPayload}"
                 }

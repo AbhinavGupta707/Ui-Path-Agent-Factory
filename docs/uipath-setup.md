@@ -1,6 +1,6 @@
 # UiPath Setup And Platform Mapping
 
-This document records the current UiPath facts for `galacticus / DefaultTenant / AgentFactoryDemo`. It should be read together with [component-map.md](component-map.md) and the source files under `uipath/`.
+This document records the current UiPath facts for `galacticus / DefaultTenant / AgentFactoryDemo` plus the isolated Agent Factory solution folders. It should be read together with [component-map.md](component-map.md) and the source files under `uipath/`.
 
 ## Verified Context
 
@@ -11,6 +11,8 @@ This document records the current UiPath facts for `galacticus / DefaultTenant /
 | Orchestrator folder | `AgentFactoryDemo` |
 | Folder key | `cba41e19-47cc-4a0a-bf73-de88b60a61be` |
 | Folder id | `7986306` |
+| Isolated solution folder, historical | `AgentFactoryDemoLiveSpine` / `86717885-17bf-4d28-8253-0172c91540ec` / `7989131` |
+| Isolated solution folder, current patched candidate | `AgentFactoryDemoLiveSpine 1` / `d991e64c-d0ad-4ec6-9798-8783b166a073` / `7989142` |
 | UiPath CLI used in orchestration | `1.195.1` |
 
 ## Current Asset State
@@ -20,9 +22,9 @@ This document records the current UiPath facts for `galacticus / DefaultTenant /
 | Orchestrator folder | Live folder exists and read-only discovery passed. | Folder reads are safe; job/process mutations still require approval. |
 | Test Manager/Test Cloud | Live project `Agent Factory Quality Gates` (`AFQG`), test set `Customer360 Release Gate` (`AFQG:1`), and seven test cases exist. | No live Test Cloud execution has been approved or run. |
 | Data Service | Proposal-only schema in `uipath/data-service/schema.json`. | Choice sets, entities, fields, and seed records must not be created without approval. |
-| Maestro BPMN | Validated, import-ready project in `uipath/maestro/customer360-build`. | Publish or run only after approval and after required dependencies are ready. |
+| Maestro BPMN | Validated project in `uipath/maestro/customer360-build`; current solution deployment created process `AgentFactoryMaestroSolutionBridgeSpine.Agentic.customer360-build:1.0.1` in `AgentFactoryDemoLiveSpine 1`. | Runtime run still requires live task bindings and a successful instance id before it can be claimed. |
 | UiPath Agents | Five local low-code Agent Builder projects validate with `uip agent validate`. | Upload, publish, deploy, or run only after approval. |
-| API Workflows | Six workflow JSON assets validate with `uip api-workflow validate`, including `AgentFactory_RecordUiPathEvent`. | Upload or runtime execution only after approval; live use must override local base URLs with an approved HTTPS Factory API/Build Worker callback bridge. |
+| API Workflows | Six workflow JSON assets validate with `uip api-workflow validate`, including `AgentFactory_RecordUiPathEvent`; all support optional `bridgeToken`. | Upload or runtime execution only after approval; live use must override local base URLs with an approved HTTPS Factory API/Build Worker callback bridge and token. |
 | Action Center | Scope and release approval contracts are proposal-only. No live tasks were created or completed. | Task creation and completion are live business decisions and need approval. |
 | UiPath Apps / Coded App | Companion app contract is proposal-only. | Pack/publish/deploy only after approval. |
 | Integration Service | GitHub connector is discoverable; no connection is configured. | Do not invent connection IDs or perform OAuth/connection setup without approval. |
@@ -98,12 +100,17 @@ Test Cloud execution, confirm these layers in order:
 4. A user-approved HTTPS callback bridge exists for Factory API and Build Worker
    traffic from Automation Cloud. Localhost is acceptable only for local
    validation; it is not a live Automation Cloud callback target.
-5. Workflow inputs or Orchestrator assets are prepared with the approved
+5. `AGENT_FACTORY_BRIDGE_TOKEN` is configured on the trusted bridge host, and
+   the same value is passed as API Workflow `bridgeToken`.
+6. Workflow inputs or Orchestrator assets are prepared with the approved
    endpoint values. Do not commit endpoint secrets, tunnel tokens, `.env`
    values, or generated build output.
-6. Only after the operator approves the exact command, publish/run Maestro,
-   execute API Workflows, complete Action Center tasks, create Data Service
-   schema/records, or run Test Manager/Test Cloud.
+7. Use the UiPath Solutions lifecycle for Maestro deployment. Direct
+   `uip maestro bpmn process publish` currently fails with
+   `Invalid argument 'Period'`.
+8. Only after the operator approves the exact command, run Maestro, execute API
+   Workflows, complete Action Center tasks, create Data Service schema/records,
+   or run Test Manager/Test Cloud.
 
 Endpoint values to prepare for the live run:
 
@@ -112,6 +119,7 @@ Endpoint values to prepare for the live run:
 | Factory API status/test/deploy callbacks | `factoryApiBaseUrl`, `deploymentServiceBaseUrl` | `http://localhost:8787` | `https://<approved-factory-api-host>` |
 | Build Worker build/poll handoff | `buildWorkerBaseUrl` | `http://localhost:8790` | `https://<approved-build-worker-host>` |
 | Customer360 sandbox preview | `deploymentUrl` | `http://localhost:5174` | approved sandbox preview URL |
+| Trusted bridge token | `bridgeToken` | empty | value from `AGENT_FACTORY_BRIDGE_TOKEN` |
 
 Evidence ids to copy back into the Factory API timeline when available:
 
@@ -125,10 +133,10 @@ Evidence ids to copy back into the Factory API timeline when available:
 
 | Area | Source of truth | Status |
 |---|---|---|
-| Maestro | `uipath/maestro/customer360-build/agent-factory-customer360-build.bpmn` | Import-ready, validated, not published |
+| Maestro | `uipath/maestro/customer360-build/agent-factory-customer360-build.bpmn` | Validated and solution-deployed live as `1.0.1` in `AgentFactoryDemoLiveSpine 1`; runtime run not yet successful |
 | Data Service | `uipath/data-service/schema.json` | Proposal-only |
 | Agents | `uipath/agents/AgentFactoryAgents/` | Validated local solution, not uploaded |
-| API Workflows | `uipath/api-workflows/*/Workflow.json` | Validated local JSON, not run |
+| API Workflows | `uipath/api-workflows/*/Workflow.json` | Validated local JSON with optional bridge-token headers; not cloud-packaged/run |
 | Action Center | `uipath/action-center/approval-contracts.json` | Proposal-only |
 | UiPath Apps | `uipath/apps/companion-app.contract.json` | Proposal-only |
 | Test Manager | `uipath/test-cloud/quality-gate-assets.json` | Live catalog documented; no execution |

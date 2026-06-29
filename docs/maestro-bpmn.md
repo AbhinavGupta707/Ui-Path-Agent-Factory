@@ -1,8 +1,9 @@
 # Maestro BPMN Mapping
 
 This is the Checkpoint 7 Maestro implementation guide for the Customer360
-request-to-release lifecycle. A validated, import-ready BPMN project exists in
-the repo, but no live Maestro process has been published or run yet.
+request-to-release lifecycle. A validated BPMN project exists in the repo and
+has been deployed through UiPath Solutions into an isolated live folder, but no
+runtime process instance/job/task has been created yet.
 
 ## Process Identity
 
@@ -14,7 +15,12 @@ the repo, but no live Maestro process has been published or run yet.
 | Folder | `AgentFactoryDemo` |
 | Folder key | `cba41e19-47cc-4a0a-bf73-de88b60a61be` |
 | Folder id | `7986306` |
-| Current status | Import-ready, not published |
+| Isolated solution folder, historical | `AgentFactoryDemoLiveSpine` / `86717885-17bf-4d28-8253-0172c91540ec` / `7989131` |
+| Isolated solution folder, current patched candidate | `AgentFactoryDemoLiveSpine 1` / `d991e64c-d0ad-4ec6-9798-8783b166a073` / `7989142` |
+| Current status | Solution-deployed process/release live; runtime run not yet successful |
+| Current live package process key | `AgentFactoryMaestroSolutionBridgeSpine.Agentic.customer360-build:1.0.1` |
+| Current live release key | `70d07489-d32a-4f56-9f5e-5fadaf8b14e6` |
+| Current live feed id | `e4c3d330-c071-4dc1-9bb9-9a18c65dfd83` |
 | BPMN project | `uipath/maestro/customer360-build` |
 | BPMN source | `uipath/maestro/customer360-build/agent-factory-customer360-build.bpmn` |
 | Entry point | `Event_RequestSubmitted` |
@@ -37,8 +43,13 @@ after these prerequisites are true:
    `uipath/action-center/approval-contracts.json`.
 5. Data Service mirroring remains stretch evidence until schema creation and
    record writes are explicitly approved.
-6. The operator approves the exact `uip maestro bpmn publish` or
-   `uip maestro bpmn run` command before it is executed.
+6. Use the UiPath Solutions lifecycle for live deployment. Direct
+   `uip maestro bpmn process publish` currently fails with
+   `Invalid argument 'Period'`.
+7. Bind service/user tasks to live-discovered API Workflow, Agent, and Action
+   Center resources before claiming a live runtime run.
+8. The operator approves the exact `uip maestro bpmn process run` command
+   before it is executed.
 
 Live ids to capture back into Factory API timeline events:
 
@@ -209,24 +220,27 @@ Maestro should write these audit actions at minimum:
 - `request_blocked`
 - `request_cancelled`
 
-## Checkpoint 4 Acceptance Criteria
+## Checkpoint 7 Runtime Completion Criteria
 
 - The BPMN source validates locally with `uip maestro bpmn validate`.
-- After explicit approval, the Maestro process can be published in
-  `AgentFactoryDemo`.
+- The Maestro source can be packed, published, and deployed through UiPath
+  Solutions into `AgentFactoryDemoLiveSpine 1`.
+- A real process run creates a visible Maestro instance/job id.
 - A single Customer360 request can move from intake to release approval.
 - Data Service records are updated at each major state transition.
 - Action Center creates both approval types when the route requires them.
 - API Workflow status callbacks update `BuildRun` and `AuditEvent`.
 - Factory Console remains the polished primary UI; UiPath Apps mirrors intake and status.
 
-## Checkpoint 4 Validation
+## Checkpoint 7 Validation
 
-The import-ready BPMN source was validated with:
+The BPMN source was validated with:
 
 ```bash
 uip maestro bpmn validate uipath/maestro/customer360-build/agent-factory-customer360-build.bpmn --output json
 ```
 
-Result: valid, with one process, one start event, and three UiPath extension
-elements.
+Result: valid. Solution deployment also succeeded, but runtime start still
+returns `MaestroProcessRunFailed` before a visible instance/job/task. Registry
+inspection shows executable API Workflow and Action Center steps require
+live-discovered resource bindings.

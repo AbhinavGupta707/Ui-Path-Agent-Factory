@@ -16,6 +16,32 @@
           "platformMode": {
             "type": "string",
             "enum": ["local-simulated", "uipath-ready", "uipath-live"]
+          },
+          "factoryApiBaseUrl": {
+            "type": "string",
+            "description": "Approved HTTPS Factory API callback base URL for live UiPath runs."
+          },
+          "buildWorkerBaseUrl": {
+            "type": "string",
+            "description": "Approved HTTPS Build Worker callback base URL for live UiPath runs."
+          },
+          "deploymentServiceBaseUrl": {
+            "type": "string",
+            "description": "Approved HTTPS Factory API deployment callback base URL for live UiPath runs."
+          },
+          "deploymentUrl": {
+            "type": "string",
+            "description": "Sandbox preview URL recorded after deployment."
+          },
+          "bridgeToken": {
+            "type": "string",
+            "description": "Shared callback bridge token passed to API Workflows and trusted HTTP callbacks."
+          },
+          "folderKey": {
+            "type": "string"
+          },
+          "folderId": {
+            "type": "integer"
           }
         }
       },

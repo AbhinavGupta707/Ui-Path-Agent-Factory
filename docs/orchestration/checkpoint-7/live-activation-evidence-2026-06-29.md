@@ -2,8 +2,11 @@
 
 Status: partial live activation. The local product, API Workflow contract path,
 Build Worker, live Codex runner, and sandbox deployment path were exercised.
-Cloud Maestro publish/run did not complete because UiPath rejected the
-ProcessOrchestration package/release path before a process instance was created.
+Cloud Maestro direct publish/run did not complete because UiPath rejected the
+direct ProcessOrchestration package/release path before a process instance was
+created. Later approved solution-deployment passes created live Maestro
+process/releases, with the current patched candidate in `AgentFactoryDemoLiveSpine 1`; see
+`docs/orchestration/checkpoint-7/maestro-solution-activation-evidence-2026-06-29.md`.
 
 ## Isolation
 
@@ -148,7 +151,8 @@ controls rather than a public relay for request/manifest payloads.
 | Build Worker live Codex readiness/build | Working |
 | Sandbox deployment evidence | Working |
 | Maestro BPMN validation | Working |
-| Maestro cloud publish/run | Blocked by UiPath `Invalid argument 'Period'` |
+| Maestro direct publish/run | Blocked by UiPath `Invalid argument 'Period'` |
+| Maestro solution deployment | Completed in later pass; runtime run still did not create an instance |
 | Action Center live task | Not created; no Maestro instance reached a user task |
 | Data Service live records | Not created; shared-tenant collision risk |
 | Test Cloud execution | Not run |

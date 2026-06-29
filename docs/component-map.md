@@ -15,7 +15,7 @@ This map helps judges and reviewers understand what each part does, where it liv
 | Data mutation helper | `scripts/mutate-customer360-data.mjs` | Writes untracked Customer360 mutation evidence for refresh/deployment lanes. | Runnable locally. |
 | Live setup helper | `scripts/setup-live-env.mjs` | Prompts for local provider/runtime configuration and writes git-ignored local values. | Runnable locally; no values committed. |
 | Live stack launcher | `scripts/dev-live.mjs` | Starts the Checkpoint 7 local API, worker, Factory Console, and Customer360 stack with one command. | Runnable locally on configured ports. |
-| UiPath live spine helper | `scripts/uipath-live-spine.mjs` | Prints exact approval-gated Maestro/API Workflow activation commands and runs safe readiness checks. | Runnable locally; live mutations require explicit `AGENT_FACTORY_APPROVE_UIPATH_LIVE=true`. |
+| UiPath live spine helper | `scripts/uipath-live-spine.mjs` | Prints solution lifecycle, trusted bridge, Maestro run, and evidence commands; runs safe readiness checks. | Runnable locally; live mutations require explicit `AGENT_FACTORY_APPROVE_UIPATH_LIVE=true`. |
 | Demo smoke | `scripts/smoke-demo.mjs` | Runs the local no-secret demo verification bundle. | Runnable locally without UiPath mutations or provider calls. |
 
 ## UiPath Components
@@ -23,10 +23,10 @@ This map helps judges and reviewers understand what each part does, where it liv
 | UiPath area | Path | Product role | Current status | Approval boundary |
 |---|---|---|---|---|
 | Orchestrator | `docs/uipath-setup.md` | Folder, runtime, assets, and credential control. | Folder `AgentFactoryDemo` is live. | Jobs/assets/process mutations require approval. |
-| Maestro BPMN | `uipath/maestro/customer360-build` | Main Track 2 lifecycle orchestration. | Validated and import-ready; approved publish/debug attempts failed before instance creation with UiPath `Invalid argument 'Period'`. | Publish/run requires the UiPath platform blocker to be resolved and a trusted callback bridge. |
+| Maestro BPMN | `uipath/maestro/customer360-build` | Main Track 2 lifecycle orchestration. | Validated and solution-deployed live; current patched candidate is `AgentFactoryMaestroSolutionBridgeSpine.Agentic.customer360-build:1.0.1` in `AgentFactoryDemoLiveSpine 1`. Direct publish still fails with UiPath `Invalid argument 'Period'`; runtime run has not created an instance/job/task. | Future run requires trusted callback bridge plus live-discovered service/user task bindings. |
 | Data Service | `uipath/data-service/schema.json` | Proposed system of record for request/spec/approvals/build/test/deploy/audit. | Proposal-only. | Schema and record creation require approval. |
 | Agents | `uipath/agents/AgentFactoryAgents` | Requirements, Clarification, Governance, Build Planner, Test Summary. | Five projects validate locally; not uploaded. | Upload/publish/deploy/run requires approval. |
-| API Workflows | `uipath/api-workflows` | Calls Build Worker, polls status, records tests, starts deployment, and records UiPath live evidence in Factory API. | Six workflows validate locally; `AgentFactory_StartBuildWorker` succeeded through the local UiPath API Workflow runner; JSON assets are not packaged cloud API Workflow projects. | Cloud upload/runtime calls require trusted HTTPS endpoint inputs. |
+| API Workflows | `uipath/api-workflows` | Calls Build Worker, polls status, records tests, starts deployment, and records UiPath live evidence in Factory API. | Six workflows validate locally and pass optional `bridgeToken`; `AgentFactory_StartBuildWorker` succeeded through the local UiPath API Workflow runner; JSON assets are not packaged cloud API Workflow projects. | Cloud upload/runtime calls require trusted HTTPS endpoint inputs and token. |
 | Action Center | `uipath/action-center` | Scope/data and release approval contracts. | Proposal-only; no tasks exist. | Task creation/completion requires approval. |
 | UiPath Apps | `uipath/apps` | Companion intake/status surface. | Proposal-only; no app created or deployed. | Pack/publish/deploy requires approval. |
 | Test Manager/Test Cloud | `uipath/test-cloud`, `docs/test-cloud-quality-gates.md` | Release quality-gate catalog. | Live project, test set, and seven test cases; no execution. | Live execution requires approval. |
@@ -44,20 +44,20 @@ This map helps judges and reviewers understand what each part does, where it liv
 | Governance | Governance assessment, PII policy, forbidden actions | Governance Agent + Data Service | Local runnable; Data Service proposal-only |
 | Scope approval | `POST /approve-scope` and approval panel | Action Center scope/data task | Local runnable; live task not created |
 | Manifest | `POST /manifest` | Build Planner Agent + Data Service record | Local runnable; Agent validates locally |
-| Build worker | `POST /api/builds`, Build Worker `/build` | API Workflow `AgentFactory_StartBuildWorker` | API runnable; local UiPath API Workflow runner handoff succeeded in activation evidence |
+| Build worker | `POST /api/builds`, Build Worker `/build` | API Workflow `AgentFactory_StartBuildWorker` | API runnable; local UiPath API Workflow runner handoff succeeded in activation evidence; public Build Worker bridge can require `x-agent-factory-bridge-token` |
 | Tests | `npm run smoke`, workspace tests, Customer360/build-worker smokes | Test Manager/Test Cloud release gate | Local runnable; Test Manager catalog live |
 | Release approval | Release approval contract and demo panel | Action Center release task | Contract proposal-only |
 | Deployment | Customer360 local dashboard and Factory API `POST /deploy` sandbox contract | API Workflow `AgentFactory_StartDeployment` | Local dashboard and sandbox evidence endpoint runnable; activation evidence recorded `DEP-REQ-2026-001-001` |
-| Audit | Factory API timeline and `POST /api/requests/:id/uipath-event` | API Workflow `AgentFactory_RecordUiPathEvent` + Data Service `AuditEvent` + Maestro closeout | Local runnable; live evidence callback import-ready; Data Service proposal-only |
+| Audit | Factory API timeline and `POST /api/requests/:id/uipath-event` | API Workflow `AgentFactory_RecordUiPathEvent` + Data Service `AuditEvent` + Maestro closeout | Local runnable; live evidence callback token-gated when configured; Data Service proposal-only |
 
 ## Checkpoint 7 Live Evidence IDs
 
-When the live path is approved and executed, preserve these ids in the Factory
-API timeline and final demo evidence:
+Preserve these ids in the Factory API timeline and final demo evidence as soon
+as each one exists:
 
 | UiPath evidence | Source |
 |---|---|
-| Maestro process id and run/process-instance id | `uip maestro bpmn` publish/run output or Maestro portal |
+| Maestro process id and run/process-instance id | Solution deployment/process list plus `uip maestro bpmn process run` output or Maestro portal |
 | API Workflow execution id | `uip api-workflow run` output or Automation Cloud workflow execution details |
 | Scope/release `actionCenterTaskId` | `uip tasks list/get` after task creation |
 | Data Service record ids | `uip df records insert/get/list` after approved writes |
@@ -81,6 +81,6 @@ uip maestro bpmn validate uipath/maestro/customer360-build/agent-factory-custome
 ## Known Integration Notes
 
 - Checkpoint 7 Final QA verified `npm run smoke:demo` after the implementation merges.
-- The 2026-06-29 live activation evidence is in `docs/orchestration/checkpoint-7/live-activation-evidence-2026-06-29.md`.
+- The 2026-06-29 live activation evidence is in `docs/orchestration/checkpoint-7/live-activation-evidence-2026-06-29.md` and `docs/orchestration/checkpoint-7/maestro-solution-activation-evidence-2026-06-29.md`.
 - Deployment/Runtime added the sandbox `/deploy` endpoint and local dry-run command; hosted production deployment still requires explicit approval.
 - Do not copy from superseded scratch worktrees under `/private/tmp/agent-factory-cp5`.

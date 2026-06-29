@@ -1,19 +1,23 @@
 # Maestro BPMN Import Notes
 
-Status: import-ready Maestro source, not a live Maestro export and not a
-published process.
+Status: source-controlled Maestro source, validated locally and deployed
+through UiPath Solutions as a live process/release. The current patched
+candidate is `1.0.1` in `AgentFactoryDemoLiveSpine 1`. This is not a Studio Web
+export, and no runtime process instance has been created yet.
 
 Use this file with `uipath/maestro/process-contract.json`,
 `uipath/maestro/customer360-build/`, and `docs/maestro-bpmn.md` when creating
 the Checkpoint 4 BPMN process.
 
-## Verified Folder
+## Verified Folders
 
 - Organization: `galacticus`
 - Tenant: `DefaultTenant`
 - Folder: `AgentFactoryDemo`
 - Folder key: `cba41e19-47cc-4a0a-bf73-de88b60a61be`
 - Folder id: `7986306`
+- Historical isolated solution folder: `AgentFactoryDemoLiveSpine` / `86717885-17bf-4d28-8253-0172c91540ec` / `7989131`
+- Current isolated solution folder: `AgentFactoryDemoLiveSpine 1` / `d991e64c-d0ad-4ec6-9798-8783b166a073` / `7989142`
 
 ## Planned BPMN Process
 

@@ -38,17 +38,17 @@ The repo is a TypeScript monorepo with:
 - Node Factory API for local lifecycle state and audit events.
 - Node Build Worker service for manifest validation, Codex command contracts, worker status, and guardrail evidence.
 - React/Vite Customer360 dashboard plus deterministic metric utilities.
-- Source-controlled UiPath assets for Maestro, Agent Builder, API Workflows, Action Center, Data Service, Apps, and Test Manager.
+- Source-controlled UiPath assets for Maestro, Agent Builder, API Workflows, Action Center, Data Service, Apps, and Test Manager, plus an isolated UiPath Solutions deployment path for the Maestro process.
 
 ## UiPath Product Usage
 
 | Product | Usage |
 |---|---|
-| Maestro BPMN | Main orchestration model for request -> approval -> build -> tests -> release -> deployment -> audit. |
+| Maestro BPMN | Main orchestration model for request -> approval -> build -> tests -> release -> deployment -> audit; solution-deployed as a live process/release in an isolated folder. |
 | UiPath Agents / Agent Builder | Requirements, Clarification, Governance, Build Planner, and Test Summary agents. |
 | Action Center | Scope/data and release approval contracts. |
 | Data Service | Proposed state and audit data model. |
-| API Workflows / Integration Service | Import-ready workflow calls for build worker, status, tests, and deployment. |
+| API Workflows / Integration Service | Import-ready workflow calls for build worker, status, tests, deployment, and evidence callbacks, with trusted bridge token support. |
 | Orchestrator | Verified folder context and planned runtime/asset control. |
 | Test Manager/Test Cloud | Live quality-gate project, test set, and seven test cases. |
 | UiPath Apps | Proposed companion intake/status surface. |
@@ -56,11 +56,11 @@ The repo is a TypeScript monorepo with:
 
 ## What Is Live Vs. Ready
 
-- Live: Orchestrator folder, Test Manager project/test set/test cases, and approved live Codex readiness/build evidence through the Build Worker.
-- Runnable locally: Factory Console, Factory API, Build Worker contract, Customer360 dashboard, tests, sandbox deployment evidence, and API Workflow local-runner handoff.
-- Import-ready/validated: Maestro BPMN, low-code Agent projects, API Workflow JSON assets.
+- Live: Orchestrator folder, isolated solution-deployed Maestro process/release, Test Manager project/test set/test cases, and approved live Codex readiness/build evidence through the Build Worker.
+- Runnable locally: Factory Console, Factory API, trusted callback bridge contract, Build Worker contract, Customer360 dashboard, tests, sandbox deployment evidence, and API Workflow local-runner handoff.
+- Import-ready/validated: low-code Agent projects, API Workflow JSON assets, and source-level Maestro task bindings that still require live discovery before a completed cloud run.
 - Proposal-only until approval: Data Service schema, Action Center contracts, UiPath Apps companion contract.
-- Not claimed: production deployment, live Action Center task completion, live Data Service records, live Maestro run, cloud-packaged API Workflow execution, live Test Cloud execution.
+- Not claimed: production deployment, live Action Center task completion, live Data Service records, completed live Maestro run/process instance, cloud-packaged API Workflow execution, live Test Cloud execution.
 
 ## Track Alignment
 
@@ -92,7 +92,7 @@ The factory addresses coding-agent sprawl inside enterprises. Teams can still mo
 ## Known Limitations
 
 - Data Service schema creation is not run until explicitly approved.
-- Maestro BPMN is validated/import-ready, but approved publish/debug attempts failed before process-instance creation with UiPath `Invalid argument 'Period'`.
+- Maestro BPMN is validated and solution-deployed live, but a completed Maestro run is not claimed. Direct publish fails with UiPath `Invalid argument 'Period'`; the solution path creates the process/release, and runtime start still needs executable API Workflow/Action/Agent bindings before it will produce a process instance/task.
 - Low-code agents validate locally but are not uploaded or run; API Workflow JSON assets validate locally and `AgentFactory_StartBuildWorker` succeeded through the local UiPath API Workflow runner.
 - Action Center and UiPath Apps remain proposal-only contracts.
 - `AgentFactory_StartDeployment` targets the implemented local `POST /deploy` sandbox endpoint for deployment evidence.

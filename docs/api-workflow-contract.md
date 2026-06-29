@@ -4,8 +4,10 @@ This document defines the UiPath API Workflow contract through Checkpoint 7. The
 JSON assets are `uipath-ready`, validated locally with
 `uip api-workflow validate`, and intentionally use no-auth/local HTTP through
 the UiPath HTTP connector. The connector is `uipath-uipath-http` with
-`connectionId` set to `ImplicitConnection`. No workflow was run with auth and no
-live Automation Cloud API Workflow asset was created.
+`connectionId` set to `ImplicitConnection`. Each workflow accepts optional
+`bridgeToken` and sends it as `x-agent-factory-bridge-token` for trusted HTTPS
+callbacks. No workflow was run with auth and no live Automation Cloud API
+Workflow asset was created.
 
 ## Verified Context
 
@@ -16,17 +18,19 @@ live Automation Cloud API Workflow asset was created.
 | Folder | `AgentFactoryDemo` |
 | Folder key | `cba41e19-47cc-4a0a-bf73-de88b60a61be` |
 | Folder id | `7986306` |
+| Isolated solution folder, historical | `AgentFactoryDemoLiveSpine` / `86717885-17bf-4d28-8253-0172c91540ec` / `7989131` |
+| Isolated solution folder, current patched candidate | `AgentFactoryDemoLiveSpine 1` / `d991e64c-d0ad-4ec6-9798-8783b166a073` / `7989142` |
 
 ## Validated Workflows
 
 | Workflow | Purpose | Local file | Runtime status |
 |---|---|---|---|
-| `AgentFactory_StartBuildWorker` | Queue the Build Worker from a Customer360 manifest | `uipath/api-workflows/AgentFactory_StartBuildWorker/Workflow.json` | No-auth/local when worker runs on `http://localhost:8790` |
-| `AgentFactory_FetchBuildStatus` | Poll Build Worker status by build run id | `uipath/api-workflows/AgentFactory_FetchBuildStatus/Workflow.json` | No-auth/local when worker runs on `http://localhost:8790` |
-| `AgentFactory_PostStatusUpdate` | Mirror build/deploy status into Factory API | `uipath/api-workflows/AgentFactory_PostStatusUpdate/Workflow.json` | No-auth/local when Factory API runs on `http://localhost:8787` |
-| `AgentFactory_RecordTestResult` | Map test-gate decisions to Factory API build status | `uipath/api-workflows/AgentFactory_RecordTestResult/Workflow.json` | No-auth/local when Factory API runs on `http://localhost:8787` |
-| `AgentFactory_StartDeployment` | Start approved sandbox deployment | `uipath/api-workflows/AgentFactory_StartDeployment/Workflow.json` | No-auth/local when Factory API runs on `http://localhost:8787` |
-| `AgentFactory_RecordUiPathEvent` | Record live UiPath evidence ids in Factory API | `uipath/api-workflows/AgentFactory_RecordUiPathEvent/Workflow.json` | No-auth/local when Factory API runs on `http://localhost:8787` |
+| `AgentFactory_StartBuildWorker` | Queue the Build Worker from a Customer360 manifest | `uipath/api-workflows/AgentFactory_StartBuildWorker/Workflow.json` | No-auth/local when worker runs on `http://localhost:8790`; bridge-token ready for trusted HTTPS |
+| `AgentFactory_FetchBuildStatus` | Poll Build Worker status by build run id | `uipath/api-workflows/AgentFactory_FetchBuildStatus/Workflow.json` | No-auth/local when worker runs on `http://localhost:8790`; bridge-token ready for trusted HTTPS |
+| `AgentFactory_PostStatusUpdate` | Mirror build/deploy status into Factory API | `uipath/api-workflows/AgentFactory_PostStatusUpdate/Workflow.json` | No-auth/local when Factory API runs on `http://localhost:8787`; bridge-token ready for trusted HTTPS |
+| `AgentFactory_RecordTestResult` | Map test-gate decisions to Factory API build status | `uipath/api-workflows/AgentFactory_RecordTestResult/Workflow.json` | No-auth/local when Factory API runs on `http://localhost:8787`; bridge-token ready for trusted HTTPS |
+| `AgentFactory_StartDeployment` | Start approved sandbox deployment | `uipath/api-workflows/AgentFactory_StartDeployment/Workflow.json` | No-auth/local when Factory API runs on `http://localhost:8787`; bridge-token ready for trusted HTTPS |
+| `AgentFactory_RecordUiPathEvent` | Record live UiPath evidence ids in Factory API | `uipath/api-workflows/AgentFactory_RecordUiPathEvent/Workflow.json` | No-auth/local when Factory API runs on `http://localhost:8787`; bridge-token ready for trusted HTTPS |
 
 `AgentFactory_SyncDataServiceRecord` remains a future Data Service mirror
 workflow. This lane did not create it because Data Service schema and live entity
@@ -43,6 +47,7 @@ Every workflow input includes:
 | `platformMode` | `local-simulated`, `uipath-ready`, or `uipath-live` |
 | `folderKey` | `cba41e19-47cc-4a0a-bf73-de88b60a61be` |
 | `folderId` | `7986306` |
+| `bridgeToken` | Optional shared secret value sent as `x-agent-factory-bridge-token` to a trusted bridge host |
 
 Use `uipath-live` only after a workflow actually executes in UiPath Automation
 Cloud. The checked-in assets default to `uipath-ready`.
@@ -59,11 +64,29 @@ command is executed:
 | Build Worker | `buildWorkerBaseUrl` | `http://localhost:8790` | `https://<approved-build-worker-host>` |
 | Customer360 preview | `deploymentUrl` | `http://localhost:5174` | `https://<approved-preview-host>` or sandbox local URL recorded as evidence |
 
-Approved bridge options are Cloudflare Tunnel, ngrok, Vercel/hosted preview, or
-another user-approved host. Do not commit tunnel tokens, auth files, `.env`
-values, generated `dist`, or provider secrets. Store live endpoint values as
-workflow input arguments or Orchestrator assets after approval; do not hardcode
-them in the checked-in workflow JSON.
+Approved bridge options are Cloudflare Tunnel with Access policies, Vercel or
+hosted preview with protected callback routes, or another
+user-approved host. Public relays without access controls should not carry
+request/manifest payloads. Do not commit tunnel tokens, auth files, `.env`
+values, generated `dist`, or provider secrets. Store live endpoint values and
+`bridgeToken` as workflow input arguments or Orchestrator assets after approval;
+do not hardcode them in the checked-in workflow JSON.
+
+Factory API policy:
+
+- `POST /api/requests/{requestId}/uipath-event` and
+  `POST /api/requests/{requestId}/lifecycle-metadata` require the bridge token
+  when `AGENT_FACTORY_BRIDGE_TOKEN` is configured.
+- `PATCH /api/builds/{buildRunId}/status` and `POST /deploy` require the token
+  for `platformMode: "uipath-live"` callbacks when configured.
+- Local `uipath-ready` demo updates keep working without exposing a browser
+  token.
+
+Build Worker policy:
+
+- `/build` and `/build/{buildRunId}` require the bridge token whenever
+  `AGENT_FACTORY_BRIDGE_TOKEN` is configured, because those routes can trigger
+  or expose code-execution evidence.
 
 The Factory API timeline should capture these live ids when available:
 
@@ -87,6 +110,7 @@ Validated no-auth/local HTTP call:
 POST /build
 content-type: application/json
 x-agent-factory-operation-id: build_req_123_001
+x-agent-factory-bridge-token: <bridgeToken when configured>
 ```
 
 Inputs include `buildWorkerBaseUrl` and `manifest`. The workflow builds this
@@ -133,6 +157,7 @@ Validated no-auth/local HTTP call:
 GET /build/{buildRunId}
 content-type: application/json
 x-agent-factory-operation-id: fetch_req_123_001
+x-agent-factory-bridge-token: <bridgeToken when configured>
 ```
 
 Required inputs:
@@ -157,6 +182,7 @@ Validated no-auth/local HTTP call:
 PATCH /api/builds/{buildRunId}/status
 content-type: application/json
 x-agent-factory-operation-id: status_req_123_001
+x-agent-factory-bridge-token: <bridgeToken when configured>
 ```
 
 Request body built from workflow inputs:
@@ -191,6 +217,7 @@ Validated no-auth/local HTTP call:
 PATCH /api/builds/{buildRunId}/status
 content-type: application/json
 x-agent-factory-operation-id: test_req_123_001
+x-agent-factory-bridge-token: <bridgeToken when configured>
 ```
 
 Decision mapping:
@@ -214,6 +241,7 @@ Import-ready no-auth/local HTTP call:
 POST /deploy
 content-type: application/json
 x-agent-factory-operation-id: deploy_req_123_001
+x-agent-factory-bridge-token: <bridgeToken when configured>
 ```
 
 Request body built from workflow inputs:

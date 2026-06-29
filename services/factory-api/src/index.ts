@@ -319,7 +319,7 @@ async function routeFactoryRequest(
   }
 
   if (parts[0] === "api" && parts[1] === "requests" && parts[2]) {
-    return routeRequestResource(store, runtime, method, parts[2], parts[3], input.body);
+    return routeRequestResource(store, runtime, method, parts[2], parts[3], input.body, input.headers);
   }
 
   if (method === "POST" && input.pathname === "/api/builds") {
@@ -327,7 +327,7 @@ async function routeFactoryRequest(
   }
 
   if (parts[0] === "api" && parts[1] === "builds" && parts[2]) {
-    return routeBuildResource(store, method, parts[2], parts[3], input.body);
+    return routeBuildResource(store, method, parts[2], parts[3], input.body, input.headers);
   }
 
   throw new ApiError(404, "not_found", `No route for ${method} ${input.pathname}`);
@@ -339,7 +339,8 @@ async function routeRequestResource(
   method: string,
   requestId: string,
   action: string | undefined,
-  body: unknown
+  body: unknown,
+  headers: Record<string, string | undefined> | undefined
 ): Promise<FactoryResponseOutput> {
   if (method === "GET" && !action) {
     const detail = await store.getRequestDetail(requestId);
@@ -621,6 +622,7 @@ async function routeRequestResource(
   }
 
   if (method === "POST" && action === "lifecycle-metadata") {
+    requireBridgeToken(headers);
     await requireRecord(store, requestId);
     const metadataPatch = LifecycleMetadataPatchSchema.parse(body ?? {});
     const updatedRecord = await store.mergeLifecycleMetadata(requestId, {
@@ -646,6 +648,7 @@ async function routeRequestResource(
   }
 
   if (method === "POST" && action === "uipath-event") {
+    requireBridgeToken(headers);
     return recordUiPathEvidenceEvent(store, requestId, body);
   }
 
@@ -737,6 +740,7 @@ async function createDeployment(
   headers: Record<string, string | undefined> | undefined
 ): Promise<FactoryResponseOutput> {
   const deploymentBody = DeploymentRequestSchema.parse(body ?? {});
+  requireBridgeTokenForLiveMode(headers, deploymentBody.platformMode);
   const headerOperationId = operationIdFromHeaders(headers);
 
   if (deploymentBody.operationId && headerOperationId && deploymentBody.operationId !== headerOperationId) {
@@ -874,7 +878,8 @@ async function routeBuildResource(
   method: string,
   buildRunId: string,
   action: string | undefined,
-  body: unknown
+  body: unknown,
+  headers: Record<string, string | undefined> | undefined
 ): Promise<FactoryResponseOutput> {
   if (method === "GET" && !action) {
     const buildRun = await findBuildRun(store, buildRunId);
@@ -900,6 +905,7 @@ async function routeBuildResource(
     }
 
     const updateBody = BuildStatusUpdateSchema.parse(body ?? {});
+    requireBridgeTokenForLiveMode(headers, updateBody.platformMode);
     const now = store.now();
     const patch: Partial<BuildRun> = {
       ...updateBody,
@@ -1340,6 +1346,27 @@ function operationIdFromHeaders(headers: Record<string, string | undefined> | un
   return headers?.["x-agent-factory-operation-id"];
 }
 
+function requireBridgeToken(headers: Record<string, string | undefined> | undefined): void {
+  const expected = process.env.AGENT_FACTORY_BRIDGE_TOKEN;
+
+  if (!expected) {
+    return;
+  }
+
+  if (headers?.["x-agent-factory-bridge-token"] !== expected) {
+    throw new ApiError(401, "bridge_token_required", "A valid bridge token is required.");
+  }
+}
+
+function requireBridgeTokenForLiveMode(
+  headers: Record<string, string | undefined> | undefined,
+  mode: z.infer<typeof PlatformModeSchema> | undefined
+): void {
+  if (mode === "uipath-live") {
+    requireBridgeToken(headers);
+  }
+}
+
 function normalizeHeaders(headers: IncomingHttpHeaders): Record<string, string | undefined> {
   return Object.fromEntries(
     Object.entries(headers).map(([name, value]) => [
@@ -1365,7 +1392,7 @@ function writeJson(response: ServerResponse, statusCode: number, body: unknown) 
     "content-type": "application/json; charset=utf-8",
     "access-control-allow-origin": "*",
     "access-control-allow-methods": "GET,POST,PATCH,OPTIONS",
-    "access-control-allow-headers": "content-type,x-agent-factory-operation-id"
+    "access-control-allow-headers": "content-type,x-agent-factory-operation-id,x-agent-factory-bridge-token"
   });
   response.end(statusCode === 204 ? "" : JSON.stringify(body));
 }

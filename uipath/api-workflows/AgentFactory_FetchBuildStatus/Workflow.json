@@ -50,6 +50,11 @@
           "default": "http://localhost:8790",
           "description": "Base URL for the Build Worker. Defaults to local HTTP; live Automation Cloud runs must use an approved HTTPS tunnel or hosted endpoint."
         },
+          "bridgeToken": {
+            "type": "string",
+            "default": "",
+            "description": "Optional shared bridge token sent as x-agent-factory-bridge-token when the trusted HTTPS bridge requires it."
+          },
           "buildRunId": {
             "type": "string",
             "description": "Build worker build_run_id to fetch."
@@ -130,7 +135,8 @@
                   "url": "${$workflow.input.buildWorkerBaseUrl + '/build/' + $workflow.input.buildRunId}",
                   "headers": {
                     "content-type": "application/json",
-                    "x-agent-factory-operation-id": "${$workflow.input.operationId}"
+                    "x-agent-factory-operation-id": "${$workflow.input.operationId}",
+                    "x-agent-factory-bridge-token": "${$workflow.input.bridgeToken}"
                   }
                 }
               },

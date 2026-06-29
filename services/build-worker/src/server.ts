@@ -7,6 +7,7 @@ import type { BuildWorkerRun } from "./store.js";
 export interface BuildWorkerRequestInput {
   method: string;
   pathname: string;
+  headers?: Record<string, string | undefined>;
   body?: unknown;
 }
 
@@ -39,6 +40,7 @@ export function createBuildWorkerServer(runtime: BuildWorkerRuntime = createBuil
       const result = await handler({
         method,
         pathname: url.pathname,
+        headers: normalizeHeaders(request.headers),
         body
       });
 
@@ -85,6 +87,7 @@ async function routeBuildWorkerRequest(
   }
 
   if (method === "POST" && input.pathname === "/build") {
+    requireBridgeToken(input.headers);
     const result = await runtime.queueBuild(input.body ?? {});
     const run = result.run;
 
@@ -105,6 +108,7 @@ async function routeBuildWorkerRequest(
   }
 
   if (method === "GET" && parts.length === 2 && parts[0] === "build") {
+    requireBridgeToken(input.headers);
     const run = await runtime.getRun(parts[1] ?? "");
 
     if (!run) {
@@ -245,10 +249,31 @@ function writeJson(response: ServerResponse, statusCode: number, body: unknown):
   response.writeHead(statusCode, {
     "access-control-allow-origin": "*",
     "access-control-allow-methods": "GET,POST,OPTIONS",
-    "access-control-allow-headers": "content-type,x-agent-factory-operation-id",
+    "access-control-allow-headers": "content-type,x-agent-factory-operation-id,x-agent-factory-bridge-token",
     "content-type": "application/json; charset=utf-8"
   });
   response.end(JSON.stringify(body));
+}
+
+function requireBridgeToken(headers: Record<string, string | undefined> | undefined): void {
+  const expected = process.env.AGENT_FACTORY_BRIDGE_TOKEN;
+
+  if (!expected) {
+    return;
+  }
+
+  if (headers?.["x-agent-factory-bridge-token"] !== expected) {
+    throw new BuildWorkerHttpError(401, "bridge_token_required", "A valid bridge token is required.");
+  }
+}
+
+function normalizeHeaders(headers: IncomingMessage["headers"]): Record<string, string | undefined> {
+  return Object.fromEntries(
+    Object.entries(headers).map(([name, value]) => [
+      name.toLowerCase(),
+      Array.isArray(value) ? value.join(",") : value
+    ])
+  );
 }
 
 function errorResponse(error: unknown): BuildWorkerResponseOutput {

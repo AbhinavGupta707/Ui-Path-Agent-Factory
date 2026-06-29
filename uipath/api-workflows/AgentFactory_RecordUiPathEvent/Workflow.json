@@ -50,6 +50,11 @@
             "default": "http://localhost:8787",
             "description": "Base URL for Factory API evidence callbacks. Live Automation Cloud runs must use an approved HTTPS tunnel or hosted endpoint."
           },
+          "bridgeToken": {
+            "type": "string",
+            "default": "",
+            "description": "Optional shared bridge token sent as x-agent-factory-bridge-token when the trusted HTTPS bridge requires it."
+          },
           "event": {
             "type": "object",
             "additionalProperties": true,
@@ -150,7 +155,8 @@
                   "url": "${$workflow.input.factoryApiBaseUrl + '/api/requests/' + $workflow.input.requestId + '/uipath-event'}",
                   "headers": {
                     "content-type": "application/json",
-                    "x-agent-factory-operation-id": "${$workflow.input.operationId}"
+                    "x-agent-factory-operation-id": "${$workflow.input.operationId}",
+                    "x-agent-factory-bridge-token": "${$workflow.input.bridgeToken}"
                   },
                   "body": "${$context.outputs.EvidencePayload}"
                 }

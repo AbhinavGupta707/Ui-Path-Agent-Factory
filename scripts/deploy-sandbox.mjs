@@ -97,7 +97,11 @@ function deployEvidenceCommand(baseUrl, idempotencyKey, request, build, url) {
     }
   });
 
-  return `curl -X POST ${baseUrl}/deploy -H "content-type: application/json" -H "x-agent-factory-operation-id: ${idempotencyKey}" -d '${body}'`;
+  const bridgeHeader = process.env.AGENT_FACTORY_BRIDGE_TOKEN
+    ? ' -H "x-agent-factory-bridge-token: $AGENT_FACTORY_BRIDGE_TOKEN"'
+    : "";
+
+  return `curl -X POST ${baseUrl}/deploy -H "content-type: application/json" -H "x-agent-factory-operation-id: ${idempotencyKey}"${bridgeHeader} -d '${body}'`;
 }
 
 function run(command, commandArgs) {

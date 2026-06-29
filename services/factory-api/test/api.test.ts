@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
 import { createFactoryRequestHandler } from "../src/index.js";
 import { createInMemoryFactoryStore } from "../src/store.js";
 
@@ -9,6 +9,10 @@ function createTestHandler() {
 
   return createFactoryRequestHandler(store);
 }
+
+afterEach(() => {
+  delete process.env.AGENT_FACTORY_BRIDGE_TOKEN;
+});
 
 const intakeBody = {
   requester_name: "Avery Morgan",
@@ -406,6 +410,89 @@ describe("factory api", () => {
     );
   });
 
+  it("requires bridge token for UiPath callback mutations only when configured", async () => {
+    process.env.AGENT_FACTORY_BRIDGE_TOKEN = "bridge-secret";
+    const handle = createTestHandler();
+    const health = await handle({ method: "GET", pathname: "/health" });
+    expect(health.statusCode).toBe(200);
+
+    const created = await handle({
+      method: "POST",
+      pathname: "/api/requests",
+      body: intakeBody
+    });
+    const requestId = (created.body as { request_id: string }).request_id;
+
+    const rejected = await handle({
+      method: "POST",
+      pathname: `/api/requests/${requestId}/uipath-event`,
+      body: {
+        event_type: "maestro_run_started",
+        platformMode: "uipath-live",
+        maestro_job_key: "job_live_123"
+      }
+    });
+    expect(rejected.statusCode).toBe(401);
+    expect((rejected.body as { error: string }).error).toBe("bridge_token_required");
+
+    const accepted = await handle({
+      method: "POST",
+      pathname: `/api/requests/${requestId}/uipath-event`,
+      headers: {
+        "x-agent-factory-bridge-token": "bridge-secret"
+      },
+      body: {
+        event_type: "maestro_run_started",
+        platformMode: "uipath-live",
+        maestro_job_key: "job_live_123"
+      }
+    });
+    expect(accepted.statusCode).toBe(200);
+  });
+
+  it("requires bridge token for uipath-live build callbacks when configured", async () => {
+    process.env.AGENT_FACTORY_BRIDGE_TOKEN = "bridge-secret";
+    const handle = createTestHandler();
+    const { buildRunId } = await createDeployableBuild(handle);
+
+    const localUpdate = await handle({
+      method: "PATCH",
+      pathname: `/api/builds/${buildRunId}/status`,
+      body: {
+        status: "tests_running",
+        platformMode: "uipath-ready",
+        worker_id: "factory-console-demo"
+      }
+    });
+    expect(localUpdate.statusCode).toBe(200);
+
+    const rejected = await handle({
+      method: "PATCH",
+      pathname: `/api/builds/${buildRunId}/status`,
+      body: {
+        status: "awaiting_release_approval",
+        platformMode: "uipath-live",
+        worker_id: "AgentFactory_PostStatusUpdate"
+      }
+    });
+    expect(rejected.statusCode).toBe(401);
+    expect((rejected.body as { error: string }).error).toBe("bridge_token_required");
+
+    const accepted = await handle({
+      method: "PATCH",
+      pathname: `/api/builds/${buildRunId}/status`,
+      headers: {
+        "x-agent-factory-bridge-token": "bridge-secret"
+      },
+      body: {
+        status: "awaiting_release_approval",
+        platformMode: "uipath-live",
+        worker_id: "AgentFactory_PostStatusUpdate"
+      }
+    });
+    expect(accepted.statusCode).toBe(200);
+  });
+
   it("preserves live API Workflow execution ids on build callbacks", async () => {
     const handle = createTestHandler();
     const { requestId, buildRunId } = await createDeployableBuild(handle);
@@ -539,6 +626,40 @@ describe("factory api", () => {
     });
     const actions = (timeline.body as { data: Array<{ action: string }> }).data.map((event) => event.action);
     expect(actions).toContain("sandbox_deployment_recorded");
+  });
+
+  it("requires bridge token for uipath-live deployment evidence when configured", async () => {
+    process.env.AGENT_FACTORY_BRIDGE_TOKEN = "bridge-secret";
+    const handle = createTestHandler();
+    const { requestId, buildRunId } = await createDeployableBuild(handle);
+    const deployPayload = {
+      operationId: "deploy_live_bridge_001",
+      requestId,
+      platformMode: "uipath-live",
+      buildRunId,
+      environment: "sandbox",
+      releaseApproval: {
+        status: "approved"
+      }
+    };
+
+    const rejected = await handle({
+      method: "POST",
+      pathname: "/deploy",
+      body: deployPayload
+    });
+    expect(rejected.statusCode).toBe(401);
+    expect((rejected.body as { error: string }).error).toBe("bridge_token_required");
+
+    const accepted = await handle({
+      method: "POST",
+      pathname: "/deploy",
+      headers: {
+        "x-agent-factory-bridge-token": "bridge-secret"
+      },
+      body: deployPayload
+    });
+    expect(accepted.statusCode).toBe(201);
   });
 
   it("keeps production deployment disabled", async () => {

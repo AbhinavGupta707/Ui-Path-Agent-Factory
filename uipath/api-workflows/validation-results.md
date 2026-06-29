@@ -1,7 +1,8 @@
 # API Workflow Validation Results
 
-Status: all Checkpoint 7 API Workflow JSON files validated
-successfully with the UiPath CLI.
+Status: all Checkpoint 7 API Workflow JSON files validated successfully with
+the UiPath CLI after adding optional `bridgeToken` inputs and
+`x-agent-factory-bridge-token` headers.
 
 ## Discovery Basis
 

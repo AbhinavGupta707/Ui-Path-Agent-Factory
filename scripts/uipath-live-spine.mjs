@@ -1,18 +1,33 @@
 #!/usr/bin/env node
 import { spawnSync } from "node:child_process";
 
-const folderKey = "cba41e19-47cc-4a0a-bf73-de88b60a61be";
-const folderId = 7986306;
+const folderName = process.env.UIPATH_FOLDER_NAME ?? "AgentFactoryDemoLiveSpine 1";
+const folderKey = process.env.UIPATH_FOLDER_KEY ?? "d991e64c-d0ad-4ec6-9798-8783b166a073";
+const folderId = Number(process.env.UIPATH_FOLDER_ID ?? 7989142);
 const projectPath = "uipath/maestro/customer360-build";
 const bpmnPath = `${projectPath}/agent-factory-customer360-build.bpmn`;
 const processName = "Governed Agentic Automation Factory - Customer360 Build";
 const packageName = "AgentFactoryCustomer360Build";
-const version = process.env.UIPATH_MAESTRO_PACKAGE_VERSION ?? "1.0.0";
+const version = process.env.UIPATH_MAESTRO_PACKAGE_VERSION ?? "1.0.1";
 const outputPath = process.env.UIPATH_MAESTRO_PACKAGE_OUTPUT ?? "/private/tmp/agent-factory-maestro-package";
+const solutionName = process.env.UIPATH_SOLUTION_NAME ?? "AgentFactoryMaestroSolutionBridgeSpine";
+const solutionVersion = process.env.UIPATH_SOLUTION_VERSION ?? "1.0.1";
+const solutionVersionSuffix = solutionVersion.replaceAll(".", "");
+const solutionWorkspace = process.env.UIPATH_SOLUTION_WORKSPACE ?? `/private/tmp/${solutionName}${solutionVersionSuffix}`;
+const solutionWorkspaceName = solutionWorkspace.split("/").filter(Boolean).at(-1) ?? solutionName;
+const solutionFile = process.env.UIPATH_SOLUTION_FILE ?? `${solutionWorkspace}/${solutionWorkspaceName}.uipx`;
+const solutionPackageDir =
+  process.env.UIPATH_SOLUTION_PACKAGE_DIR ?? `/private/tmp/agent-factory-solution-packages-${solutionVersionSuffix}`;
+const deployedPackageProcessKey =
+  process.env.UIPATH_MAESTRO_PROCESS_KEY ?? "AgentFactoryMaestroSolutionBridgeSpine.Agentic.customer360-build:1.0.1";
+const deployedReleaseKey =
+  process.env.UIPATH_MAESTRO_RELEASE_KEY ?? "70d07489-d32a-4f56-9f5e-5fadaf8b14e6";
+const deployedFeedId = process.env.UIPATH_MAESTRO_FEED_ID ?? "e4c3d330-c071-4dc1-9bb9-9a18c65dfd83";
 const requestId = process.env.AGENT_FACTORY_REQUEST_ID ?? "REQ-2026-001";
 const factoryApiBaseUrl = process.env.FACTORY_API_PUBLIC_URL ?? "https://<approved-factory-api-host>";
 const buildWorkerBaseUrl = process.env.BUILD_WORKER_PUBLIC_URL ?? "https://<approved-build-worker-host>";
 const deploymentUrl = process.env.CUSTOMER360_PUBLIC_URL ?? process.env.CUSTOMER360_DEPLOYMENT_URL ?? "https://<approved-preview-host>";
+const bridgeToken = process.env.AGENT_FACTORY_BRIDGE_TOKEN ?? process.env.AGENT_FACTORY_BRIDGE_TOKEN_INPUT ?? "<approved-bridge-token>";
 const approved = process.env.AGENT_FACTORY_APPROVE_UIPATH_LIVE === "true";
 
 const args = new Set(process.argv.slice(2));
@@ -37,14 +52,8 @@ if (args.has("--execute-publish")) {
 
 if (args.has("--execute-run")) {
   requireApproval("--execute-run");
-  const processKey = process.env.UIPATH_MAESTRO_PROCESS_KEY;
-  const releaseKey = process.env.UIPATH_MAESTRO_RELEASE_KEY;
-
-  if (!processKey || !releaseKey) {
-    fail("Set UIPATH_MAESTRO_PROCESS_KEY and UIPATH_MAESTRO_RELEASE_KEY from the publish/list output before --execute-run.");
-  }
-
-  runCommand(runCommandArgs(processKey, releaseKey));
+  requireBridgeTokenForExecution();
+  runCommand(runCommandArgs(deployedPackageProcessKey, deployedReleaseKey));
 }
 
 function printHelp() {
@@ -52,9 +61,10 @@ function printHelp() {
   node scripts/uipath-live-spine.mjs --plan
   node scripts/uipath-live-spine.mjs --check-readiness
   AGENT_FACTORY_APPROVE_UIPATH_LIVE=true node scripts/uipath-live-spine.mjs --execute-publish
-  AGENT_FACTORY_APPROVE_UIPATH_LIVE=true UIPATH_MAESTRO_PROCESS_KEY=<key:version> UIPATH_MAESTRO_RELEASE_KEY=<guid> node scripts/uipath-live-spine.mjs --execute-run
+  AGENT_FACTORY_APPROVE_UIPATH_LIVE=true AGENT_FACTORY_BRIDGE_TOKEN=<token> node scripts/uipath-live-spine.mjs --execute-run
 
-This helper never performs UiPath live mutations unless AGENT_FACTORY_APPROVE_UIPATH_LIVE=true and an explicit --execute-* flag is used.`);
+This helper never performs UiPath live mutations unless AGENT_FACTORY_APPROVE_UIPATH_LIVE=true and an explicit --execute-* flag is used.
+Defaults point at the current isolated AgentFactoryDemoLiveSpine 1 solution folder. Override UIPATH_FOLDER_KEY, UIPATH_MAESTRO_PROCESS_KEY, UIPATH_MAESTRO_RELEASE_KEY, and UIPATH_MAESTRO_FEED_ID only when intentionally targeting another Agent Factory folder.`);
 }
 
 function printPlan() {
@@ -77,22 +87,37 @@ function printPlan() {
 
   console.log("Checkpoint 7 live UiPath spine plan");
   console.log("");
+  console.log("Isolated UiPath target:");
+  console.log(`- UIPATH_FOLDER_NAME=${folderName}`);
+  console.log(`- UIPATH_FOLDER_KEY=${folderKey}`);
+  console.log(`- UIPATH_FOLDER_ID=${folderId}`);
+  console.log(`- UIPATH_MAESTRO_PROCESS_KEY=${deployedPackageProcessKey}`);
+  console.log(`- UIPATH_MAESTRO_RELEASE_KEY=${deployedReleaseKey}`);
+  console.log(`- UIPATH_MAESTRO_FEED_ID=${deployedFeedId}`);
+  console.log("");
   console.log("Required public endpoints before live run:");
   console.log(`- FACTORY_API_PUBLIC_URL=${factoryApiBaseUrl}`);
   console.log(`- BUILD_WORKER_PUBLIC_URL=${buildWorkerBaseUrl}`);
   console.log(`- CUSTOMER360_PUBLIC_URL=${deploymentUrl}`);
+  console.log(`- AGENT_FACTORY_BRIDGE_TOKEN=${bridgeTokenForDisplay()}`);
   console.log("");
   console.log("Safe readiness checks:");
   printCommand(["npm", "run", "uipath:readiness"]);
   console.log("");
-  console.log("Approval-gated publish command:");
-  printCommand(publishCommand());
+  console.log("Preferred solution lifecycle commands used for the live process deployment:");
+  for (const command of solutionLifecycleCommands()) {
+    printCommand(command);
+  }
   console.log("");
-  console.log("After publish, list processes and capture ProcessKey/ReleaseKey:");
+  console.log("Legacy direct publish command shape, retained for future CLI/platform fixes:");
+  printCommand(publishCommand());
+  console.log("Current evidence shows this direct command fails on CLI 1.195.1 with HTTP 400: Invalid argument 'Period'.");
+  console.log("");
+  console.log("List solution-deployed process/release evidence:");
   printCommand(["uip", "maestro", "bpmn", "process", "list", "--folder-key", folderKey, "--output", "json"]);
   console.log("");
   console.log("Approval-gated run command shape:");
-  printCommand(runCommandArgs("<process-key:version>", "<release-key-guid>"));
+  printCommand(runCommandArgs(deployedPackageProcessKey, deployedReleaseKey));
   console.log("Run inputs:");
   console.log(JSON.stringify(runInputs, null, 2));
   console.log("");
@@ -110,6 +135,7 @@ function runReadinessChecks() {
   const commands = [
     ["uip", "login", "status", "--output", "json"],
     ["uip", "or", "folders", "get", "AgentFactoryDemo", "--output", "json"],
+    ["uip", "or", "folders", "get", folderName, "--output", "json"],
     ["uip", "tm", "project", "list", "--limit", "5", "--output", "json"],
     ["uip", "tm", "testcases", "list", "--project-key", "AFQG", "--output", "json"],
     ["uip", "maestro", "bpmn", "validate", bpmnPath, "--output", "json"],
@@ -124,6 +150,62 @@ function runReadinessChecks() {
   for (const command of commands) {
     runCommand(command);
   }
+}
+
+function solutionLifecycleCommands() {
+  return [
+    ["uip", "solution", "init", solutionWorkspace, "--output", "json"],
+    [
+      "uip",
+      "solution",
+      "project",
+      "import",
+      "--source",
+      projectPath,
+      "--solutionFile",
+      solutionFile,
+      "--output",
+      "json"
+    ],
+    [
+      "uip",
+      "solution",
+      "pack",
+      solutionWorkspace,
+      solutionPackageDir,
+      "--name",
+      solutionName,
+      "--version",
+      solutionVersion,
+      "--output",
+      "json"
+    ],
+    [
+      "uip",
+      "solution",
+      "publish",
+      `${solutionPackageDir}/${solutionName}_${solutionVersion}.zip`,
+      "--wait",
+      "--output",
+      "json"
+    ],
+    [
+      "uip",
+      "solution",
+      "deploy",
+      "run",
+      "--name",
+      `${solutionName}Deployment${solutionVersionSuffix}`,
+      "--package-name",
+      solutionName,
+      "--package-version",
+      solutionVersion,
+      "--folder-name",
+      folderName,
+      "--output",
+      "json"
+    ]
+  ];
 }
 
 function publishCommand() {
@@ -150,7 +232,7 @@ function publishCommand() {
 }
 
 function runCommandArgs(processKey, releaseKey) {
-  return [
+  const command = [
     "uip",
     "maestro",
     "bpmn",
@@ -161,10 +243,16 @@ function runCommandArgs(processKey, releaseKey) {
     "--release-key",
     releaseKey,
     "--inputs",
-    JSON.stringify(maestroRunInputs()),
-    "--output",
-    "json"
+    JSON.stringify(maestroRunInputs())
   ];
+
+  if (deployedFeedId) {
+    command.push("--feed-id", deployedFeedId);
+  }
+
+  command.push("--output", "json");
+
+  return command;
 }
 
 function maestroRunInputs() {
@@ -175,6 +263,7 @@ function maestroRunInputs() {
     buildWorkerBaseUrl,
     deploymentServiceBaseUrl: factoryApiBaseUrl,
     deploymentUrl,
+    bridgeToken,
     folderKey,
     folderId
   };
@@ -186,6 +275,7 @@ function recordEventInput(event) {
     requestId,
     platformMode: "uipath-live",
     factoryApiBaseUrl,
+    bridgeToken,
     event
   };
 }
@@ -237,7 +327,17 @@ function requireApproval(flag) {
   }
 }
 
+function requireBridgeTokenForExecution() {
+  if (bridgeToken === "<approved-bridge-token>") {
+    fail("Set AGENT_FACTORY_BRIDGE_TOKEN or AGENT_FACTORY_BRIDGE_TOKEN_INPUT before --execute-run.");
+  }
+}
+
 function fail(message) {
   console.error(message);
   process.exit(1);
+}
+
+function bridgeTokenForDisplay() {
+  return process.env.AGENT_FACTORY_BRIDGE_TOKEN ? "<redacted-from-env>" : bridgeToken;
 }

@@ -60,11 +60,11 @@ Open the Factory Console and Customer360 dashboard from the Vite URLs printed by
 
 Show these in the UI, terminal, or docs:
 
-- Maestro BPMN source validates and models the whole lifecycle.
+- Maestro BPMN source validates, models the whole lifecycle, and is solution-deployed live as patched version `1.0.1` in isolated folder `AgentFactoryDemoLiveSpine 1`; no runtime process instance is claimed yet.
 - Agent Builder projects validate locally for Requirements, Clarification, Governance, Build Planner, and Test Summary.
 - Action Center contracts define scope and release approval payloads.
 - Data Service schema defines the future state/audit system of record.
-- API Workflows validate for StartBuildWorker, FetchBuildStatus, PostStatusUpdate, RecordTestResult, and StartDeployment; `AgentFactory_StartBuildWorker` also succeeded through the local UiPath API Workflow runner.
+- API Workflows validate for StartBuildWorker, FetchBuildStatus, PostStatusUpdate, RecordTestResult, StartDeployment, and RecordUiPathEvent; all support the optional trusted bridge token header, and `AgentFactory_StartBuildWorker` also succeeded through the local UiPath API Workflow runner.
 - Test Manager project/test set/test cases are live.
 - UiPath for Coding Agents setup is available through `uip skills install --agent codex --local`, and the 2026-06-29 activation captured a live Codex readiness/build session.
 
@@ -72,7 +72,7 @@ Show these in the UI, terminal, or docs:
 
 - Test Manager catalog is live; executions still require approval.
 - Data Service schema is proposal-only until entity creation is approved.
-- Maestro BPMN is import-ready until publish/run is approved.
+- Maestro BPMN is solution-deployed live, but a completed Maestro run still requires live task bindings and a successful process instance id.
 - Agents and API Workflows are validated/import-ready until upload/run is approved.
 - Action Center and UiPath Apps contracts are proposal-only until creation/deployment is approved.
 - Production deployment is not part of this demo.

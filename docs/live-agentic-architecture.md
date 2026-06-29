@@ -11,7 +11,7 @@ Checkpoint 5 proves the product shape, but it is not yet a fully live agentic sy
 - Build Worker has a validated HTTP surface and a runner abstraction, but the default runner blocks unless a real Codex/Git runner is injected.
 - Customer360 is a local generated-dashboard target with deterministic synthetic data.
 - UiPath Test Manager catalog is live.
-- UiPath Maestro, Agents, Data Service, Action Center, API Workflows, and UiPath Apps are source-controlled or import-ready, but not published/running as the live orchestration path.
+- UiPath Maestro is solution-deployed as a live process/release in isolated folder `AgentFactoryDemoLiveSpine 1`, but no runtime instance/task has completed. Agents, Data Service, Action Center, API Workflows, and UiPath Apps remain source-controlled/import-ready/proposal-only according to their component-map labels.
 
 The next build should turn this into a real run system where the UI starts a request and watches actual backend, agent, UiPath, build, test, and deploy events.
 

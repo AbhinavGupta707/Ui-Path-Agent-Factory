@@ -9,15 +9,15 @@ This is the judge-facing Checkpoint 7 path for Agent Factory. The demo story is 
 | Layer | Status | What to say |
 |---|---|---|
 | Factory Console | Local runnable | Operator UI for intake, generated clarifications, governance review, approvals, live run progress, sandbox preview, and evidence. |
-| Factory API | Local runnable | Lifecycle API for requests, graph metadata, approvals, manifests, build/deploy callbacks, and audit state. |
-| Build Worker | Local runnable, live Codex evidence exists | Validates governed manifests and records build evidence. Default mode blocks unless `BUILD_WORKER_CODEX_ENABLED=true`; the approved 2026-06-29 activation passed live Codex readiness/build in an isolated workspace. |
+| Factory API | Local runnable, trusted bridge ready | Lifecycle API for requests, graph metadata, approvals, manifests, build/deploy callbacks, and audit state. `uipath-live` callback mutations support `AGENT_FACTORY_BRIDGE_TOKEN` via `x-agent-factory-bridge-token`. |
+| Build Worker | Local runnable, trusted bridge ready, live Codex evidence exists | Validates governed manifests and records build evidence. Default mode blocks unless `BUILD_WORKER_CODEX_ENABLED=true`; the approved 2026-06-29 activation passed live Codex readiness/build in an isolated workspace. Build/status routes can require the bridge token. |
 | Customer360 dashboard | Local runnable | Sandbox output with synthetic data, masked PII, refresh/degraded/empty states, and quality checks. |
 | Fireworks | Provider-ready | Server-side model profiles can generate clarification/spec/governance/planning outputs when configured; fallback is labeled deterministic/degraded. |
 | LangSmith | Provider-ready | Trace/evaluation evidence only. Share links only after payloads are reviewed and sanitized. |
 | UiPath Orchestrator | Live folder evidence from platform setup | Folder/runtime context exists; jobs, assets, and process mutations remain approval-gated. |
 | UiPath Test Manager/Test Cloud | Live catalog, no execution | Project `AFQG` and seven test cases are live. No live Test Cloud execution has been run. |
-| Maestro BPMN | Validated/import-ready, cloud activation blocked | Track 2 BPMN validates locally, but approved publish/debug attempts failed before instance creation with UiPath `Invalid argument 'Period'`. |
-| API Workflows | Validated/import-ready, local runner exercised | Six workflow assets validate locally, including `AgentFactory_RecordUiPathEvent`; `AgentFactory_StartBuildWorker` successfully ran through the local UiPath API Workflow runner against `127.0.0.1`. Cloud packaging/upload is not claimed. |
+| Maestro BPMN | Live solution-deployed process, no completed run | Track 2 BPMN validates. Current patched solution deployment is process `AgentFactoryMaestroSolutionBridgeSpine.Agentic.customer360-build:1.0.1` in isolated folder `AgentFactoryDemoLiveSpine 1`; earlier `1.0.0` remains in `AgentFactoryDemoLiveSpine`. Runtime run still fails before instance/job/task creation, so no live Maestro run is claimed. |
+| API Workflows | Validated/import-ready, local runner exercised, bridge-token ready | Six workflow assets validate locally, including `AgentFactory_RecordUiPathEvent`; `AgentFactory_StartBuildWorker` successfully ran through the local UiPath API Workflow runner against `127.0.0.1`. Cloud packaging/upload is not claimed. |
 | UiPath Agents | Validated/import-ready | Five low-code Agent projects validate locally; upload/deploy/run requires approval. |
 | Action Center | Proposal-only contract | Scope/data and release gates are modeled; no live task is claimed until a real task id exists. |
 | Data Service | Proposal-only schema | Source-controlled schema only; no entity or record writes without approval. |
@@ -76,10 +76,11 @@ Checkpoint 7 final QA evidence:
 |---|---|
 | UiPath login | Logged in to `https://cloud.uipath.com`, organization `galacticus`, tenant `DefaultTenant`. |
 | Orchestrator folder | `AgentFactoryDemo` exists with folder id `7986306`. |
+| Isolated solution folders | `AgentFactoryDemoLiveSpine` id `7989131` has the historical `1.0.0` deployment; `AgentFactoryDemoLiveSpine 1` id `7989142` has the current patched `1.0.1` deployment. |
 | Test Manager project | `AFQG` / `Agent Factory Quality Gates` exists and is active. |
 | Test cases | Seven cataloged test cases exist: `AF-QG-001` through `AF-QG-007`. |
-| Maestro BPMN validation | `agent-factory-customer360-build.bpmn` is valid with one process, one start event, and three UiPath extensions. |
-| API Workflow validation | Six workflows validate, including `AgentFactory_RecordUiPathEvent`. |
+| Maestro BPMN validation | `agent-factory-customer360-build.bpmn` is valid with one process and one start event; solution deployment is live, runtime run is not. |
+| API Workflow validation | Six workflows validate, including `AgentFactory_RecordUiPathEvent`, and all accept `bridgeToken`. |
 
 ## Manual Demo Script
 
@@ -108,7 +109,7 @@ I am in a business and I am struggling to track customer analytics. I want a das
    Start the build handoff. In default mode, show the Build Worker blocked/readiness evidence. For the 2026-06-29 activation, show `BUILD-REQ-2026-001-001`, Codex readiness session `019f14f9-8e3b-7232-9d59-6ee2c428279f`, 14 generated files, five passed guardrail checks, and sandbox deployment `DEP-REQ-2026-001-001`.
 
 7. Show UiPath orchestration evidence
-   Open the evidence panel or component map. Show Maestro as the intended Track 2 orchestration spine, API Workflows as validated handoffs with a local-runner build handoff, Action Center as the human gate contract, Data Service as proposed audit state, and Test Manager as the live quality catalog. Do not say Maestro/Action Center/Data Service/Test Cloud ran live unless the evidence panel contains real platform ids.
+   Open the evidence panel or component map. Show the live solution-deployed Maestro process/release, API Workflows as validated handoffs with a local-runner build handoff and trusted bridge token support, Action Center as the human gate contract, Data Service as proposed audit state, and Test Manager as the live quality catalog. Do not say a Maestro run, Action Center task, Data Service record, or Test Cloud execution happened live unless the evidence panel contains real platform ids.
 
 8. Open sandbox preview
    Open the Customer360 dashboard from the output/deployment section. Verify synthetic metrics render, direct identifiers are masked, and sandbox labeling is visible.
@@ -123,7 +124,7 @@ I am in a business and I am struggling to track customer analytics. I want a das
 - "Fireworks-powered server-side agents clarify, plan, and govern when configured; deterministic fallback is labeled."
 - "Codex is the constrained builder. It receives a manifest with allowed files, forbidden actions, sandbox-only deployment, test expectations, and repair limits."
 - "The product hides most technical detail until the evidence drawer, where live/local/import-ready/proposal-only labels stay explicit."
-- "When a live UiPath run exists, the evidence drawer reads actual Maestro run IDs, API Workflow execution IDs, human task IDs, Data Service record IDs, and Test Manager execution IDs from the Factory API timeline."
+- "The current live UiPath evidence is a solution-deployed Maestro process/release plus live Test Manager catalog; a complete live run still needs a real Maestro instance ID and human task ID."
 
 ## No-Secret Validation
 

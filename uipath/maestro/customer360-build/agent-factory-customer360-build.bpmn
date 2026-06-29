@@ -64,7 +64,9 @@
     </bpmn:serviceTask>
     <bpmn:boundaryEvent id="Boundary_BuildTimeout" name="Build worker timeout" attachedToRef="Task_StartBuildWorker">
       <bpmn:outgoing>Flow_BuildTimeout_Blocked</bpmn:outgoing>
-      <bpmn:timerEventDefinition id="Timer_BuildTimeout" />
+      <bpmn:timerEventDefinition id="Timer_BuildTimeout">
+        <bpmn:timeDuration xsi:type="bpmn:tFormalExpression" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">PT30M</bpmn:timeDuration>
+      </bpmn:timerEventDefinition>
     </bpmn:boundaryEvent>
     <bpmn:intermediateCatchEvent id="Event_WaitBuildStatus" name="Wait for build status callback">
       <bpmn:incoming>Flow_StartBuild_WaitStatus</bpmn:incoming>
@@ -100,7 +102,9 @@
     </bpmn:serviceTask>
     <bpmn:boundaryEvent id="Boundary_DeployTimeout" name="Deployment timeout" attachedToRef="Task_DeploySandbox">
       <bpmn:outgoing>Flow_DeployTimeout_Blocked</bpmn:outgoing>
-      <bpmn:timerEventDefinition id="Timer_DeployTimeout" />
+      <bpmn:timerEventDefinition id="Timer_DeployTimeout">
+        <bpmn:timeDuration xsi:type="bpmn:tFormalExpression" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">PT15M</bpmn:timeDuration>
+      </bpmn:timerEventDefinition>
     </bpmn:boundaryEvent>
     <bpmn:serviceTask id="Task_PublishAuditSummary" name="Publish audit summary">
       <bpmn:incoming>Flow_Deploy_AuditSummary</bpmn:incoming>

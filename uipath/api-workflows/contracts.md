@@ -1,8 +1,10 @@
 # API Workflow Contracts
 
 Status: `uipath-ready` validated JSON assets. These workflows are import-ready
-and use UiPath HTTP connector no-auth calls with local defaults. No live API
-Workflow was created or run.
+and use UiPath HTTP connector no-auth calls with local defaults. Each workflow
+also accepts optional `bridgeToken` and sends it as
+`x-agent-factory-bridge-token` for trusted HTTPS callbacks. No cloud-packaged
+API Workflow was created or run.
 
 ## Workflows
 
@@ -23,7 +25,8 @@ Workflow was created or run.
   "requestId": "req_123",
   "platformMode": "uipath-ready",
   "folderKey": "cba41e19-47cc-4a0a-bf73-de88b60a61be",
-  "folderId": 7986306
+  "folderId": 7986306,
+  "bridgeToken": ""
 }
 ```
 
@@ -48,7 +51,9 @@ checked-in JSON assets:
 - `buildWorkerBaseUrl`: Build Worker HTTPS host,
 - `factoryApiBaseUrl`: Factory API HTTPS host,
 - `deploymentServiceBaseUrl`: Factory API HTTPS host,
-- `deploymentUrl`: Customer360 sandbox preview URL.
+- `deploymentUrl`: Customer360 sandbox preview URL,
+- `bridgeToken`: value from `AGENT_FACTORY_BRIDGE_TOKEN` or an approved
+  Orchestrator asset.
 
 ## Run Mode
 
@@ -112,6 +117,8 @@ Each command returned:
   solution through the official UiPath flow.
 - Configure target service base URLs as environment-specific values, preferably
   Orchestrator assets or explicit run inputs after approval.
+- Configure the trusted bridge token in the public Factory API/Build Worker
+  host and pass the same value as `bridgeToken`; do not commit it.
 - Start the local Build Worker for build trigger/polling flows.
 - Start the local Factory API for status/test-result/deployment flows.
 - Start the local Customer360 dashboard or record a Vercel preview URL before

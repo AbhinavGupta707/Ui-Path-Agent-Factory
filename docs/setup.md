@@ -135,6 +135,10 @@ curl -X POST http://localhost:8787/deploy \
   -d '{"requestId":"REQ-2026-001","platformMode":"uipath-ready","buildRunId":"BUILD-REQ-2026-001-001","environment":"sandbox","deploymentUrl":"http://localhost:5174","deploymentProvider":"local-sandbox","releaseApproval":{"status":"approved","approvalId":"appr_req_2026_001_release_001","decidedBy":"release-approver"}}'
 ```
 
+For `uipath-live` trusted bridge callbacks, include
+`-H "x-agent-factory-bridge-token: $AGENT_FACTORY_BRIDGE_TOKEN"` and keep the
+actual value in a git-ignored environment or Orchestrator asset.
+
 For a dry-run command bundle:
 
 ```bash

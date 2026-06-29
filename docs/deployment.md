@@ -101,6 +101,13 @@ curl -X POST http://localhost:8787/deploy \
   -d '{"requestId":"REQ-2026-001","platformMode":"uipath-ready","buildRunId":"BUILD-REQ-2026-001-001","environment":"sandbox","deploymentUrl":"http://localhost:5174","deploymentProvider":"local-sandbox","releaseApproval":{"status":"approved","approvalId":"appr_req_2026_001_release_001","decidedBy":"release-approver"}}'
 ```
 
+For a `uipath-live` trusted bridge callback, set `AGENT_FACTORY_BRIDGE_TOKEN`
+server-side and include:
+
+```bash
+-H "x-agent-factory-bridge-token: $AGENT_FACTORY_BRIDGE_TOKEN"
+```
+
 The helper prints the same commands without deploying by default:
 
 ```bash

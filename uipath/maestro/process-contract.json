@@ -1,7 +1,7 @@
 {
-  "status": "import-ready",
+  "status": "solution-deployed",
   "platformMode": "uipath-ready",
-  "liveCreationStatus": "not-published",
+  "liveCreationStatus": "solution-deployed-no-runtime-instance",
   "approvalRequiredBeforeLiveMutation": true,
   "processName": "Governed Agentic Automation Factory - Customer360 Build",
   "projectPath": "uipath/maestro/customer360-build",
@@ -15,16 +15,42 @@
     "key": "cba41e19-47cc-4a0a-bf73-de88b60a61be",
     "id": 7986306
   },
+  "solutionDeploymentFolder": {
+    "name": "AgentFactoryDemoLiveSpine 1",
+    "key": "d991e64c-d0ad-4ec6-9798-8783b166a073",
+    "id": 7989142,
+    "isolationNote": "Created as a dedicated solution-deployment folder for Agent Factory 1.0.1 to avoid touching other UiPath projects in the same tenant. Historical 1.0.0 deployment remains in AgentFactoryDemoLiveSpine / 86717885-17bf-4d28-8253-0172c91540ec / 7989131."
+  },
+  "deployedProcess": {
+    "solutionPackageName": "AgentFactoryMaestroSolutionBridgeSpine",
+    "solutionPackageVersion": "1.0.1",
+    "deploymentKey": "427de334-ba5e-4e95-bba1-d053abdad2f4",
+    "processKey": "AgentFactoryMaestroSolutionBridgeSpine.Agentic.customer360-build",
+    "packageProcessKey": "AgentFactoryMaestroSolutionBridgeSpine.Agentic.customer360-build:1.0.1",
+    "releaseKey": "70d07489-d32a-4f56-9f5e-5fadaf8b14e6",
+    "feedId": "e4c3d330-c071-4dc1-9bb9-9a18c65dfd83",
+    "runtimeStatus": "Process and release are visible in Orchestrator/Maestro lists, but process run attempts failed before an instance/job/task was created."
+  },
   "correlationKey": "AutomationRequest.requestId",
   "entryPoint": {
     "id": "Event_RequestSubmitted",
     "uniqueId": "9c7261e3-6e10-4e21-97b5-e45d6632bc11",
     "requiredInput": ["requestId"],
-    "optionalInput": ["platformMode"]
+    "optionalInput": [
+      "platformMode",
+      "factoryApiBaseUrl",
+      "buildWorkerBaseUrl",
+      "deploymentServiceBaseUrl",
+      "deploymentUrl",
+      "bridgeToken",
+      "folderKey",
+      "folderId"
+    ]
   },
   "checkpoint7CloudActivation": {
-    "status": "approval-gated",
-    "callbackEndpointStrategy": "Automation Cloud cannot call localhost. Before Maestro publish/run, choose an approved HTTPS bridge for Factory API and Build Worker callbacks, such as Cloudflare Tunnel, ngrok, or a hosted preview with no committed secrets.",
+    "status": "partial-live-solution-activation",
+    "callbackEndpointStrategy": "Automation Cloud cannot call localhost. Before any runtime run that sends request/manifest data, expose Factory API and Build Worker through an approved HTTPS bridge and pass bridgeToken to UiPath workflow inputs.",
+    "trustedBridgeHeader": "x-agent-factory-bridge-token",
     "requiredWorkflowEndpointOverrides": {
       "AgentFactory_StartBuildWorker.buildWorkerBaseUrl": "https://<approved-build-worker-host>",
       "AgentFactory_FetchBuildStatus.buildWorkerBaseUrl": "https://<approved-build-worker-host>",
@@ -43,9 +69,13 @@
       "testSetId",
       "testExecutionId"
     ],
-    "blockedUntilApprovedCommands": [
-      "uip maestro bpmn publish ...",
-      "uip maestro bpmn run ...",
+    "remainingRuntimeBlockers": [
+      "Bind Maestro service/user tasks to discovered UiPath API Workflow, Agent, and Action Center resources or replace placeholder tasks with supported HTTP/HITL extension instances.",
+      "Resolve UiPath CLI/process run response for the solution-deployed ProcessOrchestration package; current run returns MaestroProcessRunFailed without creating a visible instance.",
+      "Create or deploy live Action Center task/app assets before claiming a live human gate."
+    ],
+    "approvalSensitiveCommands": [
+      "uip maestro bpmn process run ...",
       "uip api-workflow run ...",
       "uip tasks complete ...",
       "uip df choice-sets/entities/records create ...",
