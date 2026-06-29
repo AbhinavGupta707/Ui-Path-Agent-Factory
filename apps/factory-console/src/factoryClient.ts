@@ -1,4 +1,4 @@
-import type { AutomationRequest, IntakeRequest } from "@agent-factory/shared-contracts";
+import type { AutomationRequest, AutomationRequestDetail, IntakeRequest } from "@agent-factory/shared-contracts";
 import type { ConsoleRequest } from "./seedData";
 
 const DEFAULT_API_BASE_URL = "http://localhost:8787";
@@ -23,6 +23,20 @@ interface HealthResponse {
 
 interface IntakeResponse {
   data?: AutomationRequest;
+}
+
+export interface TimelineEvent {
+  id: string;
+  actor: string;
+  action: string;
+  summary: string;
+  timestamp: string;
+}
+
+export interface LifecycleSnapshot {
+  detail?: AutomationRequestDetail;
+  timeline: TimelineEvent[];
+  fetchedAt: string;
 }
 
 export function getFactoryApiBaseUrl() {
@@ -66,6 +80,37 @@ export async function submitIntakeToFactoryApi(
     });
 
     return response.data ? mapAutomationRequest(response.data, intake) : null;
+  } catch {
+    return null;
+  }
+}
+
+export async function getLifecycleSnapshot(
+  requestId: string,
+  apiBaseUrl = getFactoryApiBaseUrl()
+): Promise<LifecycleSnapshot | null> {
+  try {
+    const [detailResult, timelineResult] = await Promise.allSettled([
+      requestJson<{ data?: AutomationRequestDetail }>(`${apiBaseUrl}/api/requests/${requestId}`, {
+        method: "GET"
+      }),
+      requestJson<{ data?: TimelineEvent[] }>(`${apiBaseUrl}/api/requests/${requestId}/timeline`, {
+        method: "GET"
+      })
+    ]);
+
+    const detail = detailResult.status === "fulfilled" ? detailResult.value.data : undefined;
+    const timeline = timelineResult.status === "fulfilled" ? timelineResult.value.data ?? [] : [];
+
+    if (!detail && timeline.length === 0) {
+      return null;
+    }
+
+    return {
+      detail,
+      timeline,
+      fetchedAt: new Date().toISOString()
+    };
   } catch {
     return null;
   }

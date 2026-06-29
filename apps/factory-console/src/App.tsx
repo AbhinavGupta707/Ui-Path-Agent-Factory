@@ -1,38 +1,43 @@
 import { useEffect, useMemo, useState, type ChangeEvent, type ReactNode } from "react";
 import {
+  Activity,
   AlertTriangle,
+  BarChart3,
+  Check,
   CheckCircle2,
-  ClipboardCheck,
+  ChevronRight,
   Circle,
   CircleDot,
-  Clock3,
-  Code2,
   Database,
   ExternalLink,
   FileJson,
   FlaskConical,
   GitBranch,
+  LayoutDashboard,
   Loader2,
+  LockKeyhole,
   MessageSquareText,
-  Play,
+  PanelRightOpen,
   RefreshCw,
   Rocket,
-  ScrollText,
+  Search,
   Send,
   ShieldCheck,
-  SlidersHorizontal,
-  Terminal,
-  Undo2,
+  Sparkles,
+  User,
   UserCheck,
   Workflow,
+  X,
   XCircle,
   type LucideIcon
 } from "lucide-react";
 import { defaultUiPathContext, type IntakeRequest } from "@agent-factory/shared-contracts";
 import {
   checkFactoryApi,
+  getLifecycleSnapshot,
   submitIntakeToFactoryApi,
-  type FactoryApiStatus
+  type FactoryApiStatus,
+  type LifecycleSnapshot
 } from "./factoryClient";
 import {
   auditEvents,
@@ -45,7 +50,6 @@ import {
   createLocalRequest,
   deploymentEvidence,
   governanceAssessment,
-  lifecycleSteps,
   manifestDocument,
   metricOptions,
   piiPolicies,
@@ -57,59 +61,51 @@ import {
   seedRequest,
   sourceSystems,
   structuredSpec,
-  testManagerCatalog
+  testManagerCatalog,
+  type ConsoleAuditEvent
 } from "./seedData";
 
-type WorkspaceTab = "clarification" | "spec" | "manifest" | "build" | "deployment" | "audit";
+type ProductView = "new-request" | "build-plan" | "live-run" | "output-preview";
 type SubmitState = "idle" | "loading" | "success" | "error";
 type ApprovalState = "pending" | "approved" | "changes";
 type ReleaseApprovalState = "pending" | "approved";
-
-const workspaceTabs: Array<{ id: WorkspaceTab; label: string; icon: LucideIcon }> = [
-  { id: "clarification", label: "Clarify", icon: MessageSquareText },
-  { id: "spec", label: "Spec", icon: ScrollText },
-  { id: "manifest", label: "Manifest", icon: FileJson },
-  { id: "build", label: "Build", icon: Terminal },
-  { id: "deployment", label: "Deploy", icon: Rocket },
-  { id: "audit", label: "Audit", icon: Clock3 }
-];
+type PillTone = "neutral" | "success" | "warning" | "danger" | "info";
 
 const checkingStatus: FactoryApiStatus = {
   mode: "checking",
   platformMode: "local-simulated",
   apiBaseUrl: "http://localhost:8787",
   label: "Checking Factory API",
-  detail: "Probing the local Factory API spine."
+  detail: "Connecting to the lifecycle service."
 };
 
-const lifecycleIcons: Record<string, LucideIcon> = {
-  intake: Send,
-  clarification: MessageSquareText,
-  governance: ShieldCheck,
-  scope: UserCheck,
-  manifest: FileJson,
-  build: Code2,
-  quality: FlaskConical,
-  release: ClipboardCheck,
-  deployment: Rocket,
-  audit: ScrollText
-};
+const productViews: Array<{ id: ProductView; label: string; icon: LucideIcon; helper: string }> = [
+  { id: "new-request", label: "New Request", icon: MessageSquareText, helper: "Capture the ask" },
+  { id: "build-plan", label: "Build Plan", icon: ShieldCheck, helper: "Review governance" },
+  { id: "live-run", label: "Live Run", icon: Activity, helper: "Watch progress" },
+  { id: "output-preview", label: "Output Preview", icon: LayoutDashboard, helper: "Inspect result" }
+];
 
-const lifecycleTabMap: Record<string, WorkspaceTab> = {
-  intake: "clarification",
-  clarification: "clarification",
-  governance: "spec",
-  scope: "spec",
-  manifest: "manifest",
-  build: "build",
-  quality: "build",
-  release: "deployment",
-  deployment: "deployment",
-  audit: "audit"
-};
+const runStages = [
+  { id: "intake", label: "Request", status: "done", product: "Factory API" },
+  { id: "governance", label: "Govern", status: "done", product: "UiPath Agents" },
+  { id: "build", label: "Build", status: "active", product: "Codex worker" },
+  { id: "quality", label: "Quality", status: "ready", product: "Test Manager" },
+  { id: "release", label: "Release", status: "waiting", product: "Action Center" },
+  { id: "preview", label: "Preview", status: "ready", product: "Sandbox" }
+] as const;
+
+const outputKpis = [
+  { label: "Revenue", value: "$4.82M", delta: "+12.4%", tone: "success" },
+  { label: "Repeat rate", value: "38.6%", delta: "+4.1%", tone: "success" },
+  { label: "Return rate", value: "6.8%", delta: "-1.2%", tone: "info" },
+  { label: "Risk accounts", value: "74", delta: "masked", tone: "warning" }
+] as const;
 
 export function App() {
   const [apiStatus, setApiStatus] = useState<FactoryApiStatus>(checkingStatus);
+  const [snapshot, setSnapshot] = useState<LifecycleSnapshot | null>(null);
+  const [view, setView] = useState<ProductView>(() => getInitialView());
   const [intake, setIntake] = useState<IntakeRequest>(seedIntake);
   const [request, setRequest] = useState(seedRequest);
   const [selectedSources, setSelectedSources] = useState(() => new Set(seedIntake.sourceSystems));
@@ -118,11 +114,11 @@ export function App() {
   const [answers, setAnswers] = useState(() =>
     Object.fromEntries(clarificationQuestions.map((question) => [question.id, question.defaultAnswer]))
   );
-  const [activeTab, setActiveTab] = useState<WorkspaceTab>("clarification");
   const [submitState, setSubmitState] = useState<SubmitState>("idle");
   const [approvalState, setApprovalState] = useState<ApprovalState>("pending");
   const [releaseApprovalState, setReleaseApprovalState] = useState<ReleaseApprovalState>("pending");
-  const [auditLog, setAuditLog] = useState(auditEvents);
+  const [auditLog, setAuditLog] = useState<ConsoleAuditEvent[]>(auditEvents);
+  const [evidenceOpen, setEvidenceOpen] = useState(false);
 
   useEffect(() => {
     let mounted = true;
@@ -137,6 +133,30 @@ export function App() {
       mounted = false;
     };
   }, []);
+
+  useEffect(() => {
+    if (apiStatus.mode !== "online") {
+      return;
+    }
+
+    let mounted = true;
+
+    async function refreshSnapshot() {
+      const nextSnapshot = await getLifecycleSnapshot(request.id, apiStatus.apiBaseUrl);
+
+      if (mounted) {
+        setSnapshot(nextSnapshot);
+      }
+    }
+
+    refreshSnapshot();
+    const timer = window.setInterval(refreshSnapshot, 6_000);
+
+    return () => {
+      mounted = false;
+      window.clearInterval(timer);
+    };
+  }, [apiStatus.apiBaseUrl, apiStatus.mode, request.id]);
 
   const currentIntake = useMemo<IntakeRequest>(
     () => ({
@@ -161,6 +181,12 @@ export function App() {
     [selectedMetrics]
   );
 
+  const selectedReadyCount = selectedSourceRecords.filter((source) => source.status !== "needs_mapping").length;
+  const answeredCount = Object.values(answers).filter((answer) => answer.trim().length > 0).length;
+  const canSubmit = intake.title.length >= 4 && intake.requesterEmail.includes("@") && intake.businessGoal.length >= 12;
+  const apiTone: PillTone = apiStatus.mode === "online" ? "success" : apiStatus.mode === "checking" ? "info" : "warning";
+  const lifecycleMode = snapshot ? "Live API snapshot" : apiStatus.mode === "online" ? "API connected" : "Local seed state";
+
   const specPreview = useMemo(
     () => ({
       ...structuredSpec,
@@ -184,13 +210,14 @@ export function App() {
     [selectedMetricRecords, selectedPolicy, selectedSourceRecords]
   );
 
-  const answeredCount = Object.values(answers).filter((answer) => answer.trim().length > 0).length;
-  const sourceReadyCount = selectedSourceRecords.filter((source) => source.status !== "needs_mapping").length;
-  const canSubmit = intake.title.length >= 4 && intake.requesterEmail.includes("@") && intake.businessGoal.length >= 12;
-
   async function refreshApiStatus() {
     setApiStatus(checkingStatus);
-    setApiStatus(await checkFactoryApi());
+    const nextStatus = await checkFactoryApi();
+    setApiStatus(nextStatus);
+
+    if (nextStatus.mode === "online") {
+      setSnapshot(await getLifecycleSnapshot(request.id, nextStatus.apiBaseUrl));
+    }
   }
 
   async function submitIntake() {
@@ -212,12 +239,12 @@ export function App() {
       createConsoleAudit(
         apiRequest
           ? `Factory API accepted intake request ${nextRequest.id}.`
-          : "Local simulation captured intake while Factory API lifecycle endpoints are unavailable.",
+          : "Local lifecycle captured intake while Factory API endpoints are unavailable.",
         current.length + 1
       )
     ]);
     setSubmitState("success");
-    setActiveTab("clarification");
+    setProductView("build-plan", setView);
   }
 
   function updateIntakeField(field: "title" | "requesterEmail" | "businessGoal" | "targetAudience" | "dueDate") {
@@ -257,442 +284,451 @@ export function App() {
     });
   }
 
+  function approvePlan() {
+    setApprovalState("approved");
+    setAuditLog((current) => [
+      ...current,
+      createConsoleAudit("Scope approved in the console; build run is ready to start.", current.length + 1)
+    ]);
+    setProductView("live-run", setView);
+  }
+
+  function requestPlanChanges() {
+    setApprovalState("changes");
+    setAuditLog((current) => [
+      ...current,
+      createConsoleAudit("Reviewer requested plan changes before build handoff.", current.length + 1)
+    ]);
+  }
+
+  const viewContent = {
+    "new-request": (
+      <RequestIntakeView
+        answers={answers}
+        answeredCount={answeredCount}
+        canSubmit={canSubmit}
+        intake={intake}
+        lifecycleMode={lifecycleMode}
+        onAnswerChange={(questionId, answer) =>
+          setAnswers((current) => ({
+            ...current,
+            [questionId]: answer
+          }))
+        }
+        onSubmit={submitIntake}
+        onToggleMetric={toggleMetric}
+        onToggleSource={toggleSource}
+        onUpdateField={updateIntakeField}
+        selectedMetricRecords={selectedMetricRecords}
+        selectedMetrics={selectedMetrics}
+        selectedPolicy={selectedPolicy}
+        selectedReadyCount={selectedReadyCount}
+        selectedSourceRecords={selectedSourceRecords}
+        selectedSources={selectedSources}
+        setSelectedPolicy={setSelectedPolicy}
+        submitState={submitState}
+      />
+    ),
+    "build-plan": (
+      <BuildPlanView
+        approvalState={approvalState}
+        manifestPreview={manifestPreview}
+        onApprove={approvePlan}
+        onRequestChanges={requestPlanChanges}
+        onViewRun={() => setProductView("live-run", setView)}
+        selectedMetricRecords={selectedMetricRecords}
+        selectedPolicy={selectedPolicy}
+        selectedSourceRecords={selectedSourceRecords}
+        specPreview={specPreview}
+      />
+    ),
+    "live-run": (
+      <LiveRunView
+        approvalState={approvalState}
+        auditLog={auditLog}
+        onOpenEvidence={() => setEvidenceOpen(true)}
+        onReleaseApprove={() => setReleaseApprovalState("approved")}
+        onViewPreview={() => setProductView("output-preview", setView)}
+        releaseApprovalState={releaseApprovalState}
+        snapshot={snapshot}
+      />
+    ),
+    "output-preview": (
+      <OutputPreviewView
+        onOpenEvidence={() => setEvidenceOpen(true)}
+        onViewRun={() => setProductView("live-run", setView)}
+        releaseApprovalState={releaseApprovalState}
+        selectedMetricRecords={selectedMetricRecords}
+      />
+    )
+  } satisfies Record<ProductView, ReactNode>;
+
   return (
-    <main className="factory-shell">
-      <aside className="lifecycle-rail" aria-label="Factory lifecycle">
+    <main className="app-shell">
+      <aside className="side-nav" aria-label="Agent Factory navigation">
         <div className="brand">
-          <div className="brand-mark">AF</div>
+          <div className="brand-mark">
+            <Sparkles size={18} aria-hidden="true" />
+          </div>
           <div>
             <strong>Agent Factory</strong>
-            <span>UiPath governed build ops</span>
+            <span>Governed build console</span>
           </div>
         </div>
 
-        <div className="mode-panel" data-mode={apiStatus.mode}>
-          <span>{apiStatus.platformMode}</span>
+        <nav className="nav-list">
+          {productViews.map(({ id, label, icon: Icon, helper }) => (
+            <button
+              aria-current={view === id ? "page" : undefined}
+              className="nav-item"
+              key={id}
+              type="button"
+              onClick={() => setProductView(id, setView)}
+            >
+              <Icon size={18} aria-hidden="true" />
+              <span>
+                <strong>{label}</strong>
+                <small>{helper}</small>
+              </span>
+              {view === id ? <ChevronRight size={16} aria-hidden="true" /> : null}
+            </button>
+          ))}
+        </nav>
+
+        <div className="side-status">
+          <Pill tone={apiTone}>{apiStatus.platformMode}</Pill>
           <strong>{apiStatus.label}</strong>
-          <small>{apiStatus.detail}</small>
+          <span>{apiStatus.detail}</span>
           <small>{apiStatus.apiBaseUrl}</small>
         </div>
 
-        <nav className="lifecycle-list">
-          {lifecycleSteps.map((step) => {
-            const Icon = lifecycleIcons[step.id] ?? Circle;
-
-            return (
-              <button
-                className="lifecycle-step"
-                data-status={step.status}
-                key={step.id}
-                type="button"
-                onClick={() => setActiveTab(lifecycleTabMap[step.id] ?? "audit")}
-              >
-                <Icon size={17} aria-hidden="true" />
-                <span>
-                  <strong>{step.label}</strong>
-                  <small>{step.product}</small>
-                </span>
-              </button>
-            );
-          })}
-        </nav>
-
-        <div className="platform-stack">
-          <span>UiPath stack</span>
-          {[
-            "Maestro",
-            "Agents",
-            "Action Center",
-            "Data Service",
-            "API Workflow",
-            "Orchestrator",
-            "Test Cloud"
-          ].map((label) => (
-            <small key={label}>{label}</small>
+        <div className="platform-stack" aria-label="UiPath platform stack">
+          {["Maestro", "Agents", "Action Center", "Data Service", "API Workflows", "Test Cloud"].map((label) => (
+            <span key={label}>{label}</span>
           ))}
         </div>
       </aside>
 
-      <section className="console-shell">
-        <header className="command-bar">
-          <div>
-            <p className="eyeline">Checkpoint 5 Demo Console</p>
-            <h1>Customer360 build control plane</h1>
-            <p>
-              Governed intake, clarification, approvals, manifest, build-worker evidence, Test Manager
-              gates, release, sandbox deployment, and audit in one operator surface.
-            </p>
+      <section className="product-shell">
+        <header className="top-bar">
+          <div className="search-control" aria-label="Search requests">
+            <Search size={16} aria-hidden="true" />
+            <span>Search requests, runs, approvals</span>
           </div>
-          <div className="command-actions">
+          <div className="top-actions">
+            <Pill tone={apiTone}>{apiStatus.mode === "online" ? "API online" : lifecycleMode}</Pill>
             <button className="icon-button" type="button" onClick={refreshApiStatus} aria-label="Refresh API status">
-              <RefreshCw size={17} aria-hidden="true" />
-            </button>
-            <button className="primary-action" type="button" onClick={submitIntake} disabled={submitState === "loading"}>
-              {submitState === "loading" ? (
+              {apiStatus.mode === "checking" ? (
                 <Loader2 className="spin-icon" size={17} aria-hidden="true" />
               ) : (
-                <Play size={17} aria-hidden="true" />
+                <RefreshCw size={17} aria-hidden="true" />
               )}
-              <span>{submitState === "loading" ? "Submitting" : "Submit intake"}</span>
+            </button>
+            <button className="user-chip" type="button" aria-label="Current user">
+              <User size={16} aria-hidden="true" />
+              <span>Avery Morgan</span>
             </button>
           </div>
         </header>
 
-        <section className="status-strip" aria-label="Request status">
-          <StatusMetric label="Request" value={request.id} icon={ScrollText} />
-          <StatusMetric label="Status" value={formatStatus(request.status)} icon={CircleDot} tone="blue" />
-          <StatusMetric label="Clarifications" value={`${answeredCount}/${clarificationQuestions.length} answered`} icon={MessageSquareText} />
-          <StatusMetric label="Sources ready" value={`${sourceReadyCount}/${selectedSources.size || 1}`} icon={Database} tone="green" />
-          <StatusMetric label="Approval" value={approvalState === "approved" ? "Scope approved" : "Pending"} icon={UserCheck} tone={approvalState === "approved" ? "green" : "amber"} />
-          <StatusMetric label="Quality" value="AFQG catalog live" icon={FlaskConical} tone="green" />
-          <StatusMetric label="Deploy" value={deploymentEvidence.status.replaceAll("-", " ")} icon={Rocket} tone="amber" />
+        <section className="page-heading">
+          <div>
+            <h1>{productViews.find((item) => item.id === view)?.label}</h1>
+            <p>{getViewSubtitle(view)}</p>
+          </div>
+          <button className="secondary-action" type="button" onClick={() => setEvidenceOpen(true)}>
+            <PanelRightOpen size={17} aria-hidden="true" />
+            Evidence
+          </button>
         </section>
 
-        {apiStatus.mode === "checking" ? (
-          <div className="system-banner" role="status">
-            <Loader2 className="spin-icon" size={18} aria-hidden="true" />
-            <div>
-              <strong>{apiStatus.label}</strong>
-              <span>{apiStatus.detail}</span>
-            </div>
-          </div>
-        ) : null}
-
         {apiStatus.mode === "degraded" ? (
-          <div className="system-banner" role="status">
-            <AlertTriangle size={18} aria-hidden="true" />
-            <div>
-              <strong>{apiStatus.label}</strong>
-              <span>{apiStatus.detail}</span>
-            </div>
-          </div>
+          <StatusBanner tone="warning" icon={AlertTriangle} title={apiStatus.label}>
+            {apiStatus.detail}
+          </StatusBanner>
         ) : null}
 
         {submitState === "success" ? (
-          <div className="success-banner" role="status">
-            <CheckCircle2 size={18} aria-hidden="true" />
-            <span>Intake captured. Clarification and governance previews are synchronized to local state.</span>
-          </div>
+          <StatusBanner tone="success" icon={CheckCircle2} title="Request captured">
+            The plan, governance summary, run, and preview are synchronized to the current request state.
+          </StatusBanner>
         ) : null}
 
         {submitState === "error" ? (
-          <div className="error-banner" role="alert">
-            <XCircle size={18} aria-hidden="true" />
-            <span>Title, requester email, and business goal are required before intake can be submitted.</span>
-          </div>
+          <StatusBanner tone="danger" icon={XCircle} title="More detail needed">
+            Title, requester email, and business goal are required before Agent Factory can start a request.
+          </StatusBanner>
         ) : null}
 
-        <div className="console-grid">
-          <section className="panel intake-panel" aria-labelledby="intake-title">
-            <PanelHeader
-              icon={SlidersHorizontal}
-              title="Request intake"
-              meta="Factory API / Data Service"
-              action={<Pill tone={apiStatus.mode === "online" ? "success" : "warning"}>{apiStatus.platformMode}</Pill>}
-            />
+        <div className="view-frame">{viewContent[view]}</div>
+      </section>
 
-            <div className="form-grid">
-              <label className="field wide">
-                <span>Build request</span>
-                <input value={intake.title} onChange={updateIntakeField("title")} />
-              </label>
-              <label className="field">
-                <span>Requester</span>
-                <input value={intake.requesterEmail} onChange={updateIntakeField("requesterEmail")} />
-              </label>
-              <label className="field">
-                <span>Due date</span>
-                <input type="date" value={intake.dueDate ?? ""} onChange={updateIntakeField("dueDate")} />
-              </label>
-              <label className="field wide">
-                <span>Business goal</span>
-                <textarea rows={5} value={intake.businessGoal} onChange={updateIntakeField("businessGoal")} />
-              </label>
-              <label className="field wide">
-                <span>Target audience</span>
-                <input value={intake.targetAudience} onChange={updateIntakeField("targetAudience")} />
-              </label>
-            </div>
+      <EvidenceDrawer
+        apiStatus={apiStatus}
+        auditLog={auditLog}
+        manifestPreview={manifestPreview}
+        onClose={() => setEvidenceOpen(false)}
+        open={evidenceOpen}
+        snapshot={snapshot}
+      />
+    </main>
+  );
+}
 
-            <div className="section-rule">
-              <h2>Source controls</h2>
-              <small>Read scopes and mapping readiness</small>
-            </div>
-            <div className="toggle-grid">
-              {sourceSystems.map((source) => (
-                <button
-                  aria-pressed={selectedSources.has(source.id)}
-                  className="source-toggle"
-                  data-selected={selectedSources.has(source.id)}
-                  key={source.id}
-                  type="button"
-                  onClick={() => toggleSource(source.id)}
-                >
-                  <span className="toggle-title">
-                    <Database size={16} aria-hidden="true" />
-                    <strong>{source.label}</strong>
-                  </span>
-                  <span>{source.owner}</span>
-                  <small>{source.product}</small>
-                  <Pill tone={source.status === "approved" ? "success" : source.status === "read_only" ? "neutral" : "warning"}>
-                    {source.status.replaceAll("_", " ")}
-                  </Pill>
-                </button>
+function RequestIntakeView({
+  answers,
+  answeredCount,
+  canSubmit,
+  intake,
+  lifecycleMode,
+  onAnswerChange,
+  onSubmit,
+  onToggleMetric,
+  onToggleSource,
+  onUpdateField,
+  selectedMetricRecords,
+  selectedMetrics,
+  selectedPolicy,
+  selectedReadyCount,
+  selectedSourceRecords,
+  selectedSources,
+  setSelectedPolicy,
+  submitState
+}: {
+  answers: Record<string, string>;
+  answeredCount: number;
+  canSubmit: boolean;
+  intake: IntakeRequest;
+  lifecycleMode: string;
+  onAnswerChange: (questionId: string, answer: string) => void;
+  onSubmit: () => void;
+  onToggleMetric: (metricId: string) => void;
+  onToggleSource: (sourceId: string) => void;
+  onUpdateField: (
+    field: "title" | "requesterEmail" | "businessGoal" | "targetAudience" | "dueDate"
+  ) => (event: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => void;
+  selectedMetricRecords: typeof metricOptions;
+  selectedMetrics: Set<string>;
+  selectedPolicy: (typeof piiPolicies)[number];
+  selectedReadyCount: number;
+  selectedSourceRecords: typeof sourceSystems;
+  selectedSources: Set<string>;
+  setSelectedPolicy: (policy: (typeof piiPolicies)[number]) => void;
+  submitState: SubmitState;
+}) {
+  return (
+    <div className="request-layout">
+      <section className="primary-panel request-card">
+        <PanelHeader
+          action={<Pill tone={canSubmit ? "success" : "warning"}>{canSubmit ? "Ready" : "Needs detail"}</Pill>}
+          icon={MessageSquareText}
+          meta="Conversational intake"
+          title="Tell Agent Factory what to build"
+        />
+
+        <div className="conversation-block">
+          <div className="assistant-avatar">
+            <Sparkles size={18} aria-hidden="true" />
+          </div>
+          <div>
+            <strong>I will turn this into a governed build plan.</strong>
+            <p>
+              Describe the business outcome, choose approved sources, and answer the few questions needed before
+              the build worker receives a manifest.
+            </p>
+          </div>
+        </div>
+
+        <div className="form-grid">
+          <label className="field wide">
+            <span>Request name</span>
+            <input value={intake.title} onChange={onUpdateField("title")} />
+          </label>
+          <label className="field">
+            <span>Requester</span>
+            <input value={intake.requesterEmail} onChange={onUpdateField("requesterEmail")} />
+          </label>
+          <label className="field">
+            <span>Target date</span>
+            <input type="date" value={intake.dueDate ?? ""} onChange={onUpdateField("dueDate")} />
+          </label>
+          <label className="field wide">
+            <span>Business outcome</span>
+            <textarea rows={5} value={intake.businessGoal} onChange={onUpdateField("businessGoal")} />
+          </label>
+          <label className="field wide">
+            <span>Audience</span>
+            <input value={intake.targetAudience} onChange={onUpdateField("targetAudience")} />
+          </label>
+        </div>
+
+        <div className="question-strip">
+          {clarificationQuestions.map((question) => (
+            <label className="question-row" key={question.id}>
+              <span>
+                <strong>{question.question}</strong>
+                <small>{question.product}</small>
+              </span>
+              <textarea
+                rows={2}
+                value={answers[question.id] ?? ""}
+                onChange={(event) => onAnswerChange(question.id, event.target.value)}
+              />
+            </label>
+          ))}
+        </div>
+
+        <div className="panel-actions">
+          <button className="primary-action" disabled={submitState === "loading"} type="button" onClick={onSubmit}>
+            {submitState === "loading" ? (
+              <Loader2 className="spin-icon" size={17} aria-hidden="true" />
+            ) : (
+              <Send size={17} aria-hidden="true" />
+            )}
+            {submitState === "loading" ? "Submitting" : "Generate build plan"}
+          </button>
+        </div>
+      </section>
+
+      <aside className="summary-rail">
+        <SummaryCard icon={Workflow} label="Lifecycle" value={lifecycleMode} detail="Ready for real API state" tone="info" />
+        <SummaryCard
+          icon={Database}
+          label="Sources"
+          value={`${selectedReadyCount}/${selectedSources.size || 1} ready`}
+          detail={`${selectedSourceRecords.length} selected`}
+          tone={selectedReadyCount === selectedSourceRecords.length ? "success" : "warning"}
+        />
+        <SummaryCard
+          icon={BarChart3}
+          label="Metrics"
+          value={`${selectedMetricRecords.length} selected`}
+          detail="Governed KPI scope"
+          tone="success"
+        />
+        <SummaryCard
+          icon={MessageSquareText}
+          label="Questions"
+          value={`${answeredCount}/${clarificationQuestions.length}`}
+          detail="Answered for planning"
+          tone={answeredCount === clarificationQuestions.length ? "success" : "warning"}
+        />
+
+        <section className="rail-panel">
+          <h2>Source access</h2>
+          <div className="option-list">
+            {sourceSystems.map((source) => (
+              <button
+                aria-pressed={selectedSources.has(source.id)}
+                className="select-row"
+                data-selected={selectedSources.has(source.id)}
+                key={source.id}
+                type="button"
+                onClick={() => onToggleSource(source.id)}
+              >
+                <span>
+                  <strong>{source.label}</strong>
+                  <small>{source.owner}</small>
+                </span>
+                <Pill tone={source.status === "needs_mapping" ? "warning" : "success"}>{source.status.replaceAll("_", " ")}</Pill>
+              </button>
+            ))}
+          </div>
+        </section>
+
+        <section className="rail-panel">
+          <h2>Policy and metrics</h2>
+          <label className="field">
+            <span>PII policy</span>
+            <select value={selectedPolicy} onChange={(event) => setSelectedPolicy(event.target.value as (typeof piiPolicies)[number])}>
+              {piiPolicies.map((policy) => (
+                <option key={policy}>{policy}</option>
               ))}
-            </div>
-
-            <div className="controls-row">
-              <label className="field">
-                <span>PII policy</span>
-                <select value={selectedPolicy} onChange={(event) => setSelectedPolicy(event.target.value as (typeof piiPolicies)[number])}>
-                  {piiPolicies.map((policy) => (
-                    <option key={policy}>{policy}</option>
-                  ))}
-                </select>
+            </select>
+          </label>
+          <div className="check-list">
+            {metricOptions.map((metric) => (
+              <label className="check-row" key={metric.id}>
+                <input checked={selectedMetrics.has(metric.id)} type="checkbox" onChange={() => onToggleMetric(metric.id)} />
+                <span>
+                  <strong>{metric.label}</strong>
+                  <small>{metric.guardrail}</small>
+                </span>
               </label>
-              <div className="metric-picker">
-                <span>Metric scope</span>
-                {metricOptions.map((metric) => (
-                  <label key={metric.id} className="check-row">
-                    <input
-                      checked={selectedMetrics.has(metric.id)}
-                      type="checkbox"
-                      onChange={() => toggleMetric(metric.id)}
-                    />
-                    <span>
-                      <strong>{metric.label}</strong>
-                      <small>{metric.guardrail}</small>
-                    </span>
-                  </label>
-                ))}
-              </div>
+            ))}
+          </div>
+        </section>
+      </aside>
+    </div>
+  );
+}
+
+function BuildPlanView({
+  approvalState,
+  manifestPreview,
+  onApprove,
+  onRequestChanges,
+  onViewRun,
+  selectedMetricRecords,
+  selectedPolicy,
+  selectedSourceRecords,
+  specPreview
+}: {
+  approvalState: ApprovalState;
+  manifestPreview: typeof manifestDocument;
+  onApprove: () => void;
+  onRequestChanges: () => void;
+  onViewRun: () => void;
+  selectedMetricRecords: typeof metricOptions;
+  selectedPolicy: string;
+  selectedSourceRecords: typeof sourceSystems;
+  specPreview: typeof structuredSpec;
+}) {
+  return (
+    <div className="review-layout">
+      <section className="primary-panel">
+        <PanelHeader
+          action={<Pill tone={approvalState === "approved" ? "success" : approvalState === "changes" ? "warning" : "info"}>{approvalCopy(approvalState)}</Pill>}
+          icon={ShieldCheck}
+          meta="Plan, policy, and human gates"
+          title="Review the governed build plan"
+        />
+
+        <div className="review-steps" aria-label="Build plan review steps">
+          {[
+            ["Plan", "Template and output scope", "done"],
+            ["Governance", "Data and policy checks", "done"],
+            ["Approval", "Action Center gate", approvalState === "approved" ? "done" : "active"]
+          ].map(([label, detail, status]) => (
+            <div className="review-step" data-status={status} key={label}>
+              <span>{status === "done" ? <Check size={15} aria-hidden="true" /> : <CircleDot size={15} aria-hidden="true" />}</span>
+              <strong>{label}</strong>
+              <small>{detail}</small>
             </div>
+          ))}
+        </div>
+
+        <div className="plan-grid">
+          <section className="plain-section">
+            <h2>Generated plan</h2>
+            <p>{specPreview.objective}</p>
+            <KeyValueList
+              rows={[
+                ["Template", buildManifest.template],
+                ["Output", buildManifest.outputApp],
+                ["Branch", buildManifest.branchName],
+                ["Refresh", "Deterministic local data with visible timestamp"]
+              ]}
+            />
           </section>
 
-          <section className="panel workspace-panel" aria-labelledby="workspace-title">
-            <PanelHeader
-              icon={Workflow}
-              title="Lifecycle workspace"
-              meta="UiPath Maestro / Agents"
-              action={<Pill tone="neutral">REQ status: {formatStatus(request.status)}</Pill>}
-            />
-
-            <div className="tab-list" role="tablist" aria-label="Workspace views">
-              {workspaceTabs.map(({ id, label, icon: Icon }) => (
-                <button
-                  aria-selected={activeTab === id}
-                  className="tab-button"
-                  key={id}
-                  role="tab"
-                  type="button"
-                  onClick={() => setActiveTab(id)}
-                >
-                  <Icon size={16} aria-hidden="true" />
-                  {label}
-                </button>
-              ))}
-            </div>
-
-            {activeTab === "clarification" ? (
-              <div className="clarification-list">
-                {submitState === "loading" ? <LoadingRow label="UiPath Agents are shaping clarification questions" /> : null}
-                {clarificationQuestions.map((question) => (
-                  <label className="question-row" key={question.id}>
-                    <span>
-                      <Pill tone="neutral">{question.product}</Pill>
-                      <strong>{question.question}</strong>
-                    </span>
-                    <textarea
-                      rows={3}
-                      value={answers[question.id] ?? ""}
-                      onChange={(event) =>
-                        setAnswers((current) => ({
-                          ...current,
-                          [question.id]: event.target.value
-                        }))
-                      }
-                    />
-                  </label>
-                ))}
-              </div>
-            ) : null}
-
-            {activeTab === "spec" ? (
-              <div className="spec-layout">
-                <div>
-                  <h2>Structured spec preview</h2>
-                  <p>{specPreview.objective}</p>
-                  <KeyValueList
-                    rows={[
-                      ["Request", specPreview.requestId],
-                      ["Audience", currentIntake.targetAudience],
-                      ["Data sources", specPreview.dataSources.join(", ") || "None selected"],
-                      ["PII posture", selectedPolicy]
-                    ]}
-                  />
-                </div>
-                <div className="spec-columns">
-                  <ListBlock title="Required capabilities" items={specPreview.requiredCapabilities} />
-                  <ListBlock title="Acceptance criteria" items={specPreview.acceptanceCriteria} />
-                  <ListBlock title="Governance notes" items={specPreview.governanceNotes} />
-                </div>
-              </div>
-            ) : null}
-
-            {activeTab === "manifest" ? (
-              <div className="manifest-layout">
-                <div className="manifest-summary">
-                  <KeyValueList
-                    rows={[
-                      ["Template", buildManifest.template],
-                      ["Branch", buildManifest.branchName],
-                      ["Output", buildManifest.outputApp],
-                      ["Codex model", buildManifest.codexModel],
-                      ["Sandbox only", manifestPreview.sandbox_only ? "true" : "false"]
-                    ]}
-                  />
-                  <div className="artifact-table">
-                    <div className="table-heading">
-                      <span>Planned generated files</span>
-                      <small>Codex worker queue</small>
-                    </div>
-                    {buildArtifacts.map((artifact) => (
-                      <div className="artifact-row" key={artifact.path}>
-                        <Code2 size={15} aria-hidden="true" />
-                        <span>{artifact.path}</span>
-                        <small>{artifact.owner}</small>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-                <pre className="json-viewer">{JSON.stringify(manifestPreview, null, 2)}</pre>
-              </div>
-            ) : null}
-
-            {activeTab === "build" ? (
-              <div className="build-layout">
-                <div className="build-summary-grid">
-                  <div>
-                    <h2>Build worker evidence</h2>
-                    <p>
-                      Codex output is treated as reviewable sandbox evidence. GitHub PR automation may
-                      be unavailable, so the demo keeps a local diff fallback visible.
-                    </p>
-                    <KeyValueList
-                      rows={[
-                        ["Build run", buildRunEvidence.buildRunId],
-                        ["Worker", buildRunEvidence.workerId],
-                        ["Status", formatStatus(buildRunEvidence.status)],
-                        ["Branch", buildRunEvidence.branchName],
-                        ["Diff", buildRunEvidence.pullRequestUrl],
-                        ["Mode", buildRunEvidence.platformMode]
-                      ]}
-                    />
-                  </div>
-                  <div className="artifact-table">
-                    <div className="table-heading">
-                      <span>Evidence artifacts</span>
-                      <small>Reviewable output</small>
-                    </div>
-                    {buildArtifacts.map((artifact) => (
-                      <div className="artifact-row" key={artifact.path}>
-                        <GitBranch size={15} aria-hidden="true" />
-                        <span>{artifact.path}</span>
-                        <small>
-                          {artifact.owner} / {artifact.status}
-                        </small>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="log-stream" aria-label="Build worker log stream">
-                  {buildLogEvents.map((event) => (
-                    <div className="log-row" data-level={event.level} key={event.id}>
-                      <span>{event.time}</span>
-                      <strong>{event.source}</strong>
-                      <p>{event.message}</p>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            ) : null}
-
-            {activeTab === "deployment" ? (
-              <div className="deployment-layout">
-                <section className="release-card">
-                  <div className="release-card-heading">
-                    <ClipboardCheck size={18} aria-hidden="true" />
-                    <div>
-                      <h2>Release approval</h2>
-                      <small>Action Center contract / no live task completion</small>
-                    </div>
-                    <Pill tone={releaseApprovalState === "approved" ? "success" : "warning"}>
-                      {releaseApprovalState === "approved" ? "demo approved" : releaseApprovalEvidence.status}
-                    </Pill>
-                  </div>
-                  <p>{releaseApprovalEvidence.summary}</p>
-                  <div className="approval-actions release-actions">
-                    <button type="button" onClick={() => setReleaseApprovalState("approved")}>
-                      <CheckCircle2 size={16} aria-hidden="true" />
-                      Approve sandbox release
-                    </button>
-                    <button type="button" onClick={() => setReleaseApprovalState("pending")}>
-                      <Clock3 size={16} aria-hidden="true" />
-                      Keep pending
-                    </button>
-                  </div>
-                  <ListBlock title="Approval payload includes" items={releaseApprovalEvidence.payloadIncludes} />
-                </section>
-
-                <section className="deployment-card">
-                  <div className="release-card-heading">
-                    <Rocket size={18} aria-hidden="true" />
-                    <div>
-                      <h2>Deployment evidence</h2>
-                      <small>Sandbox preview / pending live StartDeployment run</small>
-                    </div>
-                    <Pill tone="warning">{deploymentEvidence.status}</Pill>
-                  </div>
-                  <KeyValueList
-                    rows={[
-                      ["Deployment", deploymentEvidence.deploymentId],
-                      ["Environment", deploymentEvidence.environment],
-                      ["Provider", deploymentEvidence.provider],
-                      ["Platform mode", deploymentEvidence.platformMode],
-                      ["Preview URL", deploymentEvidence.url]
-                    ]}
-                  />
-                  <a className="preview-link" href={deploymentEvidence.url} target="_blank" rel="noreferrer">
-                    <ExternalLink size={16} aria-hidden="true" />
-                    Open sandbox preview
-                  </a>
-                </section>
-
-                <section className="rollback-card">
-                  <div className="release-card-heading">
-                    <Undo2 size={18} aria-hidden="true" />
-                    <div>
-                      <h2>Rollback notes</h2>
-                      <small>{deploymentEvidence.rollbackRef}</small>
-                    </div>
-                  </div>
-                  <p>{deploymentEvidence.rollbackNotes}</p>
-                </section>
-              </div>
-            ) : null}
-
-            {activeTab === "audit" ? <AuditTable auditLog={auditLog} /> : null}
-          </section>
-
-          <aside className="panel inspector-panel" aria-labelledby="governance-title">
-            <PanelHeader icon={ShieldCheck} title="Governance" meta="Action Center approval" />
+          <section className="plain-section">
+            <h2>Governance summary</h2>
             <div className="risk-block" data-risk={governanceAssessment.riskLevel}>
               <span>Risk tier</span>
               <strong>{governanceAssessment.riskLevel}</strong>
-              <small>{governanceAssessment.requiresHumanApproval ? "Human approval required" : "No approval required"}</small>
+              <small>{governanceAssessment.requiresHumanApproval ? "Human approval required" : "Auto-approval allowed"}</small>
             </div>
-
             <div className="decision-list">
               {policyDecisions.map((decision) => (
                 <div className="decision-row" key={decision.label}>
@@ -701,111 +737,373 @@ export function App() {
                 </div>
               ))}
             </div>
-
-            <div className="approval-box" data-state={approvalState}>
-              <UserCheck size={18} aria-hidden="true" />
-              <div>
-                <strong>
-                  {approvalState === "approved"
-                    ? "Scope approved"
-                    : approvalState === "changes"
-                      ? "Changes requested"
-                      : "Awaiting scope approval"}
-                </strong>
-                <span>Action Center gate before manifest handoff to Codex worker.</span>
-              </div>
-            </div>
-
-            <div className="approval-actions">
-              <button type="button" onClick={() => setApprovalState("approved")}>
-                <CheckCircle2 size={16} aria-hidden="true" />
-                Approve
-              </button>
-              <button type="button" onClick={() => setApprovalState("changes")}>
-                <MessageSquareText size={16} aria-hidden="true" />
-                Request changes
-              </button>
-            </div>
-
-            <div className="platform-routing">
-              <h2>Platform route</h2>
-              <KeyValueList
-                rows={[
-                  ["Organization", defaultUiPathContext.organization],
-                  ["Tenant", defaultUiPathContext.tenant],
-                  ["Folder", defaultUiPathContext.folderName],
-                  ["Maestro", "Request-to-release lifecycle"],
-                  ["API Workflow", "StartBuildWorker + StartDeployment ready"],
-                  ["Test Manager", `${testManagerCatalog.projectKey} catalog live`]
-                ]}
-              />
-            </div>
-          </aside>
+          </section>
         </div>
 
-        <section className="lower-grid">
-          <div className="panel quality-panel">
-            <PanelHeader
-              icon={FlaskConical}
-              title="Quality gates"
-              meta={`${testManagerCatalog.projectKey} / ${testManagerCatalog.testSetKey} / execution ${testManagerCatalog.liveExecutionStatus}`}
-              action={<Pill tone="success">catalog live</Pill>}
-            />
-            <div className="catalog-callout">
-              <strong>{testManagerCatalog.projectName}</strong>
-              <span>{testManagerCatalog.note}</span>
+        <div className="detail-columns">
+          <ListBlock title="Selected sources" items={selectedSourceRecords.map((source) => `${source.label} - ${source.product}`)} />
+          <ListBlock title="Approved metrics" items={selectedMetricRecords.map((metric) => `${metric.label} - ${metric.guardrail}`)} />
+          <ListBlock title="Acceptance checks" items={specPreview.acceptanceCriteria} />
+        </div>
+
+        <div className="panel-actions">
+          <button className="primary-action" type="button" onClick={approvalState === "approved" ? onViewRun : onApprove}>
+            <UserCheck size={17} aria-hidden="true" />
+            {approvalState === "approved" ? "Open live run" : "Approve plan"}
+          </button>
+          <button className="secondary-action" type="button" onClick={onRequestChanges}>
+            <MessageSquareText size={17} aria-hidden="true" />
+            Request changes
+          </button>
+        </div>
+      </section>
+
+      <aside className="summary-rail">
+        <SummaryCard icon={LockKeyhole} label="PII policy" value={selectedPolicy} detail="Applied to generated app" tone="warning" />
+        <SummaryCard icon={FileJson} label="Manifest" value={manifestPreview.manifest_hash} detail="Ready for worker handoff" tone="success" />
+        <SummaryCard icon={UserCheck} label="Approval" value={approvalCopy(approvalState)} detail={releaseApprovalEvidence.approver} tone={approvalState === "approved" ? "success" : "warning"} />
+        <section className="rail-panel">
+          <h2>Platform route</h2>
+          <KeyValueList
+            rows={[
+              ["Organization", defaultUiPathContext.organization],
+              ["Tenant", defaultUiPathContext.tenant],
+              ["Folder", defaultUiPathContext.folderName],
+              ["Maestro", "Request-to-release"],
+              ["Action Center", "Scope and release gates"]
+            ]}
+          />
+        </section>
+      </aside>
+    </div>
+  );
+}
+
+function LiveRunView({
+  approvalState,
+  auditLog,
+  onOpenEvidence,
+  onReleaseApprove,
+  onViewPreview,
+  releaseApprovalState,
+  snapshot
+}: {
+  approvalState: ApprovalState;
+  auditLog: ConsoleAuditEvent[];
+  onOpenEvidence: () => void;
+  onReleaseApprove: () => void;
+  onViewPreview: () => void;
+  releaseApprovalState: ReleaseApprovalState;
+  snapshot: LifecycleSnapshot | null;
+}) {
+  const progress = releaseApprovalState === "approved" ? 86 : approvalState === "approved" ? 68 : 42;
+  const currentStage = releaseApprovalState === "approved" ? "Sandbox preview is ready" : "Waiting on release approval";
+
+  return (
+    <div className="run-layout">
+      <section className="primary-panel">
+        <PanelHeader
+          action={<Pill tone={snapshot ? "success" : "info"}>{snapshot ? "API snapshot" : "Seed-backed run"}</Pill>}
+          icon={Activity}
+          meta="Live run progress"
+          title={currentStage}
+        />
+
+        <div className="run-progress">
+          <div className="progress-line">
+            <span style={{ width: `${progress}%` }} />
+          </div>
+          <strong>{progress}% complete</strong>
+          <small>{buildRunEvidence.buildRunId}</small>
+        </div>
+
+        <div className="stage-rail">
+          {runStages.map((stage) => (
+            <div className="stage-item" data-status={stage.status} key={stage.id}>
+              <span>{stage.status === "done" ? <Check size={14} aria-hidden="true" /> : <Circle size={14} aria-hidden="true" />}</span>
+              <strong>{stage.label}</strong>
+              <small>{stage.product}</small>
             </div>
-            <div className="quality-grid">
-              {qualityGates.map((gate) => (
-                <div className="quality-row" data-status={gate.status} key={gate.name}>
-                  {gate.status === "passed" ? <CheckCircle2 size={17} aria-hidden="true" /> : <CircleDot size={17} aria-hidden="true" />}
-                  <span>
-                    <strong>{gate.name}</strong>
-                    <small>{gate.testCaseKey ? `${gate.provider} / ${gate.testCaseKey}` : gate.provider}</small>
-                  </span>
-                  <em>{gate.evidenceCommand ?? gate.detail}</em>
-                </div>
-              ))}
+          ))}
+        </div>
+
+        <section className="active-stage">
+          <div>
+            <span className="stage-icon">
+              <Rocket size={20} aria-hidden="true" />
+            </span>
+            <div>
+              <h2>{currentStage}</h2>
+              <p>
+                The build is constrained to the approved manifest, quality evidence is linked, and release stays gated
+                until the reviewer approves sandbox deployment.
+              </p>
             </div>
           </div>
+          <button className="primary-action" type="button" onClick={releaseApprovalState === "approved" ? onViewPreview : onReleaseApprove}>
+            {releaseApprovalState === "approved" ? <ExternalLink size={17} aria-hidden="true" /> : <CheckCircle2 size={17} aria-hidden="true" />}
+            {releaseApprovalState === "approved" ? "Open preview" : "Approve release"}
+          </button>
+        </section>
 
-          <div className="panel audit-panel">
-            <PanelHeader icon={ScrollText} title="Timeline and audit" meta="Data Service event stream" />
-            <AuditTable auditLog={auditLog.slice(-4)} compact />
+        <section className="log-panel">
+          <div className="section-heading">
+            <h2>Live activity</h2>
+            <button type="button" onClick={onOpenEvidence}>
+              <PanelRightOpen size={16} aria-hidden="true" />
+              Evidence details
+            </button>
           </div>
-
-          <div className="panel platform-panel">
-            <PanelHeader icon={Workflow} title="Platform evidence" meta="Live, ready, pending, and local labels" />
-            <div className="platform-evidence-list">
-              {platformEvidence.map((item) => (
-                <div className="platform-evidence-row" data-status={item.status} key={item.product}>
-                  <div>
-                    <strong>{item.product}</strong>
-                    <span>{item.detail}</span>
-                  </div>
-                  <Pill tone={item.mode === "uipath-live" ? "success" : item.status === "pending" ? "warning" : "neutral"}>
-                    {item.mode}
-                  </Pill>
-                </div>
-              ))}
-            </div>
+          <div className="log-stream">
+            {buildLogEvents.map((event) => (
+              <div className="log-row" data-level={event.level} key={event.id}>
+                <span>{event.time}</span>
+                <strong>{event.source}</strong>
+                <p>{event.message}</p>
+              </div>
+            ))}
+            {auditLog.slice(-3).map((event) => (
+              <div className="log-row" data-level="info" key={event.id}>
+                <span>{formatAuditTime(event.createdAt)}</span>
+                <strong>{event.actor}</strong>
+                <p>{event.summary}</p>
+              </div>
+            ))}
           </div>
         </section>
       </section>
-    </main>
+
+      <aside className="summary-rail">
+        <SummaryCard icon={GitBranch} label="Branch" value={buildRunEvidence.branchName} detail={buildRunEvidence.commitSha} tone="info" />
+        <SummaryCard icon={FlaskConical} label="Quality gates" value="5 ready, 1 gated" detail={testManagerCatalog.testSetKey} tone="success" />
+        <SummaryCard
+          icon={ShieldCheck}
+          label="Guardrails"
+          value="Sandbox only"
+          detail="No production deploy"
+          tone="warning"
+        />
+        <SummaryCard
+          icon={Rocket}
+          label="Preview"
+          value={releaseApprovalState === "approved" ? "Ready" : "Pending approval"}
+          detail={deploymentEvidence.environment}
+          tone={releaseApprovalState === "approved" ? "success" : "warning"}
+        />
+        <section className="rail-panel">
+          <h2>Quality checks</h2>
+          <div className="quality-list">
+            {qualityGates.slice(0, 5).map((gate) => (
+              <div className="quality-row" data-status={gate.status} key={gate.name}>
+                <CheckCircle2 size={16} aria-hidden="true" />
+                <span>
+                  <strong>{gate.name}</strong>
+                  <small>{gate.testCaseKey ?? gate.provider}</small>
+                </span>
+              </div>
+            ))}
+          </div>
+        </section>
+      </aside>
+    </div>
+  );
+}
+
+function OutputPreviewView({
+  onOpenEvidence,
+  onViewRun,
+  releaseApprovalState,
+  selectedMetricRecords
+}: {
+  onOpenEvidence: () => void;
+  onViewRun: () => void;
+  releaseApprovalState: ReleaseApprovalState;
+  selectedMetricRecords: typeof metricOptions;
+}) {
+  return (
+    <div className="preview-layout">
+      <section className="primary-panel preview-surface">
+        <PanelHeader
+          action={<Pill tone={releaseApprovalState === "approved" ? "success" : "warning"}>{deploymentEvidence.status}</Pill>}
+          icon={LayoutDashboard}
+          meta="Generated Customer360 dashboard"
+          title="Customer360 preview"
+        />
+
+        <div className="preview-toolbar">
+          <div>
+            <strong>Privacy-safe sandbox data</strong>
+            <span>Names, emails, and phone numbers are masked before rendering.</span>
+          </div>
+          <div className="segmented-control" aria-label="Preview filters">
+            <button type="button" aria-pressed="true">30 days</button>
+            <button type="button">Segment</button>
+            <button type="button">Channel</button>
+          </div>
+        </div>
+
+        <div className="kpi-grid">
+          {outputKpis.map((kpi) => (
+            <div className="kpi-card" data-tone={kpi.tone} key={kpi.label}>
+              <span>{kpi.label}</span>
+              <strong>{kpi.value}</strong>
+              <small>{kpi.delta}</small>
+            </div>
+          ))}
+        </div>
+
+        <div className="preview-grid">
+          <section className="chart-panel">
+            <h2>Revenue and retention</h2>
+            <div className="bar-chart" aria-label="Revenue trend preview">
+              {[54, 72, 66, 88, 78, 94, 82, 98].map((height, index) => (
+                <span key={index} style={{ height: `${height}%` }} />
+              ))}
+            </div>
+          </section>
+          <section className="chart-panel">
+            <h2>Customer behavior</h2>
+            <div className="behavior-list">
+              {["Expansion-ready accounts", "Support friction", "Return risk", "Healthy repeat buyers"].map((label, index) => (
+                <div key={label}>
+                  <span>{label}</span>
+                  <strong>{[42, 18, 9, 64][index]}%</strong>
+                  <div>
+                    <span style={{ width: `${[42, 18, 9, 64][index]}%` }} />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </section>
+        </div>
+
+        <section className="masked-table">
+          <div className="section-heading">
+            <h2>Masked customer sample</h2>
+            <button type="button" onClick={onOpenEvidence}>
+              <ShieldCheck size={16} aria-hidden="true" />
+              Governance
+            </button>
+          </div>
+          {[
+            ["CUST-1042", "Enterprise", "$214K", "Low", "Renewal health rising"],
+            ["CUST-1188", "Mid-market", "$82K", "Medium", "Support friction watch"],
+            ["CUST-1275", "Enterprise", "$341K", "Low", "Expansion candidate"]
+          ].map(([customer, segment, revenue, risk, note]) => (
+            <div className="table-row" key={customer}>
+              <span>{customer}</span>
+              <span>{segment}</span>
+              <span>{revenue}</span>
+              <Pill tone={risk === "Low" ? "success" : "warning"}>{risk}</Pill>
+              <strong>{note}</strong>
+            </div>
+          ))}
+        </section>
+      </section>
+
+      <aside className="summary-rail">
+        <SummaryCard icon={Rocket} label="Sandbox" value={deploymentEvidence.environment} detail={deploymentEvidence.provider} tone="success" />
+        <SummaryCard icon={LockKeyhole} label="Data mode" value="Masked synthetic" detail="No raw PII" tone="success" />
+        <SummaryCard icon={BarChart3} label="Metric scope" value={`${selectedMetricRecords.length} KPIs`} detail="Generated from plan" tone="info" />
+        <section className="rail-panel">
+          <h2>Preview actions</h2>
+          <div className="action-stack">
+            <a className="primary-link" href={deploymentEvidence.url} target="_blank" rel="noreferrer">
+              <ExternalLink size={16} aria-hidden="true" />
+              Open sandbox preview
+            </a>
+            <button className="secondary-action" type="button" onClick={onViewRun}>
+              <Activity size={16} aria-hidden="true" />
+              Back to live run
+            </button>
+          </div>
+        </section>
+      </aside>
+    </div>
+  );
+}
+
+function EvidenceDrawer({
+  apiStatus,
+  auditLog,
+  manifestPreview,
+  onClose,
+  open,
+  snapshot
+}: {
+  apiStatus: FactoryApiStatus;
+  auditLog: ConsoleAuditEvent[];
+  manifestPreview: typeof manifestDocument;
+  onClose: () => void;
+  open: boolean;
+  snapshot: LifecycleSnapshot | null;
+}) {
+  return (
+    <aside className="evidence-drawer" aria-hidden={!open} data-open={open}>
+      <div className="drawer-header">
+        <div>
+          <strong>Technical evidence</strong>
+          <span>Runtime details for judges and operators</span>
+        </div>
+        <button className="icon-button" type="button" onClick={onClose} aria-label="Close evidence drawer">
+          <X size={17} aria-hidden="true" />
+        </button>
+      </div>
+
+      <div className="drawer-content">
+        <section>
+          <h2>API state</h2>
+          <KeyValueList
+            rows={[
+              ["Mode", apiStatus.mode],
+              ["Platform", apiStatus.platformMode],
+              ["Base URL", apiStatus.apiBaseUrl],
+              ["Snapshot", snapshot ? "loaded" : "seed fallback"]
+            ]}
+          />
+        </section>
+
+        <section>
+          <h2>Build manifest</h2>
+          <pre className="json-viewer">{JSON.stringify(manifestPreview, null, 2)}</pre>
+        </section>
+
+        <section>
+          <h2>Audit timeline</h2>
+          <AuditTable auditLog={auditLog} compact />
+        </section>
+
+        <section>
+          <h2>Platform evidence</h2>
+          <div className="platform-evidence-list">
+            {platformEvidence.map((item) => (
+              <div className="platform-evidence-row" data-status={item.status} key={item.product}>
+                <span>
+                  <strong>{item.product}</strong>
+                  <small>{item.detail}</small>
+                </span>
+                <Pill tone={item.mode === "uipath-live" ? "success" : item.status === "pending" ? "warning" : "info"}>
+                  {item.mode}
+                </Pill>
+              </div>
+            ))}
+          </div>
+        </section>
+      </div>
+    </aside>
   );
 }
 
 function PanelHeader({
+  action,
   icon: Icon,
-  title,
   meta,
-  action
+  title
 }: {
-  icon: LucideIcon;
-  title: string;
-  meta: string;
   action?: ReactNode;
+  icon: LucideIcon;
+  meta: string;
+  title: string;
 }) {
   return (
     <div className="panel-header">
@@ -823,35 +1121,54 @@ function PanelHeader({
   );
 }
 
-function StatusMetric({
-  label,
-  value,
+function StatusBanner({
+  children,
   icon: Icon,
-  tone = "neutral"
+  title,
+  tone
 }: {
-  label: string;
-  value: string;
+  children: ReactNode;
   icon: LucideIcon;
-  tone?: "neutral" | "blue" | "green" | "amber";
+  title: string;
+  tone: "success" | "warning" | "danger";
 }) {
   return (
-    <div className="status-metric" data-tone={tone}>
-      <Icon size={17} aria-hidden="true" />
+    <div className="status-banner" data-tone={tone} role={tone === "danger" ? "alert" : "status"}>
+      <Icon size={18} aria-hidden="true" />
+      <div>
+        <strong>{title}</strong>
+        <span>{children}</span>
+      </div>
+    </div>
+  );
+}
+
+function SummaryCard({
+  detail,
+  icon: Icon,
+  label,
+  tone,
+  value
+}: {
+  detail: string;
+  icon: LucideIcon;
+  label: string;
+  tone: PillTone;
+  value: string;
+}) {
+  return (
+    <div className="summary-card" data-tone={tone}>
+      <Icon size={18} aria-hidden="true" />
       <span>
         <small>{label}</small>
         <strong>{value}</strong>
+        <em>{detail}</em>
       </span>
     </div>
   );
 }
 
-function Pill({
-  children,
-  tone = "neutral"
-}: {
-  children: ReactNode;
-  tone?: "neutral" | "success" | "warning" | "danger";
-}) {
+function Pill({ children, tone = "neutral" }: { children: ReactNode; tone?: PillTone }) {
   return (
     <span className="pill" data-tone={tone}>
       {children}
@@ -872,9 +1189,9 @@ function KeyValueList({ rows }: { rows: Array<[string, string]> }) {
   );
 }
 
-function ListBlock({ title, items }: { title: string; items: string[] }) {
+function ListBlock({ items, title }: { items: string[]; title: string }) {
   return (
-    <div className="list-block">
+    <section className="list-block">
       <h3>{title}</h3>
       <ul>
         {items.map((item) => (
@@ -884,20 +1201,11 @@ function ListBlock({ title, items }: { title: string; items: string[] }) {
           </li>
         ))}
       </ul>
-    </div>
+    </section>
   );
 }
 
-function LoadingRow({ label }: { label: string }) {
-  return (
-    <div className="loading-row">
-      <Loader2 className="spin-icon" size={17} aria-hidden="true" />
-      <span>{label}</span>
-    </div>
-  );
-}
-
-function AuditTable({ auditLog, compact = false }: { auditLog: typeof auditEvents; compact?: boolean }) {
+function AuditTable({ auditLog, compact = false }: { auditLog: ConsoleAuditEvent[]; compact?: boolean }) {
   if (auditLog.length === 0) {
     return (
       <div className="empty-state">
@@ -921,12 +1229,60 @@ function AuditTable({ auditLog, compact = false }: { auditLog: typeof auditEvent
   );
 }
 
-function formatStatus(status: string) {
-  return status.replaceAll("_", " ");
+function approvalCopy(state: ApprovalState) {
+  if (state === "approved") {
+    return "Approved";
+  }
+
+  if (state === "changes") {
+    return "Changes requested";
+  }
+
+  return "Awaiting approval";
+}
+
+function getViewSubtitle(view: ProductView) {
+  switch (view) {
+    case "new-request":
+      return "Start with a clear business request, approved sources, and a few bounded answers.";
+    case "build-plan":
+      return "Review the generated plan, data policy, approvals, and manifest before build handoff.";
+    case "live-run":
+      return "Watch the governed agentic run move through build, quality, release, and preview.";
+    case "output-preview":
+      return "Inspect the generated Customer360 dashboard and release evidence from the current run.";
+  }
+}
+
+function getInitialView(): ProductView {
+  if (typeof window === "undefined") {
+    return "new-request";
+  }
+
+  const viewParam = new URLSearchParams(window.location.search).get("view");
+
+  if (viewParam === "build-plan" || viewParam === "live-run" || viewParam === "output-preview") {
+    return viewParam;
+  }
+
+  return "new-request";
+}
+
+function setProductView(view: ProductView, setView: (view: ProductView) => void) {
+  setView(view);
+
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  const url = new URL(window.location.href);
+  url.searchParams.set("view", view);
+  window.history.replaceState(null, "", url);
 }
 
 function formatAuditTime(value: string) {
   const date = new Date(value);
+
   return new Intl.DateTimeFormat("en-US", {
     month: "short",
     day: "2-digit",
