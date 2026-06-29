@@ -6,10 +6,10 @@ Worker IDs are filled in by the orchestrator after thread creation.
 
 | Lane | Thread | Pending ID | Worktree | Status | Notes |
 |---|---|---|---|---|---|
-| Deployment And Runtime | CLI `019f1107-6c3f-7c51-b39f-08747e3fb624` | local process `46864` | /private/tmp/agent-factory-cp5/deployment-runtime | running | Worktree branch `checkpoint-5-deployment-runtime`; handoff path `/private/tmp/agent-factory-cp5/deployment-runtime-HANDOFF.md` |
-| Demo UX Polish | CLI `019f1107-78b2-71d2-b379-9bb11f317e20` | local process `81321` | /private/tmp/agent-factory-cp5/demo-ux-polish | running | Worktree branch `checkpoint-5-demo-ux-polish`; handoff path `/private/tmp/agent-factory-cp5/demo-ux-polish-HANDOFF.md` |
-| Submission Package | CLI `019f1107-7bef-7200-8a1d-a69baceb2d24` | local process `36842` | /private/tmp/agent-factory-cp5/submission-package | running | Worktree branch `checkpoint-5-submission-package`; handoff path `/private/tmp/agent-factory-cp5/submission-package-HANDOFF.md` |
-| Final QA And E2E | CLI `019f1107-7d3a-7eb2-9365-c29a464d143d` | local process `49745` | /private/tmp/agent-factory-cp5/final-qa-e2e | running | Worktree branch `checkpoint-5-final-qa-e2e`; handoff path `/private/tmp/agent-factory-cp5/final-qa-e2e-HANDOFF.md` |
+| Deployment And Runtime | pending app worktree relaunch | n/a | pending | preparing | Previous CLI scratch worktree `/private/tmp/agent-factory-cp5/deployment-runtime` is superseded and is not a merge candidate |
+| Demo UX Polish | pending app worktree relaunch | n/a | pending | preparing | Previous CLI scratch worktree `/private/tmp/agent-factory-cp5/demo-ux-polish` is superseded and is not a merge candidate |
+| Submission Package | pending app worktree relaunch | n/a | pending | preparing | Previous CLI scratch worktree `/private/tmp/agent-factory-cp5/submission-package` is superseded and is not a merge candidate |
+| Final QA And E2E | pending app worktree relaunch | n/a | pending | preparing | Previous CLI scratch worktree `/private/tmp/agent-factory-cp5/final-qa-e2e` is superseded and is not a merge candidate |
 
 ## Integration Log
 
@@ -21,6 +21,10 @@ Worker IDs are filled in by the orchestrator after thread creation.
 - User explicitly approved continuing with the CLI worker fallback after the orchestrator explained the app handler and sandbox-reviewer issues.
 - Fast-forwarded all four prepared worktrees from `5f6bb16` to `df432f9` before launch.
 - Launched all four Checkpoint 5 CLI workers at approximately `2026-06-29T01:38:47Z`.
+- User interrupted the CLI monitor turn before worker handoffs were produced.
+- Rechecked the local process handles after interruption; all four handles were gone and no handoff files existed.
+- The interrupted CLI worktrees contain partial scratch diffs in three lanes and no Final QA changes. They are retained only for inspection and must not be merged.
+- App-managed `list_projects` / `create_thread` tools became available after the interruption, so Checkpoint 5 will be relaunched through normal app-managed worktree sessions.
 - Pre-launch `npm run smoke` passed across workspace builds and tests.
 - Pre-launch CLI probes confirmed:
   - `uip login status --output json` passed for `galacticus / DefaultTenant`.
@@ -52,7 +56,7 @@ Worker IDs are filled in by the orchestrator after thread creation.
 - Pre-launch `vercel --version` passed.
 - Pre-launch `git remote -v` passed.
 - Worktree preparation passed for all four Checkpoint 5 lanes.
-- Worker execution launched after explicit user approval.
+- Initial CLI worker execution launched after explicit user approval, then was superseded by app-managed relaunch preparation.
 
 ## Manual Smoke Target
 
