@@ -1,10 +1,30 @@
-import type { AutomationRequest, AutomationRequestDetail, IntakeRequest } from "@agent-factory/shared-contracts";
+import type {
+  AutomationRequest,
+  AutomationRequestDetail,
+  BuildRun,
+  ClarificationAnswer,
+  ClarificationQuestion,
+  FactoryBuildManifest,
+  GovernanceAssessment,
+  IntakeRequest,
+  PlatformMode,
+  StructuredSpec
+} from "@agent-factory/shared-contracts";
 import type { ConsoleRequest } from "./seedData";
 
 const DEFAULT_API_BASE_URL = "http://localhost:8787";
-const REQUEST_TIMEOUT_MS = 1_200;
+const REQUEST_TIMEOUT_MS = 4_000;
 
-export type PlatformMode = "local-simulated" | "uipath-ready";
+type LifecycleAction =
+  | "clarify"
+  | "answers"
+  | "spec"
+  | "governance"
+  | "approve-scope"
+  | "manifest"
+  | "queue-build"
+  | "build-status"
+  | "deploy";
 
 export interface FactoryApiStatus {
   mode: "checking" | "online" | "degraded";
@@ -19,6 +39,11 @@ interface HealthResponse {
   ok?: boolean;
   service?: string;
   requests?: number;
+  agentProvider?: {
+    mode?: string;
+    available?: boolean;
+    detail?: string;
+  };
 }
 
 interface IntakeResponse {
@@ -31,12 +56,42 @@ export interface TimelineEvent {
   action: string;
   summary: string;
   timestamp: string;
+  platformMode?: PlatformMode;
 }
 
 export interface LifecycleSnapshot {
   detail?: AutomationRequestDetail;
   timeline: TimelineEvent[];
   fetchedAt: string;
+}
+
+export interface LifecycleActionResult<T> {
+  ok: boolean;
+  action: LifecycleAction;
+  data?: T;
+  status?: string;
+  platformMode?: PlatformMode;
+  message?: string;
+}
+
+export interface ClarifyResult {
+  questions: ClarificationQuestion[];
+  status: string;
+}
+
+export interface GovernanceResult {
+  assessment: GovernanceAssessment;
+  approvalTasks: AutomationRequestDetail["approvalTasks"];
+}
+
+export interface DeploymentResult {
+  deploymentId: string;
+  buildRunId: string;
+  deploymentUrl: string;
+  environment: string;
+  status: string;
+  rollbackRef?: string;
+  platformMode?: PlatformMode;
 }
 
 export function getFactoryApiBaseUrl() {
@@ -55,7 +110,10 @@ export async function checkFactoryApi(apiBaseUrl = getFactoryApiBaseUrl()): Prom
         platformMode: "uipath-ready",
         apiBaseUrl,
         label: "Factory API online",
-        detail: "Intake writes are routed through the local Factory API.",
+        detail:
+          health.agentProvider?.mode === "live"
+            ? "Lifecycle endpoints are online with live provider mode available."
+            : "Lifecycle endpoints are online; provider mode may be deterministic or degraded.",
         requests: health.requests
       };
     }
@@ -85,6 +143,171 @@ export async function submitIntakeToFactoryApi(
   }
 }
 
+export async function generateClarificationQuestions(
+  requestId: string,
+  apiBaseUrl = getFactoryApiBaseUrl()
+): Promise<LifecycleActionResult<ClarifyResult>> {
+  return lifecyclePost<
+    {
+      questions?: ClarificationQuestion[];
+      status?: string;
+      platformMode?: PlatformMode;
+    },
+    ClarifyResult
+  >("clarify", `${apiBaseUrl}/api/requests/${requestId}/clarify`, undefined, (response) => ({
+    questions: response.questions ?? [],
+    status: response.status ?? "clarifying"
+  }));
+}
+
+export async function submitClarificationAnswers(
+  requestId: string,
+  answers: ClarificationAnswer[],
+  apiBaseUrl = getFactoryApiBaseUrl()
+): Promise<LifecycleActionResult<ClarificationAnswer[]>> {
+  return lifecyclePost<
+    { answers?: ClarificationAnswer[]; status?: string; platformMode?: PlatformMode },
+    ClarificationAnswer[]
+  >(
+    "answers",
+    `${apiBaseUrl}/api/requests/${requestId}/answers`,
+    { answers },
+    (response) => response.answers ?? []
+  );
+}
+
+export async function generateStructuredSpec(
+  requestId: string,
+  apiBaseUrl = getFactoryApiBaseUrl()
+): Promise<LifecycleActionResult<StructuredSpec>> {
+  return lifecyclePost<{ data?: StructuredSpec; status?: string; platformMode?: PlatformMode }, StructuredSpec>(
+    "spec",
+    `${apiBaseUrl}/api/requests/${requestId}/spec`,
+    undefined,
+    (response) => response.data
+  );
+}
+
+export async function generateGovernanceAssessment(
+  requestId: string,
+  apiBaseUrl = getFactoryApiBaseUrl()
+): Promise<LifecycleActionResult<GovernanceResult>> {
+  return lifecyclePost<
+    {
+      data?: GovernanceAssessment;
+      approvalTasks?: AutomationRequestDetail["approvalTasks"];
+      status?: string;
+      platformMode?: PlatformMode;
+    },
+    GovernanceResult
+  >("governance", `${apiBaseUrl}/api/requests/${requestId}/govern`, undefined, (response) =>
+    response.data
+      ? {
+          assessment: response.data,
+          approvalTasks: response.approvalTasks ?? []
+        }
+      : undefined
+  );
+}
+
+export async function approveScope(
+  requestId: string,
+  comments: string,
+  apiBaseUrl = getFactoryApiBaseUrl()
+): Promise<LifecycleActionResult<AutomationRequestDetail["approvalTasks"][number]>> {
+  return lifecyclePost<
+    {
+      data?: AutomationRequestDetail["approvalTasks"][number];
+      status?: string;
+      platformMode?: PlatformMode;
+    },
+    AutomationRequestDetail["approvalTasks"][number]
+  >("approve-scope", `${apiBaseUrl}/api/requests/${requestId}/approve-scope`, { comments }, (response) => response.data);
+}
+
+export async function createBuildManifest(
+  requestId: string,
+  apiBaseUrl = getFactoryApiBaseUrl()
+): Promise<LifecycleActionResult<FactoryBuildManifest>> {
+  return lifecyclePost<
+    { data?: FactoryBuildManifest; status?: string; platformMode?: PlatformMode },
+    FactoryBuildManifest
+  >(
+    "manifest",
+    `${apiBaseUrl}/api/requests/${requestId}/manifest`,
+    undefined,
+    (response) => response.data
+  );
+}
+
+export async function queueBuildRun(
+  requestId: string,
+  manifestId: string | undefined,
+  apiBaseUrl = getFactoryApiBaseUrl()
+): Promise<LifecycleActionResult<BuildRun>> {
+  return lifecyclePost<{ data?: BuildRun; status?: string; platformMode?: PlatformMode }, BuildRun>(
+    "queue-build",
+    `${apiBaseUrl}/api/builds`,
+    {
+      request_id: requestId,
+      manifest_id: manifestId,
+      mode: "sandbox"
+    },
+    (response) => response.data
+  );
+}
+
+export async function updateBuildRunStatus(
+  buildRunId: string,
+  status: BuildRun["status"],
+  apiBaseUrl = getFactoryApiBaseUrl()
+): Promise<LifecycleActionResult<BuildRun>> {
+  return lifecyclePost<{ data?: BuildRun; status?: string; platformMode?: PlatformMode }, BuildRun>(
+    "build-status",
+    `${apiBaseUrl}/api/builds/${buildRunId}/status`,
+    {
+      status,
+      worker_id: "factory-console-demo",
+      generated_files_json: ["apps/customer360-template/src/main.tsx", "apps/customer360-template/test/dashboard.test.tsx"]
+    },
+    (response) => response.data
+  );
+}
+
+export async function recordSandboxDeployment(
+  requestId: string,
+  buildRunId: string,
+  deploymentUrl: string,
+  apiBaseUrl = getFactoryApiBaseUrl()
+): Promise<LifecycleActionResult<DeploymentResult>> {
+  return lifecyclePost<Record<string, unknown>, DeploymentResult>(
+    "deploy",
+    `${apiBaseUrl}/deploy`,
+    {
+      operationId: `factory-console-${requestId}-${buildRunId}`,
+      requestId,
+      buildRunId,
+      environment: "sandbox",
+      deploymentProvider: "local-sandbox",
+      deploymentUrl,
+      releaseApproval: {
+        status: "approved",
+        decidedBy: "Factory Console"
+      },
+      rollbackNotes: "Sandbox preview evidence recorded from the Product UI lane."
+    },
+    (response) => ({
+      deploymentId: readString(response, "deploymentId") ?? readString(response, "deployment_id") ?? "deployment-pending",
+      buildRunId: readString(response, "buildRunId") ?? readString(response, "build_run_id") ?? buildRunId,
+      deploymentUrl: readString(response, "deploymentUrl") ?? readString(response, "app_url") ?? deploymentUrl,
+      environment: readString(response, "environment") ?? "sandbox",
+      status: readString(response, "deploymentStatus") ?? readString(response, "status") ?? "deployed",
+      rollbackRef: readString(response, "rollback_ref"),
+      platformMode: readPlatformMode(response)
+    })
+  );
+}
+
 export async function getLifecycleSnapshot(
   requestId: string,
   apiBaseUrl = getFactoryApiBaseUrl()
@@ -94,13 +317,14 @@ export async function getLifecycleSnapshot(
       requestJson<{ data?: AutomationRequestDetail }>(`${apiBaseUrl}/api/requests/${requestId}`, {
         method: "GET"
       }),
-      requestJson<{ data?: TimelineEvent[] }>(`${apiBaseUrl}/api/requests/${requestId}/timeline`, {
+      requestJson<{ data?: Array<Record<string, unknown>> }>(`${apiBaseUrl}/api/requests/${requestId}/timeline`, {
         method: "GET"
       })
     ]);
 
     const detail = detailResult.status === "fulfilled" ? detailResult.value.data : undefined;
-    const timeline = timelineResult.status === "fulfilled" ? timelineResult.value.data ?? [] : [];
+    const timeline =
+      timelineResult.status === "fulfilled" ? (timelineResult.value.data ?? []).map(normalizeTimelineEvent) : [];
 
     if (!detail && timeline.length === 0) {
       return null;
@@ -131,9 +355,61 @@ function createDegradedStatus(apiBaseUrl: string): FactoryApiStatus {
     mode: "degraded",
     platformMode: "local-simulated",
     apiBaseUrl,
-    label: "Local simulation active",
-    detail: "Factory API lifecycle endpoints are unavailable; deterministic seed state is in control."
+    label: "Lifecycle API unavailable",
+    detail: "Live mode is not active. The UI is showing explicit offline rehearsal state until the Factory API is reachable."
   };
+}
+
+async function lifecyclePost<TResponse extends { status?: string; platformMode?: PlatformMode }, TData>(
+  action: LifecycleAction,
+  url: string,
+  body: unknown,
+  mapData: (response: TResponse) => TData | undefined
+): Promise<LifecycleActionResult<TData>> {
+  try {
+    const response = await requestJson<TResponse>(url, {
+      method: "POST",
+      headers: {
+        "content-type": "application/json"
+      },
+      body: JSON.stringify(body ?? {})
+    });
+
+    return {
+      ok: true,
+      action,
+      data: mapData(response),
+      status: response.status,
+      platformMode: response.platformMode
+    };
+  } catch (error) {
+    return {
+      ok: false,
+      action,
+      message: error instanceof Error ? error.message : "Lifecycle endpoint unavailable"
+    };
+  }
+}
+
+function normalizeTimelineEvent(event: Record<string, unknown>): TimelineEvent {
+  return {
+    id: readString(event, "id") ?? readString(event, "event_id") ?? `timeline-${Date.now()}`,
+    actor: readString(event, "actor") ?? readString(event, "actor_name") ?? "Factory API",
+    action: readString(event, "action") ?? "event",
+    summary: readString(event, "summary") ?? "",
+    timestamp: readString(event, "timestamp") ?? readString(event, "createdAt") ?? new Date().toISOString(),
+    platformMode: readPlatformMode(event)
+  };
+}
+
+function readString(record: Record<string, unknown>, key: string): string | undefined {
+  const value = record[key];
+  return typeof value === "string" ? value : undefined;
+}
+
+function readPlatformMode(record: Record<string, unknown>): PlatformMode | undefined {
+  const value = record.platformMode;
+  return value === "local-simulated" || value === "uipath-ready" || value === "uipath-live" ? value : undefined;
 }
 
 async function requestJson<T>(url: string, init: RequestInit): Promise<T> {
