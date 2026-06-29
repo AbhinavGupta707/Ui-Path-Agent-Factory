@@ -8,7 +8,7 @@ Worker IDs are filled in by the orchestrator after thread creation.
 |---|---|---|---|---|---|
 | Maestro And Data Service | 019f10cc-e418-7db3-95ab-23f344ebb420 | local:d9ec66ec-6cbd-4b03-8f7f-5e94728a362f | /Users/abhinavgupta/.codex/worktrees/9afa/Agent Factory | active | Owns Data Service schema and Maestro BPMN/process assets |
 | Agents And API Workflow | 019f10cd-043b-7092-a437-d172ff135cad | local:57339c45-827e-401e-b456-5ee1cb547189 | /Users/abhinavgupta/.codex/worktrees/db15/Agent Factory | active | Owns Agent Builder contracts and API Workflow assets |
-| Apps And Action Center | 019f10cd-21de-77e3-b92d-c24366772b4a | local:9208238e-8555-4b00-8772-b08f5a278251 | /Users/abhinavgupta/.codex/worktrees/a8e9/Agent Factory | active | Owns UiPath Apps companion and Action Center approval contracts |
+| Apps And Action Center | 019f10cd-21de-77e3-b92d-c24366772b4a | local:9208238e-8555-4b00-8772-b08f5a278251 | /Users/abhinavgupta/.codex/worktrees/a8e9/Agent Factory | complete; queued for merge | Local commit `551db75`; queued behind Maestro/Data Service and Agents/API Workflow |
 | Test Cloud And Quality Gates | 019f10cd-45be-7c03-a658-b460b7c07ede | local:1f460a39-6b25-4d58-a723-9cc8a9ba615c | /Users/abhinavgupta/.codex/worktrees/af26/Agent Factory | complete; queued for merge | Local commit `63d6168`; queued behind Maestro/Data Service, Agents/API Workflow, and Apps/Action Center |
 
 ## Integration Log
@@ -22,6 +22,7 @@ Worker IDs are filled in by the orchestrator after thread creation.
 - Queued all four Checkpoint 4 workers from `main` at `819ba7f`.
 - Resolved all four workers to active Codex threads and recorded their checkout paths.
 - Test Cloud And Quality Gates completed local commit `63d6168`; orchestrator verified `git diff --check` and JSON parsing, then queued it behind dependency lanes.
+- Apps And Action Center completed local commit `551db75`; orchestrator verified owned validators and `git diff --check`, then queued it behind dependency lanes.
 
 ## Launch Baseline
 
@@ -63,6 +64,9 @@ Worker IDs are filled in by the orchestrator after thread creation.
 - Pre-launch `npm run smoke` passed across workspace builds and tests.
 - Test Cloud lane post-handoff check: `git -C /Users/abhinavgupta/.codex/worktrees/af26/Agent\ Factory diff --check 819ba7f...HEAD` passed.
 - Test Cloud lane post-handoff check: `python3 -m json.tool uipath/test-cloud/quality-gate-assets.json` passed.
+- Apps/Action Center lane post-handoff check: `git -C /Users/abhinavgupta/.codex/worktrees/a8e9/Agent\ Factory diff --check 819ba7f...HEAD` passed.
+- Apps/Action Center lane post-handoff check: `node uipath/action-center/validate-approval-contracts.mjs` passed.
+- Apps/Action Center lane post-handoff check: `node uipath/apps/validate-companion-app.mjs` passed.
 
 ## Manual Smoke Target
 
