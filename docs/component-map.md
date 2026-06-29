@@ -7,9 +7,9 @@ This map helps judges and reviewers understand what each part does, where it liv
 | Component | Path | Role | Current status |
 |---|---|---|---|
 | Factory Console | `apps/factory-console` | Primary polished operator UI for intake, governance, manifest, quality, deployment, and audit. | Runnable locally. |
-| Factory API | `services/factory-api` | Local lifecycle API and in-memory state shaped for Data Service. | Runnable locally on port `8787`. |
-| Build Worker | `services/build-worker` | Receives governed manifests, validates worker contract, records build/test/artifact status. | Runnable locally on port `8790`; default runner blocks without injected Codex/Git execution. |
-| Customer360 dashboard | `apps/customer360-template` | Generated-dashboard target and demo artifact. | Runnable locally on port `5174`. |
+| Factory API | `services/factory-api` | Local lifecycle API and in-memory state shaped for Data Service. | Preferred `dev:live` port `8887`; legacy service default `8787`. |
+| Build Worker | `services/build-worker` | Receives governed manifests, validates worker contract, records build/test/artifact status. | Preferred `dev:live` port `8890`; legacy service default `8790`; default runner blocks without injected Codex/Git execution. |
+| Customer360 dashboard | `apps/customer360-template` | Generated-dashboard target and demo artifact. | Preferred `dev:live` port `5184`; package dev default `5174`. |
 | Shared contracts | `packages/shared-contracts` | Lifecycle schemas and runtime contract types. | Built/tested locally. |
 | Customer360 metrics | `packages/customer360-metrics` | Synthetic dataset metrics, mutation, and PII checks. | Built/tested locally. |
 | Data mutation helper | `scripts/mutate-customer360-data.mjs` | Writes untracked Customer360 mutation evidence for refresh/deployment lanes. | Runnable locally. |

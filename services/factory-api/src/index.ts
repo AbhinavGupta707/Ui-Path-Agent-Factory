@@ -925,7 +925,7 @@ function resolveDeploymentUrl(
     explicitUrl ??
     process.env.CUSTOMER360_DEPLOYMENT_URL ??
     process.env.CUSTOMER360_TEMPLATE_URL ??
-    "http://localhost:5174"
+    "http://localhost:5184"
   );
 }
 

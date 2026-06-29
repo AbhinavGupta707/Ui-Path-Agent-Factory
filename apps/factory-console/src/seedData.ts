@@ -125,6 +125,11 @@ export interface TestManagerCatalog {
   note: string;
 }
 
+const customer360DeploymentUrl =
+  import.meta.env.VITE_CUSTOMER360_DEPLOYMENT_URL ??
+  import.meta.env.VITE_CUSTOMER360_TEMPLATE_URL ??
+  "http://localhost:5184";
+
 export const requestId = "req_customer360_checkpoint_1";
 export const specId = "spec_customer360_checkpoint_1";
 export const manifestId = "man_customer360_checkpoint_1";
@@ -581,7 +586,7 @@ export const deploymentEvidence: DeploymentEvidence = {
   environment: "sandbox-preview",
   status: "preview-deployed",
   provider: "Local Vite / sandbox web host",
-  url: "http://localhost:5174",
+  url: customer360DeploymentUrl,
   rollbackRef: "codex/customer360-dashboard-req-001@local-demo-diff",
   rollbackNotes:
     "Rollback keeps the approved template seed and removes the preview deployment pointer. Production release is not available from this flow.",

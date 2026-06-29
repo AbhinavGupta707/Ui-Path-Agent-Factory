@@ -8,13 +8,13 @@ const targets = {
     label: "Customer360 dashboard",
     workspace: "@agent-factory/customer360-template",
     dist: "apps/customer360-template/dist",
-    defaultLocalUrl: "http://localhost:5174"
+    defaultLocalUrl: "http://localhost:5184"
   },
   "factory-console": {
     label: "Factory Console",
     workspace: "@agent-factory/factory-console",
     dist: "apps/factory-console/dist",
-    defaultLocalUrl: "http://localhost:5173"
+    defaultLocalUrl: "http://localhost:5183"
   }
 };
 

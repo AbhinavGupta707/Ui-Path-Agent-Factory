@@ -78,14 +78,17 @@ npm run dev:console
 npm run dev:customer360
 ```
 
-Default local URLs:
+Preferred `dev:live` local URLs:
 
 | Surface | URL |
 |---|---|
-| Factory API | `http://localhost:8787/health` |
-| Build Worker | `http://localhost:8790/health` |
-| Factory Console | Vite output, usually `http://localhost:5173` |
-| Customer360 dashboard | `http://localhost:5174` |
+| Factory API | `http://localhost:8887/health` |
+| Build Worker | `http://localhost:8890/health` |
+| Factory Console | `http://localhost:5183` |
+| Customer360 dashboard | `http://localhost:5184` |
+
+The separate-terminal commands use their own package defaults: Factory API `8787`,
+Build Worker `8790`, Factory Console `5173`, and Customer360 `5174`.
 
 ## Verification
 

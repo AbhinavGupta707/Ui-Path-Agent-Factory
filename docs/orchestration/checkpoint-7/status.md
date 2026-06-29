@@ -1,0 +1,43 @@
+# Checkpoint 7 Status
+
+Started: not launched.
+
+Planning base: `5ade6e9` (`Finalize checkpoint 6 live orchestration`).
+
+Planning objective: prepare the live product loop checkpoint and worker prompts before spawning implementation worktrees.
+
+## Lanes
+
+| Lane | Worker | Thread | Worktree | State | Notes |
+|---|---|---|---|---|---|
+| Agent Graph And Clarification | TBD | TBD | TBD | planned | Provider-backed questions after submit; graph-shaped lifecycle. |
+| Product UI Live Flow | TBD | TBD | TBD | planned | Reference-style UI wired to real endpoints. |
+| Codex Worker Live Execution | TBD | TBD | TBD | planned | Safe opt-in live Codex runner evidence. |
+| UiPath Live Proof And Hosted Bridge | TBD | TBD | TBD | planned | Requires explicit approval before live UiPath mutation/execution. |
+| QA, Evidence, And Submission Runbook | TBD | TBD | TBD | planned | Final checks, docs, screenshots, runbook. |
+
+## Current Facts
+
+- Checkpoint 6 merged and pushed at `5ade6e9`.
+- Fireworks and LangSmith local setup has been configured through git-ignored `.env.local`.
+- Fireworks live lifecycle was previously verified for intake classification, requirements spec, governance, and build planning.
+- Clarification remains deterministic in the current Factory API.
+- Build Worker live Codex execution remains disabled unless `BUILD_WORKER_CODEX_ENABLED=true`.
+- UiPath live assets currently verified: tenant/folder and Test Manager catalog/test cases.
+- UiPath live mutations remain approval-gated.
+- `Ui References/` contains four local reference images and remains untracked.
+
+## Planning Changes In This Pass
+
+- Align preview/deployment default URLs with the `dev:live` stack.
+- Add `docs/checkpoint-7-live-product-plan.md`.
+- Add Checkpoint 7 orchestration README, status, and worker prompts.
+
+## Prelaunch Checklist
+
+- [ ] Commit planning docs and port/default fixes.
+- [ ] Confirm whether user approves starting Checkpoint 7 worktree lanes.
+- [ ] Confirm live Codex execution boundary.
+- [ ] Confirm first live UiPath proof target.
+- [ ] Confirm hosted endpoint strategy.
+

@@ -300,7 +300,7 @@ describe("factory api", () => {
 
     expect(deployed.statusCode).toBe(201);
     expect(deployedBody.deploymentStatus).toBe("deployed");
-    expect(deployedBody.deploymentUrl).toBe("http://localhost:5174");
+    expect(deployedBody.deploymentUrl).toBe("http://localhost:5184");
     expect(deployedBody.platformMode).toBe("uipath-ready");
     expect(deployedBody.idempotentReplay).toBe(false);
 
