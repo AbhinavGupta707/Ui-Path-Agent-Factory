@@ -1,8 +1,8 @@
 # Checkpoint 7 Status
 
-Started: not launched.
+Started: 2026-06-29. Four implementation lanes launched as app-managed worktree sessions; final QA lane intentionally held until implementation lanes land.
 
-Planning base: `1166e3a` (`Prepare checkpoint 7 live product loop`).
+Implementation base: `4d761b6` (`Align checkpoint 7 with AgentHack Track 2`).
 
 Planning objective: prepare the live Track 2 Maestro product loop checkpoint and worker prompts before spawning implementation worktrees.
 
@@ -10,10 +10,10 @@ Planning objective: prepare the live Track 2 Maestro product loop checkpoint and
 
 | Lane | Worker | Thread | Worktree | State | Notes |
 |---|---|---|---|---|---|
-| Agent Graph And Clarification | TBD | TBD | TBD | planned | Provider-backed questions after submit; graph-shaped lifecycle. |
-| Product UI Live Flow | TBD | TBD | TBD | planned | Reference-style UI wired to real endpoints. |
-| Codex Worker Live Execution | TBD | TBD | TBD | planned | Safe opt-in live Codex runner evidence. |
-| Maestro Cloud Orchestration | TBD | TBD | TBD | planned | Track 2 target: live or approved runnable Maestro BPMN path, with exact approval before live UiPath mutation/execution. |
+| Agent Graph And Clarification | local:6f481250-eb46-4db6-9de6-d4d95d2a4c15 | pending | pending | launched | Provider-backed questions after submit; graph-shaped lifecycle. |
+| Product UI Live Flow | local:e5efcafb-3017-4af7-a2d0-90108cbeed79 | pending | pending | launched | Reference-style UI wired to real endpoints. |
+| Codex Worker Live Execution | local:9f8fac2d-85f9-4be4-b122-460231e785e5 | pending | pending | launched | Safe opt-in live Codex runner evidence. |
+| Maestro Cloud Orchestration | local:a69eff27-32a0-48d9-be8b-660b04533735 | pending | pending | launched | Track 2 target: live or approved runnable Maestro BPMN path, with exact approval before live UiPath mutation/execution. |
 | QA, Evidence, And Submission Runbook | TBD | TBD | TBD | planned | Final checks, docs, screenshots, runbook. |
 
 ## Current Facts
@@ -27,6 +27,7 @@ Planning objective: prepare the live Track 2 Maestro product loop checkpoint and
 - Devpost requirements analysis changes the Checkpoint 7 target from one UiPath proof point to a Track 2 Maestro BPMN orchestration spine.
 - UiPath live mutations remain approval-gated.
 - `Ui References/` contains four local reference images and remains untracked.
+- Implementation lanes were launched from pushed `main` at `4d761b6`.
 
 ## Planning Changes In This Pass
 
@@ -39,7 +40,7 @@ Planning objective: prepare the live Track 2 Maestro product loop checkpoint and
 ## Prelaunch Checklist
 
 - [x] Commit Devpost-aligned planning docs.
-- [ ] Confirm whether user approves starting Checkpoint 7 worktree lanes.
+- [x] Confirm whether user approves starting Checkpoint 7 worktree lanes.
 - [ ] Confirm live Codex execution boundary.
 - [ ] Confirm first live Maestro/API Workflow/Action Center activation target.
 - [ ] Confirm hosted endpoint strategy.
