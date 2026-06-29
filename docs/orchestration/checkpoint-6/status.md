@@ -1,6 +1,8 @@
 # Checkpoint 6 Status
 
-Base commit: `d69bc5a`.
+Setup commit: `9d3375f` (`Prepare checkpoint 6 live orchestration`).
+
+Worker launch base: pending worker creation.
 
 Started: 2026-06-29.
 
