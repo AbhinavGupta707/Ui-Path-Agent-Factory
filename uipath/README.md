@@ -36,6 +36,28 @@ uip tm testsets list --project-key AFQG --output json
 uip maestro bpmn validate uipath/maestro/customer360-build/agent-factory-customer360-build.bpmn --output json
 ```
 
+## Checkpoint 7 Cloud Run Readiness
+
+For the Track 2 Maestro run, keep the checked-in assets local-safe and pass live
+endpoints at runtime. Automation Cloud needs HTTPS callback targets for:
+
+- Factory API status/test/deploy callbacks,
+- Build Worker build trigger and polling,
+- Customer360 sandbox preview URL evidence.
+
+Recommended activation order:
+
+1. Run read-only discovery for login, folder, Maestro/API Workflow/Action
+   Center/Data Service/Test Manager surfaces.
+2. Start local Factory API, Build Worker, and Customer360 preview, then expose
+   only the approved surfaces through an HTTPS tunnel or host.
+3. Override API Workflow inputs with those HTTPS base URLs.
+4. Validate local BPMN/API workflow assets.
+5. Request explicit approval for the exact publish/run/task/data/test command.
+6. Capture Maestro run id, API Workflow execution id, Action Center task id,
+   Data Service record id, and Test Manager/Test Cloud execution id where
+   available.
+
 ## Approval Boundary
 
 The following are live mutations or side-effecting runtime calls and require explicit approval before use:

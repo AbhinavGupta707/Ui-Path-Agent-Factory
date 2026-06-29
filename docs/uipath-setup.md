@@ -1,6 +1,6 @@
 # UiPath Setup And Platform Mapping
 
-This document records the Checkpoint 5 UiPath facts for `galacticus / DefaultTenant / AgentFactoryDemo`. It should be read together with [component-map.md](component-map.md) and the source files under `uipath/`.
+This document records the current UiPath facts for `galacticus / DefaultTenant / AgentFactoryDemo`. It should be read together with [component-map.md](component-map.md) and the source files under `uipath/`.
 
 ## Verified Context
 
@@ -22,7 +22,7 @@ This document records the Checkpoint 5 UiPath facts for `galacticus / DefaultTen
 | Data Service | Proposal-only schema in `uipath/data-service/schema.json`. | Choice sets, entities, fields, and seed records must not be created without approval. |
 | Maestro BPMN | Validated, import-ready project in `uipath/maestro/customer360-build`. | Publish or run only after approval and after required dependencies are ready. |
 | UiPath Agents | Five local low-code Agent Builder projects validate with `uip agent validate`. | Upload, publish, deploy, or run only after approval. |
-| API Workflows | Five workflow JSON assets validate with `uip api-workflow validate`. | Upload or runtime execution only after approval; `AgentFactory_StartDeployment` still waits for a real `/deploy` endpoint. |
+| API Workflows | Five workflow JSON assets validate with `uip api-workflow validate`. | Upload or runtime execution only after approval; live use must override local base URLs with an approved HTTPS Factory API/Build Worker callback bridge. |
 | Action Center | Scope and release approval contracts are proposal-only. No live tasks were created or completed. | Task creation and completion are live business decisions and need approval. |
 | UiPath Apps / Coded App | Companion app contract is proposal-only. | Pack/publish/deploy only after approval. |
 | Integration Service | GitHub connector is discoverable; no connection is configured. | Do not invent connection IDs or perform OAuth/connection setup without approval. |
@@ -82,6 +82,44 @@ uip is connections list --output json
 ```
 
 Use the Automation Cloud portal only when the CLI lacks a clear read-only command or an OAuth/activation step needs the logged-in browser.
+
+## Checkpoint 7 Maestro Cloud Activation
+
+Track 2 live mode is approval-gated and starts with registration/discovery, not
+runtime debugging. Before any live publish, run, task, Data Service write, or
+Test Cloud execution, confirm these layers in order:
+
+1. `uip login status --output json` returns the expected `galacticus /
+   DefaultTenant` context.
+2. `uip or folders get AgentFactoryDemo --output json` returns folder id
+   `7986306` and key `cba41e19-47cc-4a0a-bf73-de88b60a61be`.
+3. Maestro, API Workflow, Action Center, Data Service, and Test Manager
+   surfaces are discoverable with the safe read-only commands below.
+4. A user-approved HTTPS callback bridge exists for Factory API and Build Worker
+   traffic from Automation Cloud. Localhost is acceptable only for local
+   validation; it is not a live Automation Cloud callback target.
+5. Workflow inputs or Orchestrator assets are prepared with the approved
+   endpoint values. Do not commit endpoint secrets, tunnel tokens, `.env`
+   values, or generated build output.
+6. Only after the operator approves the exact command, publish/run Maestro,
+   execute API Workflows, complete Action Center tasks, create Data Service
+   schema/records, or run Test Manager/Test Cloud.
+
+Endpoint values to prepare for the live run:
+
+| Runtime surface | Workflow input | Local default | Live value |
+|---|---|---|---|
+| Factory API status/test/deploy callbacks | `factoryApiBaseUrl`, `deploymentServiceBaseUrl` | `http://localhost:8787` | `https://<approved-factory-api-host>` |
+| Build Worker build/poll handoff | `buildWorkerBaseUrl` | `http://localhost:8790` | `https://<approved-build-worker-host>` |
+| Customer360 sandbox preview | `deploymentUrl` | `http://localhost:5174` | approved sandbox preview URL |
+
+Evidence ids to copy back into the Factory API timeline when available:
+
+- Maestro process id and run/process-instance id,
+- API Workflow execution id,
+- Action Center task id for scope and release gates,
+- Data Service record ids for mirrored lifecycle rows,
+- Test Manager project/test set/test execution ids.
 
 ## Source-Controlled UiPath Assets
 

@@ -66,6 +66,14 @@ Start: request submitted
 - Do not publish or run this process until the Data Service schema is approved
   and the downstream API Workflow/Action Center assets exist or are explicitly
   approved for live creation.
+- For Checkpoint 7 live mode, replace local workflow endpoints with approved
+  HTTPS callback URLs before publish/run:
+  `buildWorkerBaseUrl`, `factoryApiBaseUrl`, and
+  `deploymentServiceBaseUrl`.
+- Capture live evidence ids in the Factory API timeline when the process runs:
+  Maestro process/run ids, API Workflow execution id, Action Center task id,
+  Data Service record id, and Test Manager/Test Cloud execution id when
+  available.
 
 ## Validation
 

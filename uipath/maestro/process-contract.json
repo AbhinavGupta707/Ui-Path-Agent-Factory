@@ -22,6 +22,35 @@
     "requiredInput": ["requestId"],
     "optionalInput": ["platformMode"]
   },
+  "checkpoint7CloudActivation": {
+    "status": "approval-gated",
+    "callbackEndpointStrategy": "Automation Cloud cannot call localhost. Before Maestro publish/run, choose an approved HTTPS bridge for Factory API and Build Worker callbacks, such as Cloudflare Tunnel, ngrok, or a hosted preview with no committed secrets.",
+    "requiredWorkflowEndpointOverrides": {
+      "AgentFactory_StartBuildWorker.buildWorkerBaseUrl": "https://<approved-build-worker-host>",
+      "AgentFactory_FetchBuildStatus.buildWorkerBaseUrl": "https://<approved-build-worker-host>",
+      "AgentFactory_PostStatusUpdate.factoryApiBaseUrl": "https://<approved-factory-api-host>",
+      "AgentFactory_RecordTestResult.factoryApiBaseUrl": "https://<approved-factory-api-host>",
+      "AgentFactory_StartDeployment.deploymentServiceBaseUrl": "https://<approved-factory-api-host>"
+    },
+    "timelineEvidenceIdsToCapture": [
+      "maestroProcessId",
+      "maestroRunId",
+      "apiWorkflowExecutionId",
+      "actionCenterTaskId",
+      "dataServiceRecordId",
+      "testManagerProjectId",
+      "testSetId",
+      "testExecutionId"
+    ],
+    "blockedUntilApprovedCommands": [
+      "uip maestro bpmn publish ...",
+      "uip maestro bpmn run ...",
+      "uip api-workflow run ...",
+      "uip tasks complete ...",
+      "uip df choice-sets/entities/records create ...",
+      "uip tm testsets run ..."
+    ]
+  },
   "dataServiceFieldMap": {
     "AutomationRequest.status": "AutomationRequest.requestStatus",
     "ApprovalTask.status": "ApprovalTask.approvalStatus",

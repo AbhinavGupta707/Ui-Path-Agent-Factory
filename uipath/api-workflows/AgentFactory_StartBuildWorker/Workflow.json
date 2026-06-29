@@ -48,7 +48,7 @@
           "buildWorkerBaseUrl": {
             "type": "string",
             "default": "http://localhost:8790",
-            "description": "Base URL for the local build worker."
+            "description": "Base URL for the Build Worker. Defaults to local HTTP; live Automation Cloud runs must use an approved HTTPS tunnel or hosted endpoint."
           },
           "manifest": {
             "type": "object",

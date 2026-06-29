@@ -136,6 +136,16 @@ Task creation should be wired through the Maestro process or an Orchestrator
 workflow/activity that creates FormTask or AppTask records from
 `uipath/action-center/approval-contracts.json`.
 
+When a live task is created after approval, capture the numeric
+`actionCenterTaskId` in all three places:
+
+- `ApprovalTask.actionCenterTaskId` when Data Service mirroring is approved,
+- Factory API timeline/audit payload for the request,
+- the final handoff evidence table for the demo run.
+
+Do not mark a gate `uipath-live` until a real Action Center task id has been
+observed through `uip tasks list` or `uip tasks get`.
+
 Safe inspection commands:
 
 ```bash

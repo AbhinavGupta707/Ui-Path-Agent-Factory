@@ -98,3 +98,21 @@ Do not insert seed records until entities exist and choice-set value NumberIds
 are known. Seed `platformMode` as `uipath-ready` until a live Maestro process,
 Data Service record, Action Center task, API Workflow, or Test Manager asset
 actually exists in Automation Cloud.
+
+## Checkpoint 7 Evidence Boundary
+
+Data Service mirroring is stretch evidence for the Maestro live path, not a
+blocker for the first Maestro/API Workflow activation. If schema or record
+creation is approved, capture the returned ids for the Factory API timeline:
+
+| Entity | Evidence id to preserve |
+|---|---|
+| `AutomationRequest` | request record id |
+| `ApprovalTask` | approval record id plus `actionCenterTaskId` |
+| `BuildRun` | build run record id plus API Workflow execution id |
+| `TestRun` | test run record id plus Test Manager/Test Cloud execution id |
+| `DeploymentRecord` | deployment record id plus sandbox deployment URL |
+| `AuditEvent` | audit event record id |
+
+Until those record ids are returned by `uip df` commands, keep Data Service
+state labeled `proposal-only` or `uipath-ready`, never `uipath-live`.

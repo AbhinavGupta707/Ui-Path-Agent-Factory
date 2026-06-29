@@ -7,5 +7,5 @@
   "folderName": "AgentFactoryDemo",
   "folderKey": "cba41e19-47cc-4a0a-bf73-de88b60a61be",
   "folderId": 7986306,
-  "description": "No-auth local HTTP workflow that polls the Build Worker for a build run."
+  "description": "No-auth HTTP workflow that polls the Build Worker for a build run. Defaults to local HTTP; Checkpoint 7 live use must override buildWorkerBaseUrl with an approved HTTPS tunnel or hosted endpoint."
 }

@@ -1,6 +1,6 @@
 # API Workflow Contract
 
-This document defines the UiPath API Workflow contract through Checkpoint 5. The
+This document defines the UiPath API Workflow contract through Checkpoint 7. The
 JSON assets are `uipath-ready`, validated locally with
 `uip api-workflow validate`, and intentionally use no-auth/local HTTP through
 the UiPath HTTP connector. The connector is `uipath-uipath-http` with
@@ -45,6 +45,32 @@ Every workflow input includes:
 
 Use `uipath-live` only after a workflow actually executes in UiPath Automation
 Cloud. The checked-in assets default to `uipath-ready`.
+
+## Checkpoint 7 Cloud Callback Activation
+
+Automation Cloud cannot reach `localhost`. For a live Maestro run, the
+orchestrator must approve one HTTPS callback bridge before any publish/run
+command is executed:
+
+| Target | Workflow inputs to override | Local default | Live value shape |
+|---|---|---|---|
+| Factory API | `factoryApiBaseUrl`, `deploymentServiceBaseUrl` | `http://localhost:8787` | `https://<approved-factory-api-host>` |
+| Build Worker | `buildWorkerBaseUrl` | `http://localhost:8790` | `https://<approved-build-worker-host>` |
+| Customer360 preview | `deploymentUrl` | `http://localhost:5174` | `https://<approved-preview-host>` or sandbox local URL recorded as evidence |
+
+Approved bridge options are Cloudflare Tunnel, ngrok, Vercel/hosted preview, or
+another user-approved host. Do not commit tunnel tokens, auth files, `.env`
+values, generated `dist`, or provider secrets. Store live endpoint values as
+workflow input arguments or Orchestrator assets after approval; do not hardcode
+them in the checked-in workflow JSON.
+
+The Factory API timeline should capture these live ids when available:
+
+- Maestro process id and run/process-instance id,
+- API Workflow execution id for each callback/handoff,
+- Action Center task id for scope and release decisions,
+- Data Service record ids for mirrored request/build/test/deployment/audit rows,
+- Test Manager/Test Cloud execution id if the quality gate is run live.
 
 ## AgentFactory_StartBuildWorker
 

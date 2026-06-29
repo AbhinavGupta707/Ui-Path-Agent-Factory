@@ -52,6 +52,29 @@ The endpoint returns:
 Automation Cloud workflow execution is performed. It must not be changed to
 `uipath-live` for local-only calls.
 
+## Automation Cloud Callback Bridge
+
+For Checkpoint 7, Maestro/API Workflow live execution must call an HTTPS
+Factory API endpoint, not `localhost`. The approved operator can use a temporary
+tunnel such as Cloudflare Tunnel or ngrok, or a hosted preview/service endpoint,
+as long as no tunnel credentials, provider secrets, `.env` values, generated
+`dist`, or auth files are committed.
+
+Use the same Factory API host for:
+
+- `AgentFactory_PostStatusUpdate.factoryApiBaseUrl`,
+- `AgentFactory_RecordTestResult.factoryApiBaseUrl`,
+- `AgentFactory_StartDeployment.deploymentServiceBaseUrl`.
+
+The Build Worker can either share that bridge through a routed host or use a
+separate approved HTTPS host for:
+
+- `AgentFactory_StartBuildWorker.buildWorkerBaseUrl`,
+- `AgentFactory_FetchBuildStatus.buildWorkerBaseUrl`.
+
+Only the endpoint values are runtime configuration. The checked-in workflow JSON
+keeps local defaults so local validation remains safe and repeatable.
+
 ## Local Sandbox Flow
 
 Build and run the Factory API:

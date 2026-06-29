@@ -1,8 +1,8 @@
 # API Workflow Contracts
 
 Status: `uipath-ready` validated JSON assets. These workflows are import-ready
-and use UiPath HTTP connector local/no-auth calls only. No live API Workflow was
-created or run.
+and use UiPath HTTP connector no-auth calls with local defaults. No live API
+Workflow was created or run.
 
 ## Workflows
 
@@ -38,6 +38,15 @@ UiPath Automation Cloud workflow execution.
 | `AgentFactory_PostStatusUpdate` | `PATCH` | `{factoryApiBaseUrl}/api/builds/{buildRunId}/status` | Defaults to `http://localhost:8787` |
 | `AgentFactory_RecordTestResult` | `PATCH` | `{factoryApiBaseUrl}/api/builds/{buildRunId}/status` | Maps test decisions to build statuses |
 | `AgentFactory_StartDeployment` | `POST` | `{deploymentServiceBaseUrl}/deploy` | Defaults to `http://localhost:8787`; Factory API records sandbox deployment evidence |
+
+For Checkpoint 7 live use, replace the local defaults with approved HTTPS
+callback endpoints at runtime. Do not hardcode tunnel or hosting URLs in these
+checked-in JSON assets:
+
+- `buildWorkerBaseUrl`: Build Worker HTTPS host,
+- `factoryApiBaseUrl`: Factory API HTTPS host,
+- `deploymentServiceBaseUrl`: Factory API HTTPS host,
+- `deploymentUrl`: Customer360 sandbox preview URL.
 
 ## Run Mode
 
@@ -99,8 +108,10 @@ Each command returned:
 - Publish/import the workflow files into a UiPath API Workflow project or
   solution through the official UiPath flow.
 - Configure target service base URLs as environment-specific values, preferably
-  Orchestrator assets.
+  Orchestrator assets or explicit run inputs after approval.
 - Start the local Build Worker for build trigger/polling flows.
 - Start the local Factory API for status/test-result/deployment flows.
 - Start the local Customer360 dashboard or record a Vercel preview URL before
   running `AgentFactory_StartDeployment`.
+- Capture each live workflow execution id in the Factory API timeline once a
+  run is approved and actually executed.
