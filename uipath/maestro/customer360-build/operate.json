@@ -1,0 +1,6 @@
+{
+  "$schema": "https://cloud.uipath.com/draft/2024-12/operate",
+  "$id": "operate.json",
+  "name": "Governed Agentic Automation Factory - Customer360 Build",
+  "description": "Import-ready Maestro process spine for the Customer360 governed automation lifecycle."
+}

@@ -20,10 +20,10 @@ Use these values exactly until a future checkpoint verifies a replacement:
 | Capability | Verification status | Live asset state |
 |---|---|---|
 | Orchestrator folder | `uip or folders get AgentFactoryDemo --output json` succeeded | Folder exists |
-| Maestro / Process Orchestration | CLI list commands succeeded | No process created yet |
+| Maestro / Process Orchestration | CLI list commands succeeded; `uip maestro bpmn validate uipath/maestro/customer360-build/agent-factory-customer360-build.bpmn --output json` succeeded | Import-ready BPMN project exists in repo; no live process published yet |
 | Agents / Agent Builder | `uip agent list --output json` succeeded | No agent solutions created yet |
 | Integration Service | Tool installed and connector probes succeeded | GitHub connector discovered, no connection configured yet |
-| Data Service / Data Fabric | `uip df entities list --native-only --output json` succeeded | No entities created yet |
+| Data Service / Data Fabric | `uip df entities list --native-only --output json` and `uip df choice-sets list --output json` succeeded | Exact schema proposal exists in `uipath/data-service/schema.json`; no entities or choice sets created yet |
 | Action Center | `uip tasks list --folder-id 7986306 --limit 1 --output json` succeeded | No tasks created yet |
 | Test Manager / Test Cloud | Tool installed and project list succeeded | No project created yet |
 | Apps | Portal search found Apps | No app created yet, no Apps CLI coverage confirmed |
@@ -105,11 +105,15 @@ executed by local API handlers in this lane.
 ## Checkpoint 4 Creation Order
 
 1. Re-run readiness commands and confirm the folder facts still match.
-2. Create the Data Service entities from `uipath/data-service/schema.json`.
+2. Render and approve the exact Data Service proposal in
+   `uipath/data-service/schema.json`; only after explicit approval, create the
+   choice sets, choice-set values, and entities.
 3. Create Agent Builder solutions from `uipath/agents/agent-contracts.md`.
 4. Create Action Center forms/tasks from `uipath/action-center/approval-contracts.md`.
 5. Create API Workflows from `uipath/api-workflows/contracts.md`.
-6. Create the Maestro BPMN process from `uipath/maestro/process-contract.json`.
+6. Publish the Maestro BPMN process from
+   `uipath/maestro/customer360-build` only after explicit approval and after
+   required Data Service/API Workflow dependencies exist.
 7. Create the Test Manager/Test Cloud project and test set from `uipath/test-cloud/test-plan.md`.
 8. Create the UiPath Apps companion surface from `uipath/apps/companion-app.md`.
 9. Execute one end-to-end request and update records from `uipath-ready` to `uipath-live` only for assets that actually run.

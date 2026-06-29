@@ -1,7 +1,13 @@
 {
-  "status": "planned",
+  "status": "import-ready",
   "platformMode": "uipath-ready",
+  "liveCreationStatus": "not-published",
+  "approvalRequiredBeforeLiveMutation": true,
   "processName": "Governed Agentic Automation Factory - Customer360 Build",
+  "projectPath": "uipath/maestro/customer360-build",
+  "bpmnSource": "uipath/maestro/customer360-build/agent-factory-customer360-build.bpmn",
+  "packageDescriptor": "uipath/maestro/customer360-build/package-descriptor.json",
+  "entryPoints": "uipath/maestro/customer360-build/entry-points.json",
   "organization": "galacticus",
   "tenant": "DefaultTenant",
   "folder": {
@@ -10,6 +16,19 @@
     "id": 7986306
   },
   "correlationKey": "AutomationRequest.requestId",
+  "entryPoint": {
+    "id": "Event_RequestSubmitted",
+    "uniqueId": "9c7261e3-6e10-4e21-97b5-e45d6632bc11",
+    "requiredInput": ["requestId"],
+    "optionalInput": ["platformMode"]
+  },
+  "dataServiceFieldMap": {
+    "AutomationRequest.status": "AutomationRequest.requestStatus",
+    "ApprovalTask.status": "ApprovalTask.approvalStatus",
+    "BuildRun.status": "BuildRun.buildRunStatus",
+    "TestRun.status": "TestRun.testRunStatus",
+    "DeploymentRecord.status": "DeploymentRecord.deploymentStatus"
+  },
   "statuses": [
     "draft",
     "clarifying",
@@ -31,62 +50,104 @@
     {
       "from": "draft",
       "to": "clarifying",
-      "task": "Normalize intake",
+      "task": "Normalize intake and upsert AutomationRequest",
+      "dataServiceField": "AutomationRequest.requestStatus",
       "auditAction": "intake_created"
     },
     {
       "from": "clarifying",
       "to": "awaiting_scope_approval",
-      "task": "Requirements and clarification loop",
+      "task": "Requirements Agent and clarification loop",
+      "dataServiceField": "AutomationRequest.requestStatus",
       "auditAction": "structured_spec_created"
     },
     {
       "from": "awaiting_scope_approval",
       "to": "approved_for_build",
       "task": "Governance assessment and scope approval",
+      "dataServiceField": "AutomationRequest.requestStatus",
       "auditAction": "scope_approval_decided"
     },
     {
       "from": "approved_for_build",
       "to": "manifest_created",
-      "task": "Build planner manifest creation",
+      "task": "Build Planner Agent manifest creation",
+      "dataServiceField": "AutomationRequest.requestStatus",
       "auditAction": "build_manifest_created"
     },
     {
       "from": "manifest_created",
       "to": "build_queued",
-      "task": "StartBuildWorker API Workflow accepted manifest",
+      "task": "AgentFactory_StartBuildWorker API Workflow accepts manifest",
+      "dataServiceField": "BuildRun.buildRunStatus",
       "auditAction": "build_queued"
     },
     {
       "from": "build_queued",
       "to": "building",
-      "task": "Build worker started",
+      "task": "Build worker starts",
+      "dataServiceField": "BuildRun.buildRunStatus",
       "auditAction": "build_started"
     },
     {
       "from": "building",
       "to": "tests_running",
-      "task": "Build worker completion",
+      "task": "Build status callback reports build success",
+      "dataServiceField": "BuildRun.buildRunStatus",
       "auditAction": "build_status_updated"
     },
     {
       "from": "tests_running",
       "to": "awaiting_release_approval",
-      "task": "Quality gate completion",
+      "task": "Quality gates pass",
+      "dataServiceField": "TestRun.qualityGateDecision",
       "auditAction": "quality_gate_completed"
     },
     {
       "from": "awaiting_release_approval",
       "to": "deploying",
       "task": "Release approval accepted",
-      "auditAction": "deployment_started"
+      "dataServiceField": "AutomationRequest.requestStatus",
+      "auditAction": "release_approval_decided"
     },
     {
       "from": "deploying",
       "to": "deployed",
-      "task": "Deployment completed",
+      "task": "Sandbox deployment completes",
+      "dataServiceField": "DeploymentRecord.deploymentStatus",
       "auditAction": "deployment_completed"
+    }
+  ],
+  "exceptionRoutes": [
+    {
+      "route": "clarification loop",
+      "from": "clarifying",
+      "to": "clarifying",
+      "auditAction": "clarification_requested"
+    },
+    {
+      "route": "scope rejected or governance blocked",
+      "from": "awaiting_scope_approval",
+      "to": "blocked",
+      "auditAction": "request_blocked"
+    },
+    {
+      "route": "quality gate remediation",
+      "from": "tests_failed",
+      "to": "manifest_created",
+      "auditAction": "quality_gate_completed"
+    },
+    {
+      "route": "release changes requested",
+      "from": "awaiting_release_approval",
+      "to": "manifest_created",
+      "auditAction": "release_approval_decided"
+    },
+    {
+      "route": "build or deploy timeout",
+      "from": "building",
+      "to": "blocked",
+      "auditAction": "request_blocked"
     }
   ],
   "plannedAssets": {
@@ -96,5 +157,12 @@
     "apiWorkflowContracts": "uipath/api-workflows/contracts.md",
     "testPlan": "uipath/test-cloud/test-plan.md",
     "appsCompanion": "uipath/apps/companion-app.md"
+  },
+  "verification": {
+    "lastValidatedAtUtc": "2026-06-29T01:52:00Z",
+    "commands": [
+      "uip maestro bpmn validate uipath/maestro/customer360-build/agent-factory-customer360-build.bpmn --output json"
+    ],
+    "result": "valid"
   }
 }
