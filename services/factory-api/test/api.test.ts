@@ -100,6 +100,31 @@ describe("factory api", () => {
     expect(body.platformMode).toBe("local-simulated");
   });
 
+  it("exposes safe degraded provider status without secrets", async () => {
+    const handle = createTestHandler();
+    const response = await handle({
+      method: "GET",
+      pathname: "/api/provider/status"
+    });
+    const body = response.body as {
+      data: {
+        provider: string;
+        liveReady: boolean;
+        degraded: boolean;
+        missing: string[];
+        modelProfiles: Record<string, string>;
+      };
+    };
+
+    expect(response.statusCode).toBe(200);
+    expect(body.data.provider).toBe("fireworks");
+    expect(body.data.liveReady).toBe(false);
+    expect(body.data.degraded).toBe(true);
+    expect(body.data.missing).toContain("FIREWORKS_API_KEY");
+    expect(JSON.stringify(body)).not.toContain("API_KEY=");
+    expect(body.data.modelProfiles.fast).toContain("accounts/fireworks/models/");
+  });
+
   it("creates production-shaped intake requests", async () => {
     const handle = createTestHandler();
     const response = await handle({
@@ -200,9 +225,19 @@ describe("factory api", () => {
       method: "GET",
       pathname: `/api/requests/${requestId}/timeline`
     });
-    const actions = (timeline.body as { data: Array<{ action: string }> }).data.map((event) => event.action);
+    const events = (timeline.body as { data: Array<{ action: string; payload_json?: Record<string, unknown> }> }).data;
+    const actions = events.map((event) => event.action);
+    const classificationEvent = events.find((event) => event.action === "intake_classified");
 
     expect(actions).toContain("request_created");
+    expect(classificationEvent?.payload_json).toMatchObject({
+      complexity: "medium",
+      trace: {
+        provider: "fireworks",
+        profile: "fast",
+        mode: "degraded-no-key"
+      }
+    });
     expect(actions).toContain("clarification_questions_generated");
     expect(actions).toContain("structured_spec_generated");
     expect(actions).toContain("governance_assessment_generated");

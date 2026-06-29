@@ -8,17 +8,17 @@ import {
   PlatformModeSchema,
   createAuditEvent,
   type AuditEvent,
+  type AgentStepTraceEnvelope,
   type BuildRun
 } from "@agent-factory/shared-contracts";
+import { createAgentRuntime, type AgentRuntime } from "./agentRuntime.js";
 import {
   approveScopeTask,
   createQueuedBuildRun,
-  generateBuildManifest,
   generateClarificationQuestions,
-  generateGovernanceAssessment,
-  generateStructuredSpec,
   mapLegacyIntakeToCreateRequest
 } from "./lifecycle.js";
+import { redactPayload } from "./redaction.js";
 import {
   createInMemoryFactoryStore,
   type DeploymentRecord,
@@ -78,8 +78,11 @@ export interface FactoryResponseOutput {
   body: unknown;
 }
 
-export function createFactoryApiServer(store: FactoryStore = createInMemoryFactoryStore()) {
-  const handler = createFactoryRequestHandler(store);
+export function createFactoryApiServer(
+  store: FactoryStore = createInMemoryFactoryStore(),
+  runtime: AgentRuntime = createAgentRuntime()
+) {
+  const handler = createFactoryRequestHandler(store, runtime);
 
   return createServer(async (request, response) => {
     try {
@@ -101,10 +104,13 @@ export function createFactoryApiServer(store: FactoryStore = createInMemoryFacto
   });
 }
 
-export function createFactoryRequestHandler(store: FactoryStore = createInMemoryFactoryStore()) {
+export function createFactoryRequestHandler(
+  store: FactoryStore = createInMemoryFactoryStore(),
+  runtime: AgentRuntime = createAgentRuntime()
+) {
   return async function handleFactoryRequestWithStore(input: FactoryRequestInput): Promise<FactoryResponseOutput> {
     try {
-      return await routeFactoryRequest(store, input);
+      return await routeFactoryRequest(store, runtime, input);
     } catch (error) {
       return errorResponse(error);
     }
@@ -115,7 +121,11 @@ export async function handleFactoryRequest(input: FactoryRequestInput): Promise<
   return defaultHandler(input);
 }
 
-async function routeFactoryRequest(store: FactoryStore, input: FactoryRequestInput): Promise<FactoryResponseOutput> {
+async function routeFactoryRequest(
+  store: FactoryStore,
+  runtime: AgentRuntime,
+  input: FactoryRequestInput
+): Promise<FactoryResponseOutput> {
   const method = input.method.toUpperCase();
   const parts = input.pathname.split("/").filter(Boolean);
 
@@ -132,7 +142,18 @@ async function routeFactoryRequest(store: FactoryStore, input: FactoryRequestInp
         ok: true,
         service: "factory-api",
         platformMode,
-        requests: requests.length
+        requests: requests.length,
+        agentProvider: runtime.getReadiness()
+      }
+    };
+  }
+
+  if (method === "GET" && input.pathname === "/api/provider/status") {
+    return {
+      statusCode: 200,
+      body: {
+        data: runtime.getReadiness(),
+        platformMode
       }
     };
   }
@@ -164,6 +185,22 @@ async function routeFactoryRequest(store: FactoryStore, input: FactoryRequestInp
         platformMode
       }
     });
+    const classification = await runtime.classifyIntake(record, store.now());
+    await audit(store, record.request.request_id, {
+      actor_type: "uipath-agent",
+      actor_name: agentActorName("Intake Classifier", classification.trace),
+      action: "intake_classified",
+      summary: `Classified intake as ${classification.complexity} complexity using ${classification.trace.mode}.`,
+      payload_json: {
+        output_id: classification.output_id,
+        complexity: classification.complexity,
+        confidence: classification.confidence,
+        pii_likelihood: classification.pii_likelihood,
+        missing_information: classification.missing_information,
+        trace: summarizeTrace(classification.trace),
+        platformMode
+      }
+    });
 
     return {
       statusCode: 201,
@@ -189,6 +226,22 @@ async function routeFactoryRequest(store: FactoryStore, input: FactoryRequestInp
         platformMode
       }
     });
+    const classification = await runtime.classifyIntake(record, store.now());
+    await audit(store, record.request.request_id, {
+      actor_type: "uipath-agent",
+      actor_name: agentActorName("Intake Classifier", classification.trace),
+      action: "intake_classified",
+      summary: `Classified legacy intake as ${classification.complexity} complexity using ${classification.trace.mode}.`,
+      payload_json: {
+        output_id: classification.output_id,
+        complexity: classification.complexity,
+        confidence: classification.confidence,
+        pii_likelihood: classification.pii_likelihood,
+        missing_information: classification.missing_information,
+        trace: summarizeTrace(classification.trace),
+        platformMode
+      }
+    });
 
     return {
       statusCode: 201,
@@ -202,7 +255,7 @@ async function routeFactoryRequest(store: FactoryStore, input: FactoryRequestInp
   }
 
   if (parts[0] === "api" && parts[1] === "requests" && parts[2]) {
-    return routeRequestResource(store, method, parts[2], parts[3], input.body);
+    return routeRequestResource(store, runtime, method, parts[2], parts[3], input.body);
   }
 
   if (method === "POST" && input.pathname === "/api/builds") {
@@ -218,6 +271,7 @@ async function routeFactoryRequest(store: FactoryStore, input: FactoryRequestInp
 
 async function routeRequestResource(
   store: FactoryStore,
+  runtime: AgentRuntime,
   method: string,
   requestId: string,
   action: string | undefined,
@@ -292,14 +346,21 @@ async function routeRequestResource(
 
   if (method === "POST" && action === "spec") {
     const record = await requireRecord(store, requestId);
-    const spec = generateStructuredSpec(record, store.now());
+    const output = await runtime.generateRequirementsSpec(record, store.now());
+    const spec = output.spec;
     await store.saveStructuredSpec(requestId, spec);
     await audit(store, requestId, {
       actor_type: "uipath-agent",
-      actor_name: "Requirements Agent (local)",
+      actor_name: agentActorName("Requirements Agent", output.trace),
       action: "structured_spec_generated",
-      summary: "Generated structured Customer360 build spec.",
-      payload_json: { spec_id: spec.spec_id, platformMode }
+      summary: `Generated structured Customer360 build spec using ${output.trace.mode}.`,
+      payload_json: {
+        output_id: output.output_id,
+        spec_id: spec.spec_id,
+        assumptions: output.assumptions,
+        trace: summarizeTrace(output.trace),
+        platformMode
+      }
     });
 
     return {
@@ -315,28 +376,51 @@ async function routeRequestResource(
   if (method === "POST" && action === "govern") {
     const record = await requireRecord(store, requestId);
     const hadSpec = Boolean(record.structuredSpec);
-    const spec = record.structuredSpec ?? generateStructuredSpec(record, store.now());
+    const specOutput = hadSpec ? undefined : await runtime.generateRequirementsSpec(record, store.now());
+    const spec = record.structuredSpec ?? specOutput?.spec;
+
+    if (!spec) {
+      throw new ApiError(500, "spec_generation_failed", "Structured spec generation did not return a spec.");
+    }
+
     await store.saveStructuredSpec(requestId, spec);
     if (!hadSpec) {
       await audit(store, requestId, {
         actor_type: "uipath-agent",
-        actor_name: "Requirements Agent (local)",
+        actor_name: specOutput ? agentActorName("Requirements Agent", specOutput.trace) : "Requirements Agent",
         action: "structured_spec_generated",
-        summary: "Generated structured Customer360 build spec as governance input.",
-        payload_json: { spec_id: spec.spec_id, platformMode }
+        summary: `Generated structured Customer360 build spec as governance input using ${
+          specOutput?.trace.mode ?? "deterministic-fallback"
+        }.`,
+        payload_json: {
+          output_id: specOutput?.output_id,
+          spec_id: spec.spec_id,
+          trace: specOutput ? summarizeTrace(specOutput.trace) : undefined,
+          platformMode
+        }
       });
     }
-    const { assessment, approvalTasks } = generateGovernanceAssessment(record, spec, store.now());
+    const governanceOutput = await runtime.generateGovernance(
+      {
+        ...record,
+        structuredSpec: spec
+      },
+      store.now()
+    );
+    const { assessment } = governanceOutput;
+    const approvalTasks = governanceOutput.approval_tasks;
     await store.saveGovernanceAssessment(requestId, assessment, approvalTasks);
     await audit(store, requestId, {
       actor_type: "uipath-agent",
-      actor_name: "Governance Agent (local)",
+      actor_name: agentActorName("Governance Agent", governanceOutput.trace),
       action: "governance_assessment_generated",
-      summary: `Classified request as ${assessment.risk_tier} risk with ${approvalTasks.length} approval task.`,
+      summary: `Classified request as ${assessment.risk_tier} risk with ${approvalTasks.length} approval task using ${governanceOutput.trace.mode}.`,
       payload_json: {
+        output_id: governanceOutput.output_id,
         assessment_id: assessment.assessment_id,
         risk_tier: assessment.risk_tier,
         required_approvals: assessment.required_approvals_json,
+        trace: summarizeTrace(governanceOutput.trace),
         platformMode
       }
     });
@@ -407,16 +491,21 @@ async function routeRequestResource(
       throw new ApiError(409, "spec_and_governance_required", "Generate spec and governance before manifest.");
     }
 
-    const manifest = generateBuildManifest(record, record.structuredSpec, record.governanceAssessment, store.now());
+    const buildPlan = await runtime.generateBuildPlan(record, store.now());
+    const manifest = buildPlan.manifest;
     await store.saveBuildManifest(requestId, manifest);
     await audit(store, requestId, {
       actor_type: "uipath-agent",
-      actor_name: "Build Planner Agent (local)",
+      actor_name: agentActorName("Build Planner Agent", buildPlan.trace),
       action: "build_manifest_generated",
-      summary: `Generated sandbox build manifest ${manifest.manifest_id}.`,
+      summary: `Generated sandbox build manifest ${manifest.manifest_id} using ${buildPlan.trace.mode}.`,
       payload_json: {
+        output_id: buildPlan.output_id,
         manifest_id: manifest.manifest_id,
         manifest_hash: manifest.manifest_hash,
+        worker_instruction_count: buildPlan.worker_instructions.length,
+        acceptance_criteria_count: buildPlan.acceptance_criteria.length,
+        trace: summarizeTrace(buildPlan.trace),
         platformMode
       }
     });
@@ -762,14 +851,56 @@ async function audit(
   requestId: string,
   event: Omit<AuditEvent, "event_id" | "request_id" | "timestamp">
 ): Promise<AuditEvent> {
+  const redactedPayload = redactPayload(event.payload_json ?? {});
+
   return store.addAuditEvent(
     createAuditEvent({
       ...event,
+      payload_json: {
+        ...redactedPayload.value,
+        redaction: redactedPayload.flags
+      },
       event_id: store.nextAuditId(),
       request_id: requestId,
       timestamp: store.now()
     })
   );
+}
+
+function summarizeTrace(trace: AgentStepTraceEnvelope): Record<string, unknown> {
+  return {
+    trace_id: trace.trace_id,
+    step_id: trace.step_id,
+    provider: trace.provider,
+    profile: trace.profile,
+    model_id: trace.model_id,
+    mode: trace.mode,
+    langsmith: {
+      enabled: trace.langsmith.enabled,
+      project: trace.langsmith.project,
+      run_name: trace.langsmith.run_name,
+      tags: trace.langsmith.tags
+    },
+    redaction: trace.redaction,
+    usage: trace.usage,
+    warnings: trace.warnings
+  };
+}
+
+function agentActorName(label: string, trace: AgentStepTraceEnvelope): string {
+  if (trace.mode === "live") {
+    return `${label} (Fireworks live)`;
+  }
+
+  if (trace.mode === "degraded-no-key") {
+    return `${label} (degraded: no provider key)`;
+  }
+
+  if (trace.mode === "degraded-provider-error") {
+    return `${label} (degraded: provider error)`;
+  }
+
+  return `${label} (deterministic fallback)`;
 }
 
 function releaseApprovalAllowsDeploy(approval: z.infer<typeof ReleaseApprovalSchema>): boolean {
