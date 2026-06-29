@@ -13,7 +13,9 @@ import type {
 import type { ConsoleRequest } from "./seedData";
 
 const DEFAULT_API_BASE_URL = "http://localhost:8787";
-const REQUEST_TIMEOUT_MS = 4_000;
+const HEALTH_TIMEOUT_MS = 4_000;
+const READ_TIMEOUT_MS = 8_000;
+const LIFECYCLE_TIMEOUT_MS = 90_000;
 
 type LifecycleAction =
   | "clarify"
@@ -100,9 +102,13 @@ export function getFactoryApiBaseUrl() {
 
 export async function checkFactoryApi(apiBaseUrl = getFactoryApiBaseUrl()): Promise<FactoryApiStatus> {
   try {
-    const health = await requestJson<HealthResponse>(`${apiBaseUrl}/health`, {
-      method: "GET"
-    });
+    const health = await requestJson<HealthResponse>(
+      `${apiBaseUrl}/health`,
+      {
+        method: "GET"
+      },
+      HEALTH_TIMEOUT_MS
+    );
 
     if (health.ok && health.service === "factory-api") {
       return {
@@ -129,13 +135,17 @@ export async function submitIntakeToFactoryApi(
   apiBaseUrl = getFactoryApiBaseUrl()
 ): Promise<ConsoleRequest | null> {
   try {
-    const response = await requestJson<IntakeResponse>(`${apiBaseUrl}/api/intake`, {
-      method: "POST",
-      headers: {
-        "content-type": "application/json"
+    const response = await requestJson<IntakeResponse>(
+      `${apiBaseUrl}/api/intake`,
+      {
+        method: "POST",
+        headers: {
+          "content-type": "application/json"
+        },
+        body: JSON.stringify(intake)
       },
-      body: JSON.stringify(intake)
-    });
+      LIFECYCLE_TIMEOUT_MS
+    );
 
     return response.data ? mapAutomationRequest(response.data, intake) : null;
   } catch {
@@ -314,12 +324,20 @@ export async function getLifecycleSnapshot(
 ): Promise<LifecycleSnapshot | null> {
   try {
     const [detailResult, timelineResult] = await Promise.allSettled([
-      requestJson<{ data?: AutomationRequestDetail }>(`${apiBaseUrl}/api/requests/${requestId}`, {
-        method: "GET"
-      }),
-      requestJson<{ data?: Array<Record<string, unknown>> }>(`${apiBaseUrl}/api/requests/${requestId}/timeline`, {
-        method: "GET"
-      })
+      requestJson<{ data?: AutomationRequestDetail }>(
+        `${apiBaseUrl}/api/requests/${requestId}`,
+        {
+          method: "GET"
+        },
+        READ_TIMEOUT_MS
+      ),
+      requestJson<{ data?: Array<Record<string, unknown>> }>(
+        `${apiBaseUrl}/api/requests/${requestId}/timeline`,
+        {
+          method: "GET"
+        },
+        READ_TIMEOUT_MS
+      )
     ]);
 
     const detail = detailResult.status === "fulfilled" ? detailResult.value.data : undefined;
@@ -367,13 +385,17 @@ async function lifecyclePost<TResponse extends { status?: string; platformMode?:
   mapData: (response: TResponse) => TData | undefined
 ): Promise<LifecycleActionResult<TData>> {
   try {
-    const response = await requestJson<TResponse>(url, {
-      method: "POST",
-      headers: {
-        "content-type": "application/json"
+    const response = await requestJson<TResponse>(
+      url,
+      {
+        method: "POST",
+        headers: {
+          "content-type": "application/json"
+        },
+        body: JSON.stringify(body ?? {})
       },
-      body: JSON.stringify(body ?? {})
-    });
+      LIFECYCLE_TIMEOUT_MS
+    );
 
     return {
       ok: true,
@@ -412,9 +434,9 @@ function readPlatformMode(record: Record<string, unknown>): PlatformMode | undef
   return value === "local-simulated" || value === "uipath-ready" || value === "uipath-live" ? value : undefined;
 }
 
-async function requestJson<T>(url: string, init: RequestInit): Promise<T> {
+async function requestJson<T>(url: string, init: RequestInit, timeoutMs = READ_TIMEOUT_MS): Promise<T> {
   const controller = new AbortController();
-  const timeout = window.setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+  const timeout = window.setTimeout(() => controller.abort(), timeoutMs);
 
   try {
     const response = await fetch(url, {

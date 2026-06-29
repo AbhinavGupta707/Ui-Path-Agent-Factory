@@ -171,6 +171,8 @@ export function App() {
       return;
     }
 
+    setSubmitState("success");
+
     if (detail.clarificationQuestions.length > 0) {
       const nextQuestions = detail.clarificationQuestions.map((question) => ({
         id: question.id,
@@ -187,6 +189,14 @@ export function App() {
 
     if (detail.buildRuns.length > 0) {
       setBuildRun(detail.buildRuns.at(-1) ?? null);
+    }
+
+    if (detail.governanceAssessment || detail.request.status === "awaiting_scope_approval") {
+      setLifecycleIssue((current) =>
+        current === "The request has answers, but the live spec/governance lifecycle did not complete. Check Factory API configuration before approving scope."
+          ? null
+          : current
+      );
     }
   }, [snapshot]);
 
@@ -265,7 +275,7 @@ export function App() {
     setLifecycleIssue(null);
     setLifecycleBusy("clarifying");
     setSubmitState("loading");
-    const apiRequest = await submitIntakeToFactoryApi(currentIntake);
+    const apiRequest = await submitIntakeToFactoryApi(currentIntake, apiStatus.apiBaseUrl);
     const nextRequest = apiRequest ?? createLocalRequest(currentIntake);
 
     setRequest({
