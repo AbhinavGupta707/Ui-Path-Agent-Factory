@@ -1,5 +1,10 @@
 import type { BuildManifest } from "@agent-factory/shared-contracts";
 
+export * from "./artifacts/index.js";
+export * from "./artifacts/result.js";
+export * from "./git/index.js";
+export * from "./github/index.js";
+
 export interface CodexExecOptions {
   sandbox?: "read-only" | "workspace-write";
   model?: string;
