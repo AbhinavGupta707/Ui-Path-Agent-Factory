@@ -1,7 +1,8 @@
 # Maestro BPMN Mapping
 
-This is the planned Maestro implementation guide for the Checkpoint 1 local
-lifecycle. No live Maestro process exists yet.
+This is the Checkpoint 4 Maestro implementation guide for the Customer360 local
+lifecycle. A validated, import-ready BPMN project now exists in the repo, but no
+live Maestro process has been published or run yet.
 
 ## Process Identity
 
@@ -13,30 +14,34 @@ lifecycle. No live Maestro process exists yet.
 | Folder | `AgentFactoryDemo` |
 | Folder key | `cba41e19-47cc-4a0a-bf73-de88b60a61be` |
 | Folder id | `7986306` |
-| Current status | Planned for Checkpoint 4 |
+| Current status | Import-ready, not published |
+| BPMN project | `uipath/maestro/customer360-build` |
+| BPMN source | `uipath/maestro/customer360-build/agent-factory-customer360-build.bpmn` |
+| Entry point | `Event_RequestSubmitted` |
+| Entry point unique id | `9c7261e3-6e10-4e21-97b5-e45d6632bc11` |
 
 ## State Map
 
 The Maestro process should drive the same statuses defined in
 `packages/shared-contracts/src/index.ts`.
 
-| Local/API status | Maestro stage | Primary UiPath asset | Exit condition |
-|---|---|---|---|
-| `draft` | Request prepared | Factory Console or UiPath Apps | Required intake fields are present |
-| `clarifying` | Requirements clarification | Requirements Agent, Clarification Agent | All required answers are captured |
-| `awaiting_scope_approval` | Governance and scope assessment | Governance Agent, Data Service, Action Center | Risk, permissions, and approval need are evaluated |
-| `approved_for_build` | Scope approval complete | Action Center, Build Planner Agent | Human approval is granted or low-risk request is auto-approved |
-| `manifest_created` | Manifest ready | Build Planner Agent, Data Service | Manifest is validated and ready to queue |
-| `build_queued` | Build queued | API Workflow, Build Worker | Build worker accepts the manifest |
-| `building` | Build execution | API Workflow, Build Worker, Codex | Build worker reports progress or failure |
-| `build_failed` | Build remediation | API Workflow, Build Worker, Codex | Retry is exhausted or remediation is required |
-| `tests_running` | Quality gate execution | API Workflow, Test Manager/Test Cloud | Required gates produce a pass/fail decision |
-| `tests_failed` | Quality gate remediation | Test Manager/Test Cloud, Action Center | Failed evidence is remediated or waived |
-| `awaiting_release_approval` | Release decision | Action Center | Release approver accepts, rejects, or requests changes |
-| `deploying` | Sandbox deployment | API Workflow, Orchestrator | Deployment operation is running |
-| `deployed` | Deployment and audit closeout | API Workflow, Orchestrator, Data Service | Deployment URL and audit summary are recorded |
-| `blocked` | Exception or rejection hold | Maestro boundary event, Action Center, Data Service | Human action or remediation is required |
-| `cancelled` | Cancellation closeout | Maestro, Data Service | Requester or process owner cancels the request |
+| Local/API status | Data Service field | Maestro stage | Primary UiPath asset | Exit condition |
+|---|---|---|---|---|
+| `draft` | `AutomationRequest.requestStatus` | Request prepared | Factory Console or UiPath Apps | Required intake fields are present |
+| `clarifying` | `AutomationRequest.requestStatus` | Requirements clarification | Requirements Agent, Clarification Agent | All required answers are captured |
+| `awaiting_scope_approval` | `AutomationRequest.requestStatus` | Governance and scope assessment | Governance Agent, Data Service, Action Center | Risk, permissions, and approval need are evaluated |
+| `approved_for_build` | `AutomationRequest.requestStatus` | Scope approval complete | Action Center, Build Planner Agent | Human approval is granted or low-risk request is auto-approved |
+| `manifest_created` | `AutomationRequest.requestStatus` | Manifest ready | Build Planner Agent, Data Service | Manifest is validated and ready to queue |
+| `build_queued` | `BuildRun.buildRunStatus` | Build queued | API Workflow, Build Worker | Build worker accepts the manifest |
+| `building` | `BuildRun.buildRunStatus` | Build execution | API Workflow, Build Worker, Codex | Build worker reports progress or failure |
+| `build_failed` | `BuildRun.buildRunStatus` | Build remediation | API Workflow, Build Worker, Codex | Retry is exhausted or remediation is required |
+| `tests_running` | `TestRun.testRunStatus` | Quality gate execution | API Workflow, Test Manager/Test Cloud | Required gates produce a pass/fail decision |
+| `tests_failed` | `TestRun.testRunStatus` | Quality gate remediation | Test Manager/Test Cloud, Action Center | Failed evidence is remediated or waived |
+| `awaiting_release_approval` | `AutomationRequest.requestStatus` | Release decision | Action Center | Release approver accepts, rejects, or requests changes |
+| `deploying` | `DeploymentRecord.deploymentStatus` | Sandbox deployment | API Workflow, Orchestrator | Deployment operation is running |
+| `deployed` | `DeploymentRecord.deploymentStatus` | Deployment and audit closeout | API Workflow, Orchestrator, Data Service | Deployment URL and audit summary are recorded |
+| `blocked` | `AutomationRequest.requestStatus` | Exception or rejection hold | Maestro boundary event, Action Center, Data Service | Human action or remediation is required |
+| `cancelled` | `AutomationRequest.requestStatus` | Cancellation closeout | Maestro, Data Service | Requester or process owner cancels the request |
 
 ## BPMN Lane Model
 
@@ -62,7 +67,7 @@ The Maestro process should drive the same statuses defined in
 
 2. **Service Task: Normalize Intake**
    - Validate title, requester email, business goal, target audience, source systems, constraints, and due date.
-   - Set `AutomationRequest.status = "clarifying"`.
+   - Set `AutomationRequest.requestStatus = "clarifying"`.
 
 3. **Agent Task: Requirements Agent**
    - Produces `StructuredSpec`.
@@ -82,7 +87,7 @@ The Maestro process should drive the same statuses defined in
 6. **Agent Task: Governance Agent**
    - Produces `GovernanceAssessment`.
    - Sets risk level, required permissions, blockers, and whether human approval is required.
-   - Set `AutomationRequest.status = "awaiting_scope_approval"`.
+   - Set `AutomationRequest.requestStatus = "awaiting_scope_approval"`.
 
 7. **Exclusive Gateway: Blocked Or Approval Required?**
    - If blockers exist, route to rejection closeout or changes requested.
@@ -92,47 +97,47 @@ The Maestro process should drive the same statuses defined in
 8. **Action Center Task: Scope Approval**
    - Planned task name: `Agent Factory Scope Approval`.
    - Approver decides `approved`, `rejected`, or `changes_requested`.
-   - Approved sets `AutomationRequest.status = "approved_for_build"`.
-   - Rejected sets `AutomationRequest.status = "blocked"` with rejection details.
+   - Approved sets `AutomationRequest.requestStatus = "approved_for_build"`.
+   - Rejected sets `AutomationRequest.requestStatus = "blocked"` with rejection details.
    - Changes requested returns to clarification.
 
 9. **Agent Task: Build Planner Agent**
    - Produces `BuildManifest` with template `customer360-dashboard`.
    - Confirms branch name, output app, permissions, acceptance criteria, and Codex model.
-   - Set `AutomationRequest.status = "manifest_created"`.
+   - Set `AutomationRequest.requestStatus = "manifest_created"`.
    - Writes `AuditEvent.action = "build_manifest_created"`.
 
 10. **Service Task: Trigger Build Worker**
    - Calls API Workflow `AgentFactory_StartBuildWorker`.
-   - Set `AutomationRequest.status = "build_queued"` and create `BuildRun.status = "build_queued"`.
-   - Move to `AutomationRequest.status = "building"` when the worker reports `building`.
+   - Set `AutomationRequest.requestStatus = "build_queued"` and create `BuildRun.buildRunStatus = "build_queued"`.
+   - Move to `AutomationRequest.requestStatus = "building"` and `BuildRun.buildRunStatus = "building"` when the worker reports `building`.
 
 11. **Intermediate Event: Build Status Callback**
    - API Workflow `AgentFactory_PostStatusUpdate` updates build progress.
-   - On failure, set `AutomationRequest.status = "build_failed"` and route to retry or remediation.
+   - On failure, set `AutomationRequest.requestStatus = "build_failed"` and route to retry or remediation.
    - On success, store logs URL, pull request URL, and artifact details.
 
 12. **Service Task: Run Quality Gates**
-   - Set `AutomationRequest.status = "tests_running"`.
+   - Set `AutomationRequest.requestStatus = "tests_running"` and `TestRun.testRunStatus = "running"`.
    - Run local smoke/test commands through the worker or CI.
    - Record Test Manager/Test Cloud results when available.
 
 13. **Exclusive Gateway: Quality Gate Passed?**
-    - If failed, set `AutomationRequest.status = "tests_failed"` and route to remediation or waiver handling.
-    - If passed, set `AutomationRequest.status = "awaiting_release_approval"`.
+    - If failed, set `AutomationRequest.requestStatus = "tests_failed"` and route to remediation or waiver handling.
+    - If passed, set `AutomationRequest.requestStatus = "awaiting_release_approval"`.
 
 14. **Action Center Task: Release Approval**
     - Planned task name: `Agent Factory Release Approval`.
     - Approver sees diff, test results, deployment target, known risks, and rollback notes.
     - Approved triggers deployment.
-    - Rejected sets `AutomationRequest.status = "blocked"` with release rejection details.
+    - Rejected sets `AutomationRequest.requestStatus = "blocked"` with release rejection details.
     - Changes requested returns to build planning or build execution.
 
 15. **Service Task: Deploy Sandbox Artifact**
    - Calls API Workflow `AgentFactory_StartDeployment`.
-   - Set `AutomationRequest.status = "deploying"`.
+   - Set `AutomationRequest.requestStatus = "deploying"`.
    - Stores `DeploymentRecord`.
-   - Set `AutomationRequest.status = "deployed"` only after a URL is recorded.
+   - Set `AutomationRequest.requestStatus = "deployed"` only after a URL is recorded.
 
 16. **End Event: Audit Summary Published**
     - Create an audit event with final URLs and decision trail.
@@ -144,11 +149,11 @@ The Maestro process should drive the same statuses defined in
 |---|---|---|
 | Invalid intake | Return validation error to caller | No request record, or `blocked` if created |
 | Agent output fails schema validation | Retry once with validation error context | Audit `agent_schema_retry` |
-| Scope approval rejected | End as blocked | `AutomationRequest.status = "blocked"` |
-| Build worker timeout | Timer boundary event, one retry | `BuildRun.status = "failed"` after retry |
-| Tests fail | Route to remediation or release block | `TestRun.status = "failed"` |
-| Release approval rejected | End as blocked | `AutomationRequest.status = "blocked"` |
-| Deployment fails | Retry if idempotent, otherwise failed closeout | `DeploymentRecord.status = "failed"` |
+| Scope approval rejected | End as blocked | `AutomationRequest.requestStatus = "blocked"` |
+| Build worker timeout | Timer boundary event, one retry | `BuildRun.buildRunStatus = "build_failed"` after retry |
+| Tests fail | Route to remediation or release block | `TestRun.testRunStatus = "failed"` |
+| Release approval rejected | End as blocked | `AutomationRequest.requestStatus = "blocked"` |
+| Deployment fails | Retry if idempotent, otherwise failed closeout | `DeploymentRecord.deploymentStatus = "failed"` |
 
 ## Audit Events
 
@@ -175,9 +180,22 @@ Maestro should write these audit actions at minimum:
 
 ## Checkpoint 4 Acceptance Criteria
 
-- The Maestro process is created in `AgentFactoryDemo`.
+- The BPMN source validates locally with `uip maestro bpmn validate`.
+- After explicit approval, the Maestro process can be published in
+  `AgentFactoryDemo`.
 - A single Customer360 request can move from intake to release approval.
 - Data Service records are updated at each major state transition.
 - Action Center creates both approval types when the route requires them.
 - API Workflow status callbacks update `BuildRun` and `AuditEvent`.
 - Factory Console remains the polished primary UI; UiPath Apps mirrors intake and status.
+
+## Checkpoint 4 Validation
+
+The import-ready BPMN source was validated with:
+
+```bash
+uip maestro bpmn validate uipath/maestro/customer360-build/agent-factory-customer360-build.bpmn --output json
+```
+
+Result: valid, with one process, one start event, and three UiPath extension
+elements.

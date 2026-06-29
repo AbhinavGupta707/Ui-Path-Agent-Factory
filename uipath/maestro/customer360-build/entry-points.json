@@ -1,0 +1,36 @@
+{
+  "$schema": "https://cloud.uipath.com/draft/2024-12/entry-point",
+  "$id": "entry-points.json",
+  "entryPoints": [
+    {
+      "filePath": "/content/agent-factory-customer360-build.bpmn#Event_RequestSubmitted",
+      "uniqueId": "9c7261e3-6e10-4e21-97b5-e45d6632bc11",
+      "type": "processorchestration",
+      "input": {
+        "type": "object",
+        "required": ["requestId"],
+        "properties": {
+          "requestId": {
+            "type": "string"
+          },
+          "platformMode": {
+            "type": "string",
+            "enum": ["local-simulated", "uipath-ready", "uipath-live"]
+          }
+        }
+      },
+      "output": {
+        "type": "object",
+        "properties": {
+          "requestId": {
+            "type": "string"
+          },
+          "requestStatus": {
+            "type": "string"
+          }
+        }
+      },
+      "displayName": "Request submitted"
+    }
+  ]
+}

@@ -1,0 +1,156 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL" xmlns:uipath="http://uipath.org/schema/bpmn" id="Definitions_AgentFactoryCustomer360" targetNamespace="https://agent-factory.local/uipath/maestro" exporter="UiPath Maestro (https://uipath.com)" exporterVersion="1.195.1">
+  <bpmn:message id="Message_BuildStatusCallback" name="AgentFactory_PostStatusUpdate" />
+  <bpmn:process id="AgentFactoryCustomer360Build" name="Governed Agentic Automation Factory - Customer360 Build" isExecutable="true">
+    <bpmn:documentation>Import-ready Checkpoint 4 Maestro source. Do not publish or run without explicit approval. Data Service entity fields use safe status names such as requestStatus, approvalStatus, buildRunStatus, testRunStatus, and deploymentStatus.</bpmn:documentation>
+    <bpmn:extensionElements>
+      <uipath:variables version="v1" />
+      <uipath:bindings version="v1" />
+    </bpmn:extensionElements>
+    <bpmn:startEvent id="Event_RequestSubmitted" name="Request submitted">
+      <bpmn:extensionElements>
+        <uipath:entryPointId value="9c7261e3-6e10-4e21-97b5-e45d6632bc11" />
+      </bpmn:extensionElements>
+      <bpmn:outgoing>Flow_Start_NormalizeIntake</bpmn:outgoing>
+    </bpmn:startEvent>
+    <bpmn:serviceTask id="Task_NormalizeIntake" name="Normalize intake and upsert AutomationRequest">
+      <bpmn:incoming>Flow_Start_NormalizeIntake</bpmn:incoming>
+      <bpmn:outgoing>Flow_Normalize_Requirements</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:serviceTask id="Task_RequirementsAgent" name="Requirements Agent creates StructuredSpec">
+      <bpmn:incoming>Flow_Normalize_Requirements</bpmn:incoming>
+      <bpmn:incoming>Flow_Clarifications_Requirements</bpmn:incoming>
+      <bpmn:outgoing>Flow_Requirements_ClarificationGateway</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:exclusiveGateway id="Gateway_ClarificationNeeded" name="Clarification needed?">
+      <bpmn:incoming>Flow_Requirements_ClarificationGateway</bpmn:incoming>
+      <bpmn:outgoing>Flow_ClarificationNeeded</bpmn:outgoing>
+      <bpmn:outgoing>Flow_NoClarification_Governance</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    <bpmn:userTask id="Task_CaptureClarifications" name="Capture clarifications">
+      <bpmn:incoming>Flow_ClarificationNeeded</bpmn:incoming>
+      <bpmn:outgoing>Flow_Clarifications_Requirements</bpmn:outgoing>
+    </bpmn:userTask>
+    <bpmn:serviceTask id="Task_GovernanceAgent" name="Governance Agent creates assessment">
+      <bpmn:incoming>Flow_NoClarification_Governance</bpmn:incoming>
+      <bpmn:outgoing>Flow_Governance_ScopeGateway</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:exclusiveGateway id="Gateway_ScopeApprovalRequired" name="Scope approval required?">
+      <bpmn:incoming>Flow_Governance_ScopeGateway</bpmn:incoming>
+      <bpmn:outgoing>Flow_GovernanceBlocked</bpmn:outgoing>
+      <bpmn:outgoing>Flow_ScopeApprovalRequired</bpmn:outgoing>
+      <bpmn:outgoing>Flow_LowRisk_BuildPlanner</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    <bpmn:userTask id="Task_ScopeApproval" name="Action Center scope approval">
+      <bpmn:incoming>Flow_ScopeApprovalRequired</bpmn:incoming>
+      <bpmn:outgoing>Flow_ScopeApproval_Decision</bpmn:outgoing>
+    </bpmn:userTask>
+    <bpmn:exclusiveGateway id="Gateway_ScopeDecision" name="Scope approved?">
+      <bpmn:incoming>Flow_ScopeApproval_Decision</bpmn:incoming>
+      <bpmn:outgoing>Flow_ScopeApproved_BuildPlanner</bpmn:outgoing>
+      <bpmn:outgoing>Flow_ScopeChanges_Clarifications</bpmn:outgoing>
+      <bpmn:outgoing>Flow_ScopeRejected_Blocked</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    <bpmn:serviceTask id="Task_BuildPlanner" name="Build Planner Agent creates manifest">
+      <bpmn:incoming>Flow_LowRisk_BuildPlanner</bpmn:incoming>
+      <bpmn:incoming>Flow_ScopeApproved_BuildPlanner</bpmn:incoming>
+      <bpmn:incoming>Flow_TestRemediation_BuildPlanner</bpmn:incoming>
+      <bpmn:incoming>Flow_ReleaseChanges_BuildPlanner</bpmn:incoming>
+      <bpmn:outgoing>Flow_BuildPlanner_StartBuild</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:serviceTask id="Task_StartBuildWorker" name="API Workflow starts build worker">
+      <bpmn:incoming>Flow_BuildPlanner_StartBuild</bpmn:incoming>
+      <bpmn:outgoing>Flow_StartBuild_WaitStatus</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:boundaryEvent id="Boundary_BuildTimeout" name="Build worker timeout" attachedToRef="Task_StartBuildWorker">
+      <bpmn:outgoing>Flow_BuildTimeout_Blocked</bpmn:outgoing>
+      <bpmn:timerEventDefinition id="Timer_BuildTimeout" />
+    </bpmn:boundaryEvent>
+    <bpmn:intermediateCatchEvent id="Event_WaitBuildStatus" name="Wait for build status callback">
+      <bpmn:incoming>Flow_StartBuild_WaitStatus</bpmn:incoming>
+      <bpmn:outgoing>Flow_BuildStatus_QualityGates</bpmn:outgoing>
+      <bpmn:messageEventDefinition id="MessageEvent_BuildStatusCallback" messageRef="Message_BuildStatusCallback" />
+    </bpmn:intermediateCatchEvent>
+    <bpmn:serviceTask id="Task_RunQualityGates" name="Run quality gates and record TestRun">
+      <bpmn:incoming>Flow_BuildStatus_QualityGates</bpmn:incoming>
+      <bpmn:outgoing>Flow_QualityGates_Decision</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:exclusiveGateway id="Gateway_QualityGatePassed" name="Quality gate passed?">
+      <bpmn:incoming>Flow_QualityGates_Decision</bpmn:incoming>
+      <bpmn:outgoing>Flow_QualityPassed_ReleaseApproval</bpmn:outgoing>
+      <bpmn:outgoing>Flow_QualityFailed_Remediation</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    <bpmn:userTask id="Task_TestRemediation" name="Remediate or waive failed gate">
+      <bpmn:incoming>Flow_QualityFailed_Remediation</bpmn:incoming>
+      <bpmn:outgoing>Flow_TestRemediation_BuildPlanner</bpmn:outgoing>
+    </bpmn:userTask>
+    <bpmn:userTask id="Task_ReleaseApproval" name="Action Center release approval">
+      <bpmn:incoming>Flow_QualityPassed_ReleaseApproval</bpmn:incoming>
+      <bpmn:outgoing>Flow_ReleaseApproval_Decision</bpmn:outgoing>
+    </bpmn:userTask>
+    <bpmn:exclusiveGateway id="Gateway_ReleaseDecision" name="Release approved?">
+      <bpmn:incoming>Flow_ReleaseApproval_Decision</bpmn:incoming>
+      <bpmn:outgoing>Flow_ReleaseApproved_Deploy</bpmn:outgoing>
+      <bpmn:outgoing>Flow_ReleaseChanges_BuildPlanner</bpmn:outgoing>
+      <bpmn:outgoing>Flow_ReleaseRejected_Blocked</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    <bpmn:serviceTask id="Task_DeploySandbox" name="API Workflow deploys sandbox artifact">
+      <bpmn:incoming>Flow_ReleaseApproved_Deploy</bpmn:incoming>
+      <bpmn:outgoing>Flow_Deploy_AuditSummary</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:boundaryEvent id="Boundary_DeployTimeout" name="Deployment timeout" attachedToRef="Task_DeploySandbox">
+      <bpmn:outgoing>Flow_DeployTimeout_Blocked</bpmn:outgoing>
+      <bpmn:timerEventDefinition id="Timer_DeployTimeout" />
+    </bpmn:boundaryEvent>
+    <bpmn:serviceTask id="Task_PublishAuditSummary" name="Publish audit summary">
+      <bpmn:incoming>Flow_Deploy_AuditSummary</bpmn:incoming>
+      <bpmn:outgoing>Flow_AuditSummary_End</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:serviceTask id="Task_RequestBlocked" name="Set requestStatus blocked and write audit">
+      <bpmn:incoming>Flow_GovernanceBlocked</bpmn:incoming>
+      <bpmn:incoming>Flow_ScopeRejected_Blocked</bpmn:incoming>
+      <bpmn:incoming>Flow_BuildTimeout_Blocked</bpmn:incoming>
+      <bpmn:incoming>Flow_ReleaseRejected_Blocked</bpmn:incoming>
+      <bpmn:incoming>Flow_DeployTimeout_Blocked</bpmn:incoming>
+      <bpmn:outgoing>Flow_Blocked_End</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:endEvent id="Event_Deployed" name="Audit summary published">
+      <bpmn:incoming>Flow_AuditSummary_End</bpmn:incoming>
+    </bpmn:endEvent>
+    <bpmn:endEvent id="Event_Blocked" name="Request blocked">
+      <bpmn:incoming>Flow_Blocked_End</bpmn:incoming>
+    </bpmn:endEvent>
+    <bpmn:sequenceFlow id="Flow_Start_NormalizeIntake" sourceRef="Event_RequestSubmitted" targetRef="Task_NormalizeIntake" />
+    <bpmn:sequenceFlow id="Flow_Normalize_Requirements" sourceRef="Task_NormalizeIntake" targetRef="Task_RequirementsAgent" />
+    <bpmn:sequenceFlow id="Flow_Requirements_ClarificationGateway" sourceRef="Task_RequirementsAgent" targetRef="Gateway_ClarificationNeeded" />
+    <bpmn:sequenceFlow id="Flow_ClarificationNeeded" name="yes" sourceRef="Gateway_ClarificationNeeded" targetRef="Task_CaptureClarifications">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">${clarificationRequired}</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    <bpmn:sequenceFlow id="Flow_NoClarification_Governance" name="no" sourceRef="Gateway_ClarificationNeeded" targetRef="Task_GovernanceAgent" />
+    <bpmn:sequenceFlow id="Flow_Clarifications_Requirements" sourceRef="Task_CaptureClarifications" targetRef="Task_RequirementsAgent" />
+    <bpmn:sequenceFlow id="Flow_Governance_ScopeGateway" sourceRef="Task_GovernanceAgent" targetRef="Gateway_ScopeApprovalRequired" />
+    <bpmn:sequenceFlow id="Flow_GovernanceBlocked" name="blockers found" sourceRef="Gateway_ScopeApprovalRequired" targetRef="Task_RequestBlocked" />
+    <bpmn:sequenceFlow id="Flow_ScopeApprovalRequired" name="approval required" sourceRef="Gateway_ScopeApprovalRequired" targetRef="Task_ScopeApproval" />
+    <bpmn:sequenceFlow id="Flow_LowRisk_BuildPlanner" name="low risk" sourceRef="Gateway_ScopeApprovalRequired" targetRef="Task_BuildPlanner" />
+    <bpmn:sequenceFlow id="Flow_ScopeApproval_Decision" sourceRef="Task_ScopeApproval" targetRef="Gateway_ScopeDecision" />
+    <bpmn:sequenceFlow id="Flow_ScopeApproved_BuildPlanner" name="approved" sourceRef="Gateway_ScopeDecision" targetRef="Task_BuildPlanner" />
+    <bpmn:sequenceFlow id="Flow_ScopeChanges_Clarifications" name="changes requested" sourceRef="Gateway_ScopeDecision" targetRef="Task_CaptureClarifications" />
+    <bpmn:sequenceFlow id="Flow_ScopeRejected_Blocked" name="rejected" sourceRef="Gateway_ScopeDecision" targetRef="Task_RequestBlocked" />
+    <bpmn:sequenceFlow id="Flow_BuildPlanner_StartBuild" sourceRef="Task_BuildPlanner" targetRef="Task_StartBuildWorker" />
+    <bpmn:sequenceFlow id="Flow_StartBuild_WaitStatus" sourceRef="Task_StartBuildWorker" targetRef="Event_WaitBuildStatus" />
+    <bpmn:sequenceFlow id="Flow_BuildTimeout_Blocked" sourceRef="Boundary_BuildTimeout" targetRef="Task_RequestBlocked" />
+    <bpmn:sequenceFlow id="Flow_BuildStatus_QualityGates" sourceRef="Event_WaitBuildStatus" targetRef="Task_RunQualityGates" />
+    <bpmn:sequenceFlow id="Flow_QualityGates_Decision" sourceRef="Task_RunQualityGates" targetRef="Gateway_QualityGatePassed" />
+    <bpmn:sequenceFlow id="Flow_QualityPassed_ReleaseApproval" name="passed" sourceRef="Gateway_QualityGatePassed" targetRef="Task_ReleaseApproval" />
+    <bpmn:sequenceFlow id="Flow_QualityFailed_Remediation" name="failed" sourceRef="Gateway_QualityGatePassed" targetRef="Task_TestRemediation" />
+    <bpmn:sequenceFlow id="Flow_TestRemediation_BuildPlanner" sourceRef="Task_TestRemediation" targetRef="Task_BuildPlanner" />
+    <bpmn:sequenceFlow id="Flow_ReleaseApproval_Decision" sourceRef="Task_ReleaseApproval" targetRef="Gateway_ReleaseDecision" />
+    <bpmn:sequenceFlow id="Flow_ReleaseApproved_Deploy" name="approved" sourceRef="Gateway_ReleaseDecision" targetRef="Task_DeploySandbox" />
+    <bpmn:sequenceFlow id="Flow_ReleaseChanges_BuildPlanner" name="changes requested" sourceRef="Gateway_ReleaseDecision" targetRef="Task_BuildPlanner" />
+    <bpmn:sequenceFlow id="Flow_ReleaseRejected_Blocked" name="rejected" sourceRef="Gateway_ReleaseDecision" targetRef="Task_RequestBlocked" />
+    <bpmn:sequenceFlow id="Flow_Deploy_AuditSummary" sourceRef="Task_DeploySandbox" targetRef="Task_PublishAuditSummary" />
+    <bpmn:sequenceFlow id="Flow_DeployTimeout_Blocked" sourceRef="Boundary_DeployTimeout" targetRef="Task_RequestBlocked" />
+    <bpmn:sequenceFlow id="Flow_AuditSummary_End" sourceRef="Task_PublishAuditSummary" targetRef="Event_Deployed" />
+    <bpmn:sequenceFlow id="Flow_Blocked_End" sourceRef="Task_RequestBlocked" targetRef="Event_Blocked" />
+  </bpmn:process>
+</bpmn:definitions>

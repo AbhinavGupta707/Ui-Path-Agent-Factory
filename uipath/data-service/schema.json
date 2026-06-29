@@ -1,6 +1,22 @@
 {
-  "status": "planned",
+  "status": "proposal-only",
   "platformMode": "uipath-ready",
+  "approvalRequiredBeforeLiveMutation": true,
+  "lastDiscovery": {
+    "checkedAtUtc": "2026-06-29T01:36:00Z",
+    "uipCliVersion": "1.195.1",
+    "login": {
+      "organization": "galacticus",
+      "tenant": "DefaultTenant"
+    },
+    "folder": {
+      "name": "AgentFactoryDemo",
+      "key": "cba41e19-47cc-4a0a-bf73-de88b60a61be",
+      "id": 7986306
+    },
+    "nativeEntitiesFound": [],
+    "choiceSetsFound": []
+  },
   "namespace": "AgentFactory",
   "organization": "galacticus",
   "tenant": "DefaultTenant",
@@ -9,256 +25,489 @@
     "key": "cba41e19-47cc-4a0a-bf73-de88b60a61be",
     "id": 7986306
   },
+  "dataFabricCli": {
+    "entityCreateShape": {
+      "command": "uip df entities create <EntityName> --file <entity-body.json>",
+      "bodyKeys": ["displayName", "description", "isRbacEnabled", "fields"],
+      "fieldNameRule": "Entity and field names must start with a letter and contain only letters, numbers, and underscores.",
+      "choiceSetRule": "CHOICE_SET_SINGLE fields require a choiceSetId returned by uip df choice-sets create/list. Record inserts use each choice value NumberId, not the choice value name."
+    },
+    "allowedFieldTypesUsed": [
+      "STRING",
+      "MULTILINE_TEXT",
+      "INTEGER",
+      "BOOLEAN",
+      "DATE",
+      "DATETIME_WITH_TZ",
+      "CHOICE_SET_SINGLE"
+    ]
+  },
+  "creationOrder": [
+    {
+      "step": 1,
+      "description": "Create all choice sets in the AgentFactoryDemo folder.",
+      "commandTemplate": "uip df choice-sets create <ChoiceSetName> --display-name \"<Display Name>\" --description \"<Description>\" --folder-key cba41e19-47cc-4a0a-bf73-de88b60a61be --output json"
+    },
+    {
+      "step": 2,
+      "description": "Create every choice-set value and capture each returned NumberId for record inserts.",
+      "commandTemplate": "uip df choice-set-values create <ChoiceSetId> <valueName> --display-name \"<displayName>\" --output json"
+    },
+    {
+      "step": 3,
+      "description": "Replace ${ChoiceSetName.id} placeholders in entity field definitions with the returned choice set IDs.",
+      "commandTemplate": "No live command. This is the materialization step before entity creation."
+    },
+    {
+      "step": 4,
+      "description": "Create entities only after explicit approval for this exact proposal.",
+      "commandTemplate": "uip df entities create <EntityName> --file <materialized-entity-body.json> --output json"
+    },
+    {
+      "step": 5,
+      "description": "Re-read created entity schemas and record returned entity/field IDs in this file or companion docs.",
+      "commandTemplate": "uip df entities list --native-only --output json"
+    }
+  ],
+  "choiceSets": [
+    {
+      "name": "AgentFactoryPlatformMode",
+      "displayName": "Agent Factory Platform Mode",
+      "description": "Execution mode labels for local, ready, and live UiPath lifecycle records.",
+      "values": [
+        { "name": "local_simulated", "displayName": "local-simulated", "contractValue": "local-simulated" },
+        { "name": "uipath_ready", "displayName": "uipath-ready", "contractValue": "uipath-ready" },
+        { "name": "uipath_live", "displayName": "uipath-live", "contractValue": "uipath-live" }
+      ]
+    },
+    {
+      "name": "AgentFactoryRequestStatus",
+      "displayName": "Agent Factory Request Status",
+      "description": "AutomationRequest lifecycle states from packages/shared-contracts.",
+      "values": [
+        { "name": "draft", "displayName": "draft", "contractValue": "draft" },
+        { "name": "clarifying", "displayName": "clarifying", "contractValue": "clarifying" },
+        { "name": "awaiting_scope_approval", "displayName": "awaiting_scope_approval", "contractValue": "awaiting_scope_approval" },
+        { "name": "approved_for_build", "displayName": "approved_for_build", "contractValue": "approved_for_build" },
+        { "name": "manifest_created", "displayName": "manifest_created", "contractValue": "manifest_created" },
+        { "name": "build_queued", "displayName": "build_queued", "contractValue": "build_queued" },
+        { "name": "building", "displayName": "building", "contractValue": "building" },
+        { "name": "build_failed", "displayName": "build_failed", "contractValue": "build_failed" },
+        { "name": "tests_running", "displayName": "tests_running", "contractValue": "tests_running" },
+        { "name": "tests_failed", "displayName": "tests_failed", "contractValue": "tests_failed" },
+        { "name": "awaiting_release_approval", "displayName": "awaiting_release_approval", "contractValue": "awaiting_release_approval" },
+        { "name": "deploying", "displayName": "deploying", "contractValue": "deploying" },
+        { "name": "deployed", "displayName": "deployed", "contractValue": "deployed" },
+        { "name": "blocked", "displayName": "blocked", "contractValue": "blocked" },
+        { "name": "cancelled", "displayName": "cancelled", "contractValue": "cancelled" }
+      ]
+    },
+    {
+      "name": "AgentFactoryRequestPriority",
+      "displayName": "Agent Factory Request Priority",
+      "description": "Requester priority values from RequestPrioritySchema.",
+      "values": [
+        { "name": "low", "displayName": "low", "contractValue": "low" },
+        { "name": "normal", "displayName": "normal", "contractValue": "normal" },
+        { "name": "high", "displayName": "high", "contractValue": "high" },
+        { "name": "urgent", "displayName": "urgent", "contractValue": "urgent" }
+      ]
+    },
+    {
+      "name": "AgentFactoryRiskTier",
+      "displayName": "Agent Factory Risk Tier",
+      "description": "Governance risk tier values.",
+      "values": [
+        { "name": "low", "displayName": "low", "contractValue": "low" },
+        { "name": "medium", "displayName": "medium", "contractValue": "medium" },
+        { "name": "high", "displayName": "high", "contractValue": "high" }
+      ]
+    },
+    {
+      "name": "AgentFactoryApprovalType",
+      "displayName": "Agent Factory Approval Type",
+      "description": "Scope and release approval task types.",
+      "values": [
+        { "name": "scope", "displayName": "scope", "contractValue": "scope" },
+        { "name": "release", "displayName": "release", "contractValue": "release" }
+      ]
+    },
+    {
+      "name": "AgentFactoryApprovalStatus",
+      "displayName": "Agent Factory Approval Status",
+      "description": "Action Center approval mirror states.",
+      "values": [
+        { "name": "pending", "displayName": "pending", "contractValue": "pending" },
+        { "name": "approved", "displayName": "approved", "contractValue": "approved" },
+        { "name": "changes_requested", "displayName": "changes_requested", "contractValue": "changes_requested" },
+        { "name": "rejected", "displayName": "rejected", "contractValue": "rejected" },
+        { "name": "cancelled", "displayName": "cancelled", "contractValue": "cancelled" },
+        { "name": "expired", "displayName": "expired", "contractValue": "expired" }
+      ]
+    },
+    {
+      "name": "AgentFactoryBuildRunStatus",
+      "displayName": "Agent Factory Build Run Status",
+      "description": "BuildRun lifecycle values from packages/shared-contracts.",
+      "values": [
+        { "name": "build_queued", "displayName": "build_queued", "contractValue": "build_queued" },
+        { "name": "building", "displayName": "building", "contractValue": "building" },
+        { "name": "build_failed", "displayName": "build_failed", "contractValue": "build_failed" },
+        { "name": "tests_running", "displayName": "tests_running", "contractValue": "tests_running" },
+        { "name": "tests_failed", "displayName": "tests_failed", "contractValue": "tests_failed" },
+        { "name": "awaiting_release_approval", "displayName": "awaiting_release_approval", "contractValue": "awaiting_release_approval" },
+        { "name": "deploying", "displayName": "deploying", "contractValue": "deploying" },
+        { "name": "deployed", "displayName": "deployed", "contractValue": "deployed" },
+        { "name": "blocked", "displayName": "blocked", "contractValue": "blocked" },
+        { "name": "cancelled", "displayName": "cancelled", "contractValue": "cancelled" }
+      ]
+    },
+    {
+      "name": "AgentFactoryBuildRunMode",
+      "displayName": "Agent Factory Build Run Mode",
+      "description": "Build worker execution modes.",
+      "values": [
+        { "name": "sandbox", "displayName": "sandbox", "contractValue": "sandbox" }
+      ]
+    },
+    {
+      "name": "AgentFactoryTestRunStatus",
+      "displayName": "Agent Factory Test Run Status",
+      "description": "Quality gate execution states for Test Manager/Test Cloud evidence.",
+      "values": [
+        { "name": "queued", "displayName": "queued", "contractValue": "queued" },
+        { "name": "running", "displayName": "running", "contractValue": "running" },
+        { "name": "passed", "displayName": "passed", "contractValue": "passed" },
+        { "name": "failed", "displayName": "failed", "contractValue": "failed" },
+        { "name": "blocked", "displayName": "blocked", "contractValue": "blocked" }
+      ]
+    },
+    {
+      "name": "AgentFactoryGateResult",
+      "displayName": "Agent Factory Gate Result",
+      "description": "Individual quality gate result values.",
+      "values": [
+        { "name": "not_run", "displayName": "not_run", "contractValue": "not_run" },
+        { "name": "passed", "displayName": "passed", "contractValue": "passed" },
+        { "name": "failed", "displayName": "failed", "contractValue": "failed" },
+        { "name": "waived", "displayName": "waived", "contractValue": "waived" }
+      ]
+    },
+    {
+      "name": "AgentFactoryQualityGateDecision",
+      "displayName": "Agent Factory Quality Gate Decision",
+      "description": "Overall quality gate decision values.",
+      "values": [
+        { "name": "pending", "displayName": "pending", "contractValue": "pending" },
+        { "name": "passed", "displayName": "passed", "contractValue": "passed" },
+        { "name": "failed", "displayName": "failed", "contractValue": "failed" },
+        { "name": "waived", "displayName": "waived", "contractValue": "waived" }
+      ]
+    },
+    {
+      "name": "AgentFactoryDeploymentStatus",
+      "displayName": "Agent Factory Deployment Status",
+      "description": "Deployment result states.",
+      "values": [
+        { "name": "pending", "displayName": "pending", "contractValue": "pending" },
+        { "name": "deployed", "displayName": "deployed", "contractValue": "deployed" },
+        { "name": "rolled_back", "displayName": "rolled_back", "contractValue": "rolled_back" },
+        { "name": "failed", "displayName": "failed", "contractValue": "failed" }
+      ]
+    },
+    {
+      "name": "AgentFactoryActorType",
+      "displayName": "Agent Factory Actor Type",
+      "description": "Audit actor categories from AuditEventSchema.",
+      "values": [
+        { "name": "user", "displayName": "user", "contractValue": "user" },
+        { "name": "factory_api", "displayName": "factory-api", "contractValue": "factory-api" },
+        { "name": "uipath_maestro", "displayName": "uipath-maestro", "contractValue": "uipath-maestro" },
+        { "name": "uipath_agent", "displayName": "uipath-agent", "contractValue": "uipath-agent" },
+        { "name": "action_center", "displayName": "action-center", "contractValue": "action-center" },
+        { "name": "codex_worker", "displayName": "codex-worker", "contractValue": "codex-worker" }
+      ]
+    }
+  ],
   "entities": [
     {
       "name": "AutomationRequest",
-      "description": "Primary request lifecycle record",
+      "displayName": "Automation Request",
+      "description": "Primary request lifecycle record aligned to AutomationRequestSchema.",
+      "isRbacEnabled": false,
+      "sourceContract": "packages/shared-contracts/src/index.ts#AutomationRequestSchema",
       "fields": [
-        { "name": "requestId", "type": "Text", "required": true, "unique": true },
-        { "name": "title", "type": "Text", "required": true },
-        { "name": "requesterEmail", "type": "Text", "required": true },
-        { "name": "businessGoal", "type": "LongText", "required": true },
-        { "name": "targetAudience", "type": "Text", "required": true },
-        { "name": "dueDate", "type": "Date", "required": false },
-        { "name": "sourceSystemsJson", "type": "LongText", "required": true },
-        { "name": "constraintsJson", "type": "LongText", "required": true },
-        {
-          "name": "status",
-          "type": "Choice",
-          "required": true,
-          "values": [
-            "draft",
-            "clarifying",
-            "awaiting_scope_approval",
-            "approved_for_build",
-            "manifest_created",
-            "build_queued",
-            "building",
-            "build_failed",
-            "tests_running",
-            "tests_failed",
-            "awaiting_release_approval",
-            "deploying",
-            "deployed",
-            "blocked",
-            "cancelled"
-          ]
-        },
-        {
-          "name": "platformMode",
-          "type": "Choice",
-          "required": true,
-          "values": ["local-simulated", "uipath-ready", "uipath-live"]
-        },
-        { "name": "folderName", "type": "Text", "required": true },
-        { "name": "folderKey", "type": "Text", "required": true },
-        { "name": "folderId", "type": "Number", "required": true },
-        { "name": "currentApprovalId", "type": "Text", "required": false },
-        { "name": "currentBuildRunId", "type": "Text", "required": false },
-        { "name": "createdAt", "type": "DateTime", "required": true },
-        { "name": "updatedAt", "type": "DateTime", "required": true }
+        { "fieldName": "requestId", "type": "STRING", "isRequired": true, "isUnique": true, "sourceField": "request_id" },
+        { "fieldName": "requesterName", "type": "STRING", "isRequired": true, "sourceField": "requester_name" },
+        { "fieldName": "requesterEmail", "type": "STRING", "isRequired": true, "sourceField": "requester_email" },
+        { "fieldName": "title", "type": "STRING", "isRequired": false, "sourceField": "IntakeRequestSchema.title" },
+        { "fieldName": "businessGoal", "type": "MULTILINE_TEXT", "isRequired": false, "sourceField": "IntakeRequestSchema.businessGoal" },
+        { "fieldName": "targetAudience", "type": "STRING", "isRequired": false, "sourceField": "IntakeRequestSchema.targetAudience" },
+        { "fieldName": "dueDate", "type": "DATE", "isRequired": false, "sourceField": "IntakeRequestSchema.dueDate" },
+        { "fieldName": "sourceSystemsJson", "type": "MULTILINE_TEXT", "isRequired": false, "sourceField": "IntakeRequestSchema.sourceSystems" },
+        { "fieldName": "constraintsJson", "type": "MULTILINE_TEXT", "isRequired": false, "sourceField": "IntakeRequestSchema.constraints" },
+        { "fieldName": "requestText", "type": "MULTILINE_TEXT", "isRequired": true, "sourceField": "request_text" },
+        { "fieldName": "requestedArtifactType", "type": "STRING", "isRequired": true, "sourceField": "requested_artifact_type" },
+        { "fieldName": "templateId", "type": "STRING", "isRequired": true, "sourceField": "template_id" },
+        { "fieldName": "requestStatus", "type": "CHOICE_SET_SINGLE", "choiceSetRef": "AgentFactoryRequestStatus", "choiceSetId": "${AgentFactoryRequestStatus.id}", "isRequired": true, "sourceField": "status" },
+        { "fieldName": "priority", "type": "CHOICE_SET_SINGLE", "choiceSetRef": "AgentFactoryRequestPriority", "choiceSetId": "${AgentFactoryRequestPriority.id}", "isRequired": true, "sourceField": "priority" },
+        { "fieldName": "ownerName", "type": "STRING", "isRequired": true, "sourceField": "owner_name" },
+        { "fieldName": "ownerEmail", "type": "STRING", "isRequired": false, "sourceField": "owner_email" },
+        { "fieldName": "platformMode", "type": "CHOICE_SET_SINGLE", "choiceSetRef": "AgentFactoryPlatformMode", "choiceSetId": "${AgentFactoryPlatformMode.id}", "isRequired": true, "sourceField": "platformMode" },
+        { "fieldName": "folderName", "type": "STRING", "isRequired": true },
+        { "fieldName": "folderKey", "type": "STRING", "isRequired": true },
+        { "fieldName": "folderId", "type": "INTEGER", "isRequired": true },
+        { "fieldName": "currentApprovalId", "type": "STRING", "isRequired": false },
+        { "fieldName": "currentBuildRunId", "type": "STRING", "isRequired": false },
+        { "fieldName": "createdAt", "type": "DATETIME_WITH_TZ", "isRequired": true, "sourceField": "created_at" },
+        { "fieldName": "updatedAt", "type": "DATETIME_WITH_TZ", "isRequired": true, "sourceField": "updated_at" }
       ]
     },
     {
       "name": "StructuredSpec",
-      "description": "Agent-normalized requirements",
+      "displayName": "Structured Spec",
+      "description": "Agent-normalized requirements aligned to StructuredSpecSchema.",
+      "isRbacEnabled": false,
+      "sourceContract": "packages/shared-contracts/src/index.ts#StructuredSpecSchema",
       "fields": [
-        { "name": "specId", "type": "Text", "required": true, "unique": true },
-        { "name": "requestId", "type": "Text", "required": true },
-        { "name": "objective", "type": "LongText", "required": true },
-        { "name": "requiredCapabilitiesJson", "type": "LongText", "required": true },
-        { "name": "dataSourcesJson", "type": "LongText", "required": true },
-        { "name": "acceptanceCriteriaJson", "type": "LongText", "required": true },
-        { "name": "governanceNotesJson", "type": "LongText", "required": true },
-        { "name": "clarificationQuestionsJson", "type": "LongText", "required": false },
-        { "name": "clarificationAnswersJson", "type": "LongText", "required": false },
-        { "name": "agentVersion", "type": "Text", "required": false },
-        { "name": "createdAt", "type": "DateTime", "required": true },
-        { "name": "updatedAt", "type": "DateTime", "required": true }
+        { "fieldName": "specId", "type": "STRING", "isRequired": true, "isUnique": true, "sourceField": "spec_id" },
+        { "fieldName": "requestId", "type": "STRING", "isRequired": true, "sourceField": "request_id" },
+        { "fieldName": "businessGoal", "type": "MULTILINE_TEXT", "isRequired": true, "sourceField": "business_goal" },
+        { "fieldName": "dataSourcesJson", "type": "MULTILINE_TEXT", "isRequired": true, "sourceField": "data_sources_json" },
+        { "fieldName": "metricsJson", "type": "MULTILINE_TEXT", "isRequired": true, "sourceField": "metrics_json" },
+        { "fieldName": "filtersJson", "type": "MULTILINE_TEXT", "isRequired": true, "sourceField": "filters_json" },
+        { "fieldName": "outputType", "type": "STRING", "isRequired": true, "sourceField": "output_type" },
+        { "fieldName": "ownerName", "type": "STRING", "isRequired": true, "sourceField": "owner.name" },
+        { "fieldName": "ownerEmail", "type": "STRING", "isRequired": false, "sourceField": "owner.email" },
+        { "fieldName": "constraintsJson", "type": "MULTILINE_TEXT", "isRequired": true, "sourceField": "constraints_json" },
+        { "fieldName": "clarificationQuestionsJson", "type": "MULTILINE_TEXT", "isRequired": true, "sourceField": "clarification_questions_json" },
+        { "fieldName": "clarificationAnswersJson", "type": "MULTILINE_TEXT", "isRequired": true, "sourceField": "clarification_answers_json" },
+        { "fieldName": "platformMode", "type": "CHOICE_SET_SINGLE", "choiceSetRef": "AgentFactoryPlatformMode", "choiceSetId": "${AgentFactoryPlatformMode.id}", "isRequired": true, "sourceField": "platformMode" },
+        { "fieldName": "createdAt", "type": "DATETIME_WITH_TZ", "isRequired": true, "sourceField": "created_at" },
+        { "fieldName": "updatedAt", "type": "DATETIME_WITH_TZ", "isRequired": true, "sourceField": "updated_at" }
       ]
     },
     {
       "name": "GovernanceAssessment",
-      "description": "Risk and permission assessment",
+      "displayName": "Governance Assessment",
+      "description": "Risk, permissions, and policy decision record aligned to GovernanceAssessmentSchema.",
+      "isRbacEnabled": false,
+      "sourceContract": "packages/shared-contracts/src/index.ts#GovernanceAssessmentSchema",
       "fields": [
-        { "name": "assessmentId", "type": "Text", "required": true, "unique": true },
-        { "name": "requestId", "type": "Text", "required": true },
-        {
-          "name": "riskLevel",
-          "type": "Choice",
-          "required": true,
-          "values": ["low", "medium", "high"]
-        },
-        { "name": "requiresHumanApproval", "type": "Boolean", "required": true },
-        { "name": "requiredPermissionsJson", "type": "LongText", "required": true },
-        { "name": "blockersJson", "type": "LongText", "required": true },
-        { "name": "policySummary", "type": "LongText", "required": true },
-        { "name": "createdAt", "type": "DateTime", "required": true }
+        { "fieldName": "assessmentId", "type": "STRING", "isRequired": true, "isUnique": true, "sourceField": "assessment_id" },
+        { "fieldName": "requestId", "type": "STRING", "isRequired": true, "sourceField": "request_id" },
+        { "fieldName": "riskTier", "type": "CHOICE_SET_SINGLE", "choiceSetRef": "AgentFactoryRiskTier", "choiceSetId": "${AgentFactoryRiskTier.id}", "isRequired": true, "sourceField": "risk_tier" },
+        { "fieldName": "piiDetected", "type": "BOOLEAN", "isRequired": true, "sourceField": "pii_detected" },
+        { "fieldName": "piiPolicy", "type": "MULTILINE_TEXT", "isRequired": true, "sourceField": "pii_policy" },
+        { "fieldName": "forbiddenActionsJson", "type": "MULTILINE_TEXT", "isRequired": true, "sourceField": "forbidden_actions_json" },
+        { "fieldName": "requiredApprovalsJson", "type": "MULTILINE_TEXT", "isRequired": true, "sourceField": "required_approvals_json" },
+        { "fieldName": "policyDecisionsJson", "type": "MULTILINE_TEXT", "isRequired": true, "sourceField": "policy_decisions_json" },
+        { "fieldName": "policyViolationsJson", "type": "MULTILINE_TEXT", "isRequired": true, "sourceField": "policy_violations_json" },
+        { "fieldName": "platformMode", "type": "CHOICE_SET_SINGLE", "choiceSetRef": "AgentFactoryPlatformMode", "choiceSetId": "${AgentFactoryPlatformMode.id}", "isRequired": true, "sourceField": "platformMode" },
+        { "fieldName": "createdAt", "type": "DATETIME_WITH_TZ", "isRequired": true, "sourceField": "created_at" }
       ]
     },
     {
       "name": "ApprovalTask",
-      "description": "Action Center approval mirror",
+      "displayName": "Approval Task",
+      "description": "Action Center approval mirror aligned to ApprovalTaskSchema and Checkpoint 4 approval contracts.",
+      "isRbacEnabled": false,
+      "sourceContract": "packages/shared-contracts/src/index.ts#ApprovalTaskSchema",
       "fields": [
-        { "name": "approvalId", "type": "Text", "required": true, "unique": true },
-        { "name": "requestId", "type": "Text", "required": true },
-        {
-          "name": "approvalType",
-          "type": "Choice",
-          "required": true,
-          "values": ["scope", "release"]
-        },
-        { "name": "actionCenterTaskId", "type": "Text", "required": false },
-        { "name": "title", "type": "Text", "required": true },
-        {
-          "name": "status",
-          "type": "Choice",
-          "required": true,
-          "values": ["pending", "approved", "rejected", "changes_requested", "cancelled", "expired"]
-        },
-        { "name": "payloadJson", "type": "LongText", "required": true },
-        { "name": "decisionJson", "type": "LongText", "required": false },
-        { "name": "requestedBy", "type": "Text", "required": true },
-        { "name": "assignedTo", "type": "Text", "required": false },
-        { "name": "decidedBy", "type": "Text", "required": false },
-        { "name": "createdAt", "type": "DateTime", "required": true },
-        { "name": "decidedAt", "type": "DateTime", "required": false }
+        { "fieldName": "taskId", "type": "STRING", "isRequired": true, "isUnique": true, "sourceField": "task_id" },
+        { "fieldName": "requestId", "type": "STRING", "isRequired": true, "sourceField": "request_id" },
+        { "fieldName": "approvalType", "type": "CHOICE_SET_SINGLE", "choiceSetRef": "AgentFactoryApprovalType", "choiceSetId": "${AgentFactoryApprovalType.id}", "isRequired": true, "sourceField": "approval_type" },
+        { "fieldName": "approverRole", "type": "STRING", "isRequired": true, "sourceField": "approver_role" },
+        { "fieldName": "approverName", "type": "STRING", "isRequired": false, "sourceField": "approver_name" },
+        { "fieldName": "approverEmail", "type": "STRING", "isRequired": false, "sourceField": "approver_email" },
+        { "fieldName": "approvalStatus", "type": "CHOICE_SET_SINGLE", "choiceSetRef": "AgentFactoryApprovalStatus", "choiceSetId": "${AgentFactoryApprovalStatus.id}", "isRequired": true, "sourceField": "status" },
+        { "fieldName": "actionCenterTaskId", "type": "STRING", "isRequired": false },
+        { "fieldName": "comments", "type": "MULTILINE_TEXT", "isRequired": false, "sourceField": "comments" },
+        { "fieldName": "payloadJson", "type": "MULTILINE_TEXT", "isRequired": false },
+        { "fieldName": "decisionJson", "type": "MULTILINE_TEXT", "isRequired": false },
+        { "fieldName": "platformMode", "type": "CHOICE_SET_SINGLE", "choiceSetRef": "AgentFactoryPlatformMode", "choiceSetId": "${AgentFactoryPlatformMode.id}", "isRequired": true, "sourceField": "platformMode" },
+        { "fieldName": "createdAt", "type": "DATETIME_WITH_TZ", "isRequired": true, "sourceField": "created_at" },
+        { "fieldName": "completedAt", "type": "DATETIME_WITH_TZ", "isRequired": false, "sourceField": "completed_at" }
       ]
     },
     {
       "name": "BuildManifest",
-      "description": "Build worker manifest",
+      "displayName": "Build Manifest",
+      "description": "Governed build instruction record aligned to FactoryBuildManifestSchema plus worker bridge fields.",
+      "isRbacEnabled": false,
+      "sourceContract": "packages/shared-contracts/src/index.ts#FactoryBuildManifestSchema",
       "fields": [
-        { "name": "manifestId", "type": "Text", "required": true, "unique": true },
-        { "name": "requestId", "type": "Text", "required": true },
-        { "name": "template", "type": "Text", "required": true },
-        { "name": "branchName", "type": "Text", "required": true },
-        { "name": "outputApp", "type": "Text", "required": true },
-        { "name": "acceptanceCriteriaJson", "type": "LongText", "required": true },
-        { "name": "permissionsJson", "type": "LongText", "required": true },
-        { "name": "codexModel", "type": "Text", "required": true },
-        { "name": "manifestJson", "type": "LongText", "required": true },
-        { "name": "createdAt", "type": "DateTime", "required": true }
+        { "fieldName": "manifestId", "type": "STRING", "isRequired": true, "isUnique": true, "sourceField": "manifest_id" },
+        { "fieldName": "requestId", "type": "STRING", "isRequired": true, "sourceField": "request_id" },
+        { "fieldName": "manifestHash", "type": "STRING", "isRequired": true, "sourceField": "manifest_hash" },
+        { "fieldName": "templateId", "type": "STRING", "isRequired": true, "sourceField": "template_id" },
+        { "fieldName": "artifactType", "type": "STRING", "isRequired": true, "sourceField": "artifact_type" },
+        { "fieldName": "allowedFilesJson", "type": "MULTILINE_TEXT", "isRequired": true, "sourceField": "allowed_files_json" },
+        { "fieldName": "approvedDataSourcesJson", "type": "MULTILINE_TEXT", "isRequired": true, "sourceField": "approved_data_sources_json" },
+        { "fieldName": "approvedMetricsJson", "type": "MULTILINE_TEXT", "isRequired": true, "sourceField": "approved_metrics_json" },
+        { "fieldName": "requiredFiltersJson", "type": "MULTILINE_TEXT", "isRequired": true, "sourceField": "required_filters_json" },
+        { "fieldName": "piiPolicy", "type": "MULTILINE_TEXT", "isRequired": true, "sourceField": "pii_policy" },
+        { "fieldName": "forbiddenActionsJson", "type": "MULTILINE_TEXT", "isRequired": true, "sourceField": "forbidden_actions_json" },
+        { "fieldName": "outputTargetsJson", "type": "MULTILINE_TEXT", "isRequired": true, "sourceField": "output_targets_json" },
+        { "fieldName": "maxRepairAttempts", "type": "INTEGER", "isRequired": true, "sourceField": "max_repair_attempts" },
+        { "fieldName": "sandboxOnly", "type": "BOOLEAN", "isRequired": true, "sourceField": "sandbox_only" },
+        { "fieldName": "branchName", "type": "STRING", "isRequired": false, "sourceField": "BuildManifestSchema.branchName" },
+        { "fieldName": "outputApp", "type": "STRING", "isRequired": false, "sourceField": "BuildManifestSchema.outputApp" },
+        { "fieldName": "codexModel", "type": "STRING", "isRequired": false, "sourceField": "BuildManifestSchema.codexModel" },
+        { "fieldName": "manifestJson", "type": "MULTILINE_TEXT", "isRequired": true },
+        { "fieldName": "platformMode", "type": "CHOICE_SET_SINGLE", "choiceSetRef": "AgentFactoryPlatformMode", "choiceSetId": "${AgentFactoryPlatformMode.id}", "isRequired": true, "sourceField": "platformMode" },
+        { "fieldName": "createdAt", "type": "DATETIME_WITH_TZ", "isRequired": true, "sourceField": "created_at" }
       ]
     },
     {
       "name": "BuildRun",
-      "description": "Build execution state",
+      "displayName": "Build Run",
+      "description": "Build worker execution state aligned to BuildRunSchema.",
+      "isRbacEnabled": false,
+      "sourceContract": "packages/shared-contracts/src/index.ts#BuildRunSchema",
       "fields": [
-        { "name": "buildRunId", "type": "Text", "required": true, "unique": true },
-        { "name": "requestId", "type": "Text", "required": true },
-        { "name": "manifestId", "type": "Text", "required": true },
-        {
-          "name": "status",
-          "type": "Choice",
-          "required": true,
-          "values": ["queued", "running", "passed", "failed"]
-        },
-        {
-          "name": "workerMode",
-          "type": "Choice",
-          "required": true,
-          "values": ["scaffold", "codex-local", "codex-live"]
-        },
-        { "name": "workerEndpoint", "type": "Text", "required": false },
-        { "name": "startedAt", "type": "DateTime", "required": false },
-        { "name": "finishedAt", "type": "DateTime", "required": false },
-        { "name": "lastHeartbeatAt", "type": "DateTime", "required": false },
-        { "name": "logsUrl", "type": "Text", "required": false },
-        { "name": "pullRequestUrl", "type": "Text", "required": false },
-        { "name": "deploymentUrl", "type": "Text", "required": false },
-        { "name": "errorSummary", "type": "LongText", "required": false }
+        { "fieldName": "buildRunId", "type": "STRING", "isRequired": true, "isUnique": true, "sourceField": "build_run_id" },
+        { "fieldName": "requestId", "type": "STRING", "isRequired": true, "sourceField": "request_id" },
+        { "fieldName": "manifestId", "type": "STRING", "isRequired": true, "sourceField": "manifest_id" },
+        { "fieldName": "buildRunStatus", "type": "CHOICE_SET_SINGLE", "choiceSetRef": "AgentFactoryBuildRunStatus", "choiceSetId": "${AgentFactoryBuildRunStatus.id}", "isRequired": true, "sourceField": "status" },
+        { "fieldName": "mode", "type": "CHOICE_SET_SINGLE", "choiceSetRef": "AgentFactoryBuildRunMode", "choiceSetId": "${AgentFactoryBuildRunMode.id}", "isRequired": true, "sourceField": "mode" },
+        { "fieldName": "workerId", "type": "STRING", "isRequired": false, "sourceField": "worker_id" },
+        { "fieldName": "codexSessionId", "type": "STRING", "isRequired": false, "sourceField": "codex_session_id" },
+        { "fieldName": "branchName", "type": "STRING", "isRequired": false, "sourceField": "branch_name" },
+        { "fieldName": "commitSha", "type": "STRING", "isRequired": false, "sourceField": "commit_sha" },
+        { "fieldName": "prUrl", "type": "STRING", "isRequired": false, "sourceField": "pr_url" },
+        { "fieldName": "generatedFilesJson", "type": "MULTILINE_TEXT", "isRequired": true, "sourceField": "generated_files_json" },
+        { "fieldName": "logsUri", "type": "STRING", "isRequired": false, "sourceField": "logs_uri" },
+        { "fieldName": "platformMode", "type": "CHOICE_SET_SINGLE", "choiceSetRef": "AgentFactoryPlatformMode", "choiceSetId": "${AgentFactoryPlatformMode.id}", "isRequired": true, "sourceField": "platformMode" },
+        { "fieldName": "startedAt", "type": "DATETIME_WITH_TZ", "isRequired": false, "sourceField": "started_at" },
+        { "fieldName": "completedAt", "type": "DATETIME_WITH_TZ", "isRequired": false, "sourceField": "completed_at" },
+        { "fieldName": "updatedAt", "type": "DATETIME_WITH_TZ", "isRequired": true, "sourceField": "updated_at" }
       ]
     },
     {
       "name": "TestRun",
-      "description": "Quality gate result",
+      "displayName": "Test Run",
+      "description": "Quality gate evidence for local tests and optional Test Manager/Test Cloud records.",
+      "isRbacEnabled": false,
+      "sourceContract": "Checkpoint 4 Test Cloud lane",
       "fields": [
-        { "name": "testRunId", "type": "Text", "required": true, "unique": true },
-        { "name": "requestId", "type": "Text", "required": true },
-        { "name": "buildRunId", "type": "Text", "required": true },
-        {
-          "name": "status",
-          "type": "Choice",
-          "required": true,
-          "values": ["queued", "running", "passed", "failed", "blocked"]
-        },
-        { "name": "testManagerProjectId", "type": "Text", "required": false },
-        { "name": "testSetId", "type": "Text", "required": false },
-        { "name": "automatedResultsUrl", "type": "Text", "required": false },
-        {
-          "name": "smokeResult",
-          "type": "Choice",
-          "required": true,
-          "values": ["not_run", "passed", "failed"]
-        },
-        {
-          "name": "securityReviewResult",
-          "type": "Choice",
-          "required": true,
-          "values": ["not_run", "passed", "failed", "waived"]
-        },
-        {
-          "name": "accessibilityResult",
-          "type": "Choice",
-          "required": true,
-          "values": ["not_run", "passed", "failed", "waived"]
-        },
-        {
-          "name": "qualityGateDecision",
-          "type": "Choice",
-          "required": true,
-          "values": ["pending", "passed", "failed", "waived"]
-        },
-        { "name": "notes", "type": "LongText", "required": false },
-        { "name": "createdAt", "type": "DateTime", "required": true },
-        { "name": "completedAt", "type": "DateTime", "required": false }
+        { "fieldName": "testRunId", "type": "STRING", "isRequired": true, "isUnique": true },
+        { "fieldName": "requestId", "type": "STRING", "isRequired": true },
+        { "fieldName": "buildRunId", "type": "STRING", "isRequired": true },
+        { "fieldName": "testRunStatus", "type": "CHOICE_SET_SINGLE", "choiceSetRef": "AgentFactoryTestRunStatus", "choiceSetId": "${AgentFactoryTestRunStatus.id}", "isRequired": true },
+        { "fieldName": "testManagerProjectId", "type": "STRING", "isRequired": false },
+        { "fieldName": "testSetId", "type": "STRING", "isRequired": false },
+        { "fieldName": "automatedResultsUrl", "type": "STRING", "isRequired": false },
+        { "fieldName": "smokeResult", "type": "CHOICE_SET_SINGLE", "choiceSetRef": "AgentFactoryGateResult", "choiceSetId": "${AgentFactoryGateResult.id}", "isRequired": true },
+        { "fieldName": "securityReviewResult", "type": "CHOICE_SET_SINGLE", "choiceSetRef": "AgentFactoryGateResult", "choiceSetId": "${AgentFactoryGateResult.id}", "isRequired": true },
+        { "fieldName": "accessibilityResult", "type": "CHOICE_SET_SINGLE", "choiceSetRef": "AgentFactoryGateResult", "choiceSetId": "${AgentFactoryGateResult.id}", "isRequired": true },
+        { "fieldName": "qualityGateDecision", "type": "CHOICE_SET_SINGLE", "choiceSetRef": "AgentFactoryQualityGateDecision", "choiceSetId": "${AgentFactoryQualityGateDecision.id}", "isRequired": true },
+        { "fieldName": "notes", "type": "MULTILINE_TEXT", "isRequired": false },
+        { "fieldName": "platformMode", "type": "CHOICE_SET_SINGLE", "choiceSetRef": "AgentFactoryPlatformMode", "choiceSetId": "${AgentFactoryPlatformMode.id}", "isRequired": true },
+        { "fieldName": "createdAt", "type": "DATETIME_WITH_TZ", "isRequired": true },
+        { "fieldName": "completedAt", "type": "DATETIME_WITH_TZ", "isRequired": false }
       ]
     },
     {
       "name": "DeploymentRecord",
-      "description": "Release artifact evidence",
+      "displayName": "Deployment Record",
+      "description": "Sandbox release artifact evidence.",
+      "isRbacEnabled": false,
+      "sourceContract": "Checkpoint 4 deployment evidence",
       "fields": [
-        { "name": "deploymentId", "type": "Text", "required": true, "unique": true },
-        { "name": "requestId", "type": "Text", "required": true },
-        { "name": "buildRunId", "type": "Text", "required": true },
-        {
-          "name": "status",
-          "type": "Choice",
-          "required": true,
-          "values": ["pending", "deployed", "rolled_back", "failed"]
-        },
-        { "name": "environment", "type": "Text", "required": true },
-        { "name": "deploymentUrl", "type": "Text", "required": false },
-        { "name": "releasedBy", "type": "Text", "required": false },
-        { "name": "releasedAt", "type": "DateTime", "required": false },
-        { "name": "rollbackNotes", "type": "LongText", "required": false }
+        { "fieldName": "deploymentId", "type": "STRING", "isRequired": true, "isUnique": true },
+        { "fieldName": "requestId", "type": "STRING", "isRequired": true },
+        { "fieldName": "buildRunId", "type": "STRING", "isRequired": true },
+        { "fieldName": "deploymentStatus", "type": "CHOICE_SET_SINGLE", "choiceSetRef": "AgentFactoryDeploymentStatus", "choiceSetId": "${AgentFactoryDeploymentStatus.id}", "isRequired": true },
+        { "fieldName": "environment", "type": "STRING", "isRequired": true },
+        { "fieldName": "deploymentUrl", "type": "STRING", "isRequired": false },
+        { "fieldName": "releasedBy", "type": "STRING", "isRequired": false },
+        { "fieldName": "releasedAt", "type": "DATETIME_WITH_TZ", "isRequired": false },
+        { "fieldName": "rollbackNotes", "type": "MULTILINE_TEXT", "isRequired": false },
+        { "fieldName": "platformMode", "type": "CHOICE_SET_SINGLE", "choiceSetRef": "AgentFactoryPlatformMode", "choiceSetId": "${AgentFactoryPlatformMode.id}", "isRequired": true },
+        { "fieldName": "createdAt", "type": "DATETIME_WITH_TZ", "isRequired": true }
       ]
     },
     {
       "name": "AuditEvent",
-      "description": "Append-only audit event",
+      "displayName": "Audit Event",
+      "description": "Append-only lifecycle event aligned to AuditEventSchema.",
+      "isRbacEnabled": false,
+      "sourceContract": "packages/shared-contracts/src/index.ts#AuditEventSchema",
       "fields": [
-        { "name": "auditEventId", "type": "Text", "required": true, "unique": true },
-        { "name": "requestId", "type": "Text", "required": true },
-        { "name": "actor", "type": "Text", "required": true },
-        { "name": "action", "type": "Text", "required": true },
-        { "name": "summary", "type": "LongText", "required": true },
-        { "name": "payloadJson", "type": "LongText", "required": false },
-        { "name": "createdAt", "type": "DateTime", "required": true }
+        { "fieldName": "auditEventId", "type": "STRING", "isRequired": true, "isUnique": true, "sourceField": "event_id" },
+        { "fieldName": "requestId", "type": "STRING", "isRequired": true, "sourceField": "request_id" },
+        { "fieldName": "actorType", "type": "CHOICE_SET_SINGLE", "choiceSetRef": "AgentFactoryActorType", "choiceSetId": "${AgentFactoryActorType.id}", "isRequired": true, "sourceField": "actor_type" },
+        { "fieldName": "actorName", "type": "STRING", "isRequired": true, "sourceField": "actor_name" },
+        { "fieldName": "action", "type": "STRING", "isRequired": true, "sourceField": "action" },
+        { "fieldName": "summary", "type": "MULTILINE_TEXT", "isRequired": true, "sourceField": "summary" },
+        { "fieldName": "payloadJson", "type": "MULTILINE_TEXT", "isRequired": true, "sourceField": "payload_json" },
+        { "fieldName": "createdAt", "type": "DATETIME_WITH_TZ", "isRequired": true, "sourceField": "timestamp" }
       ]
     }
   ],
-  "indexes": [
+  "indexesOrLookups": [
     "AutomationRequest.requestId",
-    "AutomationRequest.status",
+    "AutomationRequest.requestStatus",
     "AutomationRequest.requesterEmail",
+    "StructuredSpec.requestId",
+    "GovernanceAssessment.requestId",
     "ApprovalTask.requestId",
-    "ApprovalTask.status",
+    "ApprovalTask.approvalStatus",
+    "BuildManifest.requestId",
     "BuildRun.requestId",
+    "BuildRun.buildRunStatus",
     "TestRun.requestId",
     "DeploymentRecord.requestId",
     "AuditEvent.requestId",
     "AuditEvent.createdAt"
-  ]
+  ],
+  "seedRecordPlan": {
+    "status": "proposal-only",
+    "requestId": "req_customer360_demo_001",
+    "notes": [
+      "Do not insert records until the schema proposal is explicitly approved and entity IDs plus choice value NumberIds are captured.",
+      "For CHOICE_SET_SINGLE fields, replace each {choiceSet, valueName} marker with the value's NumberId from uip df choice-sets list-values <choiceSetId>.",
+      "Seed platformMode as AgentFactoryPlatformMode.uipath_ready until a live UiPath process instance or Data Service record exists."
+    ],
+    "automationRequestTemplate": {
+      "requestId": "req_customer360_demo_001",
+      "requesterName": "Revenue Ops",
+      "requesterEmail": "revenue.ops@example.com",
+      "title": "Customer360 revenue dashboard",
+      "businessGoal": "Give revenue and retention leaders a governed view of synthetic customer growth, purchase frequency, cohort retention, returns, and churn-risk proxy metrics.",
+      "targetAudience": "Revenue and retention leaders",
+      "dueDate": "2026-07-15",
+      "sourceSystemsJson": "[\"synthetic_customers_csv\",\"synthetic_orders_csv\",\"synthetic_events_csv\",\"synthetic_returns_csv\"]",
+      "constraintsJson": "[\"sandbox_only\",\"no_real_customer_data\",\"approval_required_before_release\"]",
+      "requestText": "Build a governed Customer360 dashboard for revenue and retention leaders using approved synthetic customer, order, event, and return data.",
+      "requestedArtifactType": "dashboard_app",
+      "templateId": "customer360_dashboard_v1",
+      "requestStatus": { "choiceSet": "AgentFactoryRequestStatus", "valueName": "clarifying" },
+      "priority": { "choiceSet": "AgentFactoryRequestPriority", "valueName": "normal" },
+      "ownerName": "Revenue Ops",
+      "ownerEmail": "revenue.ops@example.com",
+      "platformMode": { "choiceSet": "AgentFactoryPlatformMode", "valueName": "uipath_ready" },
+      "folderName": "AgentFactoryDemo",
+      "folderKey": "cba41e19-47cc-4a0a-bf73-de88b60a61be",
+      "folderId": 7986306,
+      "createdAt": "2026-06-29T01:36:00Z",
+      "updatedAt": "2026-06-29T01:36:00Z"
+    },
+    "auditEventTemplate": {
+      "auditEventId": "audit_req_customer360_demo_001_intake_created",
+      "requestId": "req_customer360_demo_001",
+      "actorType": { "choiceSet": "AgentFactoryActorType", "valueName": "uipath_maestro" },
+      "actorName": "Governed Agentic Automation Factory - Customer360 Build",
+      "action": "intake_created",
+      "summary": "Demo Customer360 request seeded for Maestro/Data Service lifecycle verification.",
+      "payloadJson": "{\"platformMode\":\"uipath-ready\",\"folderKey\":\"cba41e19-47cc-4a0a-bf73-de88b60a61be\"}",
+      "createdAt": "2026-06-29T01:36:00Z"
+    }
+  },
+  "liveAssetIds": {
+    "choiceSets": {},
+    "entities": {},
+    "fields": {}
+  }
 }
