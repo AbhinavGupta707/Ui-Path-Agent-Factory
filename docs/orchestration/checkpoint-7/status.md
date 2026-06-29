@@ -10,10 +10,10 @@ Planning objective: prepare the live Track 2 Maestro product loop checkpoint and
 
 | Lane | Worker | Thread | Worktree | State | Notes |
 |---|---|---|---|---|---|
-| Agent Graph And Clarification | local:6f481250-eb46-4db6-9de6-d4d95d2a4c15 | pending | pending | launched | Provider-backed questions after submit; graph-shaped lifecycle. |
-| Product UI Live Flow | local:e5efcafb-3017-4af7-a2d0-90108cbeed79 | pending | pending | launched | Reference-style UI wired to real endpoints. |
-| Codex Worker Live Execution | local:9f8fac2d-85f9-4be4-b122-460231e785e5 | pending | pending | launched | Safe opt-in live Codex runner evidence. |
-| Maestro Cloud Orchestration | local:a69eff27-32a0-48d9-be8b-660b04533735 | pending | pending | launched | Track 2 target: live or approved runnable Maestro BPMN path, with exact approval before live UiPath mutation/execution. |
+| Agent Graph And Clarification | local:6f481250-eb46-4db6-9de6-d4d95d2a4c15 | 019f1453-4f3a-76a0-a68e-3a31af8561df | `/Users/abhinavgupta/.codex/worktrees/98aa/Agent Factory` | active | Provider-backed questions after submit; graph-shaped lifecycle. |
+| Product UI Live Flow | local:e5efcafb-3017-4af7-a2d0-90108cbeed79 | 019f1453-9a9f-7643-b050-964c3ddfaa41 | `/Users/abhinavgupta/.codex/worktrees/22c7/Agent Factory` | active | Reference-style UI wired to real endpoints. |
+| Codex Worker Live Execution | local:9f8fac2d-85f9-4be4-b122-460231e785e5 | 019f1453-d10b-7522-a9e9-db97960792fc | `/Users/abhinavgupta/.codex/worktrees/5821/Agent Factory` | active | Safe opt-in live Codex runner evidence. |
+| Maestro Cloud Orchestration | local:a69eff27-32a0-48d9-be8b-660b04533735 | 019f1454-0ac3-7712-9d06-04b2a0ce1042 | `/Users/abhinavgupta/.codex/worktrees/a8bf/Agent Factory` | active | Track 2 target: live or approved runnable Maestro BPMN path, with exact approval before live UiPath mutation/execution. |
 | QA, Evidence, And Submission Runbook | TBD | TBD | TBD | planned | Final checks, docs, screenshots, runbook. |
 
 ## Current Facts
@@ -28,6 +28,7 @@ Planning objective: prepare the live Track 2 Maestro product loop checkpoint and
 - UiPath live mutations remain approval-gated.
 - `Ui References/` contains four local reference images and remains untracked.
 - Implementation lanes were launched from pushed `main` at `4d761b6`.
+- Pending worktree ids resolved to active thread ids and paths on 2026-06-29.
 
 ## Planning Changes In This Pass
 
