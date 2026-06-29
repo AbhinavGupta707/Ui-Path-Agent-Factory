@@ -196,6 +196,10 @@ svg {
   color: #ffd17a;
 }
 
+.lifecycle-step[data-status="ready"] svg {
+  color: #94c8ff;
+}
+
 .lifecycle-step[data-status="queued"] svg {
   color: #aebfbd;
 }
@@ -318,7 +322,7 @@ svg {
 
 .status-strip {
   display: grid;
-  grid-template-columns: repeat(5, minmax(150px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
   gap: 10px;
   margin-bottom: 12px;
 }
@@ -436,7 +440,8 @@ svg {
 .workspace-panel,
 .inspector-panel,
 .quality-panel,
-.audit-panel {
+.audit-panel,
+.platform-panel {
   padding: 14px;
 }
 
@@ -523,7 +528,8 @@ svg {
 .tab-button:focus-visible,
 .approval-actions button:focus-visible,
 .icon-button:focus-visible,
-.primary-action:focus-visible {
+.primary-action:focus-visible,
+.preview-link:focus-visible {
   border-color: var(--blue);
   outline: 3px solid rgba(35, 104, 162, 0.14);
 }
@@ -635,7 +641,7 @@ svg {
 
 .tab-list {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(6, minmax(0, 1fr));
   gap: 6px;
   padding: 12px 0;
 }
@@ -663,7 +669,9 @@ svg {
 
 .clarification-list,
 .spec-layout,
-.manifest-layout {
+.manifest-layout,
+.build-layout,
+.deployment-layout {
   min-height: 566px;
 }
 
@@ -724,7 +732,11 @@ svg {
   align-content: start;
 }
 
-.spec-layout p {
+.spec-layout p,
+.build-summary-grid p,
+.release-card p,
+.deployment-card p,
+.rollback-card p {
   margin: 8px 0 12px;
   color: var(--ink-soft);
   font-size: 14px;
@@ -837,6 +849,139 @@ svg {
 .artifact-row small {
   grid-column: 2;
   color: var(--muted);
+}
+
+.build-layout,
+.deployment-layout {
+  display: grid;
+  gap: 12px;
+  align-content: start;
+}
+
+.build-summary-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(260px, 0.88fr);
+  gap: 12px;
+}
+
+.build-summary-grid h2,
+.release-card h2,
+.deployment-card h2,
+.rollback-card h2 {
+  margin: 0;
+  font-size: 16px;
+  line-height: 1.25;
+}
+
+.log-stream {
+  display: grid;
+  gap: 8px;
+}
+
+.log-row {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: 48px 126px minmax(0, 1fr);
+  gap: 10px;
+  align-items: start;
+  min-height: 46px;
+  padding: 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface-muted);
+}
+
+.log-row[data-level="success"] {
+  border-color: #b9decf;
+  background: var(--surface-green);
+}
+
+.log-row[data-level="warning"] {
+  border-color: #e4c879;
+  background: var(--surface-amber);
+}
+
+.log-row span,
+.log-row strong {
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.log-row span {
+  color: var(--muted);
+}
+
+.log-row strong {
+  color: var(--blue);
+}
+
+.log-row p {
+  margin: 0;
+  color: var(--ink-soft);
+  font-size: 13px;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+
+.deployment-layout {
+  grid-template-columns: minmax(0, 1.05fr) minmax(260px, 0.95fr);
+}
+
+.release-card,
+.deployment-card,
+.rollback-card {
+  min-width: 0;
+  display: grid;
+  align-content: start;
+  gap: 12px;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface-muted);
+}
+
+.release-card {
+  grid-row: span 2;
+}
+
+.release-card-heading {
+  display: grid;
+  grid-template-columns: 22px minmax(0, 1fr);
+  gap: 9px;
+  align-items: start;
+}
+
+.release-card-heading .pill {
+  grid-column: 2;
+  justify-self: start;
+}
+
+.release-card-heading small {
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+  overflow-wrap: anywhere;
+}
+
+.release-actions {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.preview-link {
+  width: fit-content;
+  min-height: 36px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 12px;
+  border: 1px solid var(--teal);
+  border-radius: 8px;
+  background: var(--teal);
+  color: #ffffff;
+  font-size: 13px;
+  font-weight: 800;
+  text-decoration: none;
 }
 
 .risk-block {
@@ -1009,9 +1154,30 @@ svg {
 
 .lower-grid {
   display: grid;
-  grid-template-columns: minmax(0, 0.95fr) minmax(0, 1.05fr);
+  grid-template-columns: minmax(0, 1fr) minmax(0, 0.9fr) minmax(280px, 0.82fr);
   gap: 12px;
   margin-top: 12px;
+}
+
+.catalog-callout {
+  display: grid;
+  gap: 4px;
+  margin-top: 12px;
+  padding: 10px;
+  border: 1px solid #b9decf;
+  border-radius: 8px;
+  background: var(--surface-green);
+}
+
+.catalog-callout strong {
+  color: var(--teal);
+  font-size: 13px;
+}
+
+.catalog-callout span {
+  color: var(--ink-soft);
+  font-size: 13px;
+  line-height: 1.35;
 }
 
 .quality-grid {
@@ -1036,6 +1202,16 @@ svg {
 .quality-row[data-status="passed"] {
   border-color: #b9decf;
   background: var(--surface-green);
+}
+
+.quality-row[data-status="live_catalog"] {
+  border-color: #b8d8f2;
+  background: var(--surface-blue);
+}
+
+.quality-row[data-status="ready"] {
+  border-color: #e4c879;
+  background: var(--surface-amber);
 }
 
 .quality-row span {
@@ -1095,6 +1271,51 @@ svg {
   overflow-wrap: anywhere;
 }
 
+.platform-evidence-list {
+  display: grid;
+  gap: 8px;
+  padding-top: 12px;
+}
+
+.platform-evidence-row {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: start;
+  padding: 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface-muted);
+}
+
+.platform-evidence-row[data-status="catalog-live"] {
+  border-color: #b9decf;
+  background: var(--surface-green);
+}
+
+.platform-evidence-row[data-status="pending"] {
+  border-color: #e4c879;
+  background: var(--surface-amber);
+}
+
+.platform-evidence-row strong,
+.platform-evidence-row span {
+  display: block;
+}
+
+.platform-evidence-row strong {
+  color: var(--ink);
+  font-size: 13px;
+}
+
+.platform-evidence-row span {
+  margin-top: 3px;
+  color: var(--ink-soft);
+  font-size: 12px;
+  line-height: 1.35;
+}
+
 @keyframes spin {
   to {
     transform: rotate(360deg);
@@ -1146,14 +1367,22 @@ svg {
   }
 
   .manifest-layout,
-  .spec-columns {
+  .spec-columns,
+  .build-summary-grid,
+  .deployment-layout {
     grid-template-columns: 1fr;
   }
 
   .clarification-list,
   .spec-layout,
-  .manifest-layout {
+  .manifest-layout,
+  .build-layout,
+  .deployment-layout {
     min-height: auto;
+  }
+
+  .release-card {
+    grid-row: auto;
   }
 }
 
@@ -1186,6 +1415,16 @@ svg {
 
   .quality-row em {
     grid-column: 2;
+  }
+
+  .log-row,
+  .release-card-heading,
+  .platform-evidence-row {
+    grid-template-columns: 1fr;
+  }
+
+  .release-actions {
+    grid-template-columns: 1fr;
   }
 
   .audit-row {
