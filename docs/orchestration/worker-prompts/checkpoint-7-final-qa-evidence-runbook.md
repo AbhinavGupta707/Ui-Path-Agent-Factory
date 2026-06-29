@@ -6,6 +6,7 @@ Read first:
 
 - `AGENTS.md`
 - `README.md`
+- `docs/hackathon-requirements-analysis.md`
 - `docs/checkpoint-7-live-product-plan.md`
 - `docs/orchestration/checkpoint-7/README.md`
 - `docs/live-demo-runbook.md`
@@ -36,6 +37,7 @@ Coordinate or avoid:
 ## Requirements
 
 - Update the truth table: live, local, import-ready, proposal-only, approval-gated.
+- Verify Devpost alignment: Track 2 Maestro BPMN, working prototype, end-to-end flow, agents involved, UiPath orchestration, human handoff, Codex/coding-agent evidence, and documentation.
 - Add a step-by-step manual demo script for:
   - setup,
   - submit request,
@@ -43,10 +45,10 @@ Coordinate or avoid:
   - review plan/governance,
   - approve,
   - run Codex build or explain blocked state,
-  - show UiPath proof,
+  - show Maestro/API Workflow/Action Center evidence,
   - open sandbox preview,
   - show evidence.
-- Confirm no wording claims full live UiPath orchestration unless actual live execution occurred.
+- Confirm no wording claims live Maestro/API Workflow/Action Center/Data Service/Test Cloud execution unless actual platform execution occurred.
 - Confirm no raw secrets, API keys, or trace payloads appear in docs or screenshots.
 - Update Checkpoint 7 status with checks and residual risks.
 
@@ -76,4 +78,3 @@ Report:
 - live evidence ids/links if any,
 - residual risks,
 - exact user steps to reproduce.
-

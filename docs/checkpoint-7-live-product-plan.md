@@ -1,21 +1,22 @@
 # Checkpoint 7 Live Product Plan
 
-Status: proposed execution plan. Do not run live UiPath mutations, live Test Cloud executions, or production deployments until explicitly approved for the exact action.
+Status: proposed execution plan. Do not run live UiPath mutations, live Test Cloud executions, paid live Codex runs, or production deployments until explicitly approved for the exact action.
 
 Last updated: 2026-06-29
 
 ## Goal
 
-Turn the Checkpoint 6 polished local product into a real live product loop:
+Turn the Checkpoint 6 polished local product into a real Track 2 UiPath AgentHack product loop:
 
 1. a business user submits a request,
 2. an agent generates clarifying questions after submission,
 3. the user answers only the missing facts,
 4. agent runtime generates the plan, governance decision, and build manifest,
-5. UiPath gates the run through at least one real live proof,
-6. Codex performs constrained code work from the approved manifest,
-7. tests and deployment evidence are recorded,
-8. the user opens a sandbox preview from the run.
+5. UiPath Maestro BPMN owns the live orchestration spine in Automation Cloud,
+6. UiPath coordinates at least one human gate and one API/tool handoff where available,
+7. Codex performs constrained code work from the approved manifest,
+8. tests and deployment evidence are recorded,
+9. the user opens a sandbox preview from the run.
 
 The product should feel like the reference images in `Ui References/`: dark premium shell, simple navigation, conversational intake, plan/governance review, live run timeline, and a polished dashboard preview. Technical evidence should be available, but not the first thing a user sees.
 
@@ -27,9 +28,22 @@ The product should feel like the reference images in `Ui References/`: dark prem
 | UI lifecycle | Console submits intake and reads some API state, but much of the later flow still comes from seed data. | Wire the UI to the full request, timeline, approval, manifest, build, deploy, and preview lifecycle. |
 | Fireworks/LangSmith | Server-side provider runtime exists for spec, governance, and build planning. | Extend it to clarification and wrap lifecycle steps in a real graph/run model. |
 | Codex | Build Worker can run a Codex/Git runner but blocks unless `BUILD_WORKER_CODEX_ENABLED=true`. | Add a safe live-run profile and UI evidence for Codex readiness, execution, diff, tests, and blocked states. |
-| UiPath | Orchestrator folder and Test Manager catalog are live; Maestro, Data Service, Action Center, Agents, API Workflows, and Apps are import-ready or proposal-only. | Add one narrow live UiPath proof before broader mutation: preferably an API Workflow or Action Center route against a hosted/tunneled Factory API. |
-| Hosting | Localhost proves the product locally, but UiPath Cloud cannot call localhost. | Use a hosted endpoint or approved tunnel for the live proof. |
-| Dashboard preview | Customer360 is runnable, but preview links were partly hardcoded to legacy ports. | Use environment-driven deployment URL and attach preview evidence to the run record. |
+| UiPath | Orchestrator folder and Test Manager catalog are live; Maestro, Data Service, Action Center, Agents, API Workflows, and Apps are import-ready or proposal-only. | Make Maestro BPMN the live Track 2 orchestration spine, with API Workflow, Action Center, Data Service, and Test Manager used as practical live evidence paths where available. |
+| Hosting | Localhost proves the product locally, but UiPath Automation Cloud cannot call localhost. | Use a hosted endpoint or approved tunnel for Automation Cloud callbacks into Factory API and Build Worker. |
+| Dashboard preview | Customer360 is runnable, but preview links were partly hardcoded to legacy ports before Checkpoint 7 planning. | Use environment-driven deployment URL and attach preview evidence to the run record. |
+
+## Hackathon Requirement Reading
+
+The user-provided Devpost page is the governing source for this checkpoint: <https://uipath-agenthack.devpost.com/>.
+
+Key implications from the page review:
+
+- Solutions should use UiPath as the execution and orchestration layer, not merely a decorative proof artifact.
+- The most natural target for Agent Factory is Track 2: model and run an end-to-end business process using BPMN 2.0 in UiPath Maestro.
+- A strong submission should show a working prototype, an end-to-end flow, clear architecture, involved agents, orchestration, human handoffs, and documentation.
+- Bonus positioning exists for coding agents through UiPath for Coding Agents, including Codex. In this repo, Codex should be the bounded build worker, while UiPath remains the enterprise orchestration and governance layer.
+
+Full analysis lives in `docs/hackathon-requirements-analysis.md`.
 
 ## Architecture Decision
 
@@ -42,13 +56,17 @@ flowchart LR
   api --> graph["Agent graph runtime"]
   graph --> fireworks["Fireworks model profiles"]
   graph --> langsmith["LangSmith traces"]
-  api --> uipath["UiPath live proof"]
-  uipath --> api
+  api --> maestro["UiPath Maestro BPMN run"]
+  maestro --> action["Action Center / human gate"]
+  maestro --> workflow["API Workflow callback"]
+  maestro --> data["Data Service audit state"]
+  maestro --> tests["Test Manager / Test Cloud evidence"]
+  workflow --> api
   api --> worker["Build Worker"]
   worker --> codex["Codex CLI or SDK"]
   codex --> worktree["Isolated build workspace"]
-  worker --> tests["Smoke/unit/build checks"]
-  tests --> api
+  worker --> checks["Smoke/unit/build checks"]
+  checks --> api
   api --> preview["Customer360 sandbox preview"]
   preview --> console
 ```
@@ -58,23 +76,24 @@ flowchart LR
 | Layer | Responsibility | Why |
 |---|---|---|
 | Factory Console | Business-friendly request, plan, run, and output UI. | Keeps the product understandable for judges and users. |
-| Factory API | Request state, lifecycle endpoints, provider calls, redacted audit. | Central local control plane and future Data Service adapter. |
+| Factory API | Request state, lifecycle endpoints, provider calls, redacted audit, UiPath callback receiver. | Central control plane and future Data Service adapter. |
 | LangGraph or graph runtime | Step orchestration, retries, branch decisions, human pauses, tool results. | Gives the agent path real state and transitions instead of one-off deterministic functions. |
 | Fireworks | Fast, reasoning, code-planning, and fallback model profiles through server-side calls. | Good fit for OpenAI-compatible chat/tool calls and schema-driven model use. |
 | LangSmith | Trace, latency, model selection, retry, tool-call, and evaluation evidence. | Observability and judge evidence; not product storage. |
+| UiPath Maestro BPMN | Live request-to-release process orchestration in Automation Cloud. | This is the Track 2 requirement and the core enterprise control plane. |
+| UiPath platform services | Action Center, Data Service, API Workflows, Orchestrator, Test Manager/Test Cloud where activated. | Provides human gates, system handoffs, audit state, and testing evidence. |
 | Codex | Code understanding, edits, tests, repair attempts, diffs. | This is the frontier coding agent and should do the heavy repository work. |
-| UiPath | Governance, enterprise workflow, human approvals, API workflows, Test Manager, audit. | This is the hackathon differentiator and the enterprise control plane. |
 
 ## Research Notes
 
 Sources used for this plan:
 
+- UiPath AgentHack Devpost page reviewed from the user-provided link: <https://uipath-agenthack.devpost.com/>.
 - Fireworks docs confirm OpenAI-compatible chat/tool calling and JSON-schema tool specifications: <https://docs.fireworks.ai/guides/function-calling> and <https://docs.fireworks.ai/api-reference/post-chatcompletions>.
 - LangGraph docs position it as the graph/state-machine layer for agent workflows with models and tools: <https://docs.langchain.com/oss/javascript/langgraph/overview>.
 - LangSmith docs support tracing through wrappers and traceable functions for nested LLM/tool spans: <https://docs.langchain.com/langsmith/observability-quickstart>.
 - Official Codex manual was fetched locally through the OpenAI docs workflow. Relevant sections: `codex exec` for non-interactive runs, JSONL output, structured schema output, SDK control, worktrees, sandboxing, and approvals.
-- UiPath local skill docs were used for live activation boundaries: `uipath-platform`, `uipath-agents`, and `uipath-skill-catalog`. Public `docs.uipath.com` pages returned 403 from the shell fetch, so the executable `uip` CLI and repo-local UiPath docs remain the practical source of truth.
-- No reliable public AgentHack requirements page was found by search in this session. Treat repo docs and any user-provided hackathon URL as the current submission truth.
+- UiPath local skill docs were used for live activation boundaries: `uipath-platform`, `uipath-agents`, `uipath-maestro-bpmn`, `uipath-api-workflow`, `uipath-human-in-the-loop`, `uipath-tasks`, and `uipath-skill-catalog`.
 
 ## Product UX Target
 
@@ -119,11 +138,13 @@ What the user sees:
 
 - progress rail from intake to sandbox deployed,
 - current stage, progress bar, live activity log,
+- Maestro run id, human gate state, API Workflow callback, Codex worker state,
 - right rail with branch/workspace, tests, guardrails, and deployment state.
 
 What happens behind the scenes:
 
 - UI polls request timeline and build status,
+- Maestro BPMN owns the lifecycle order when live mode is enabled,
 - Build Worker runs Codex only when enabled,
 - checks and artifacts are captured,
 - forbidden file changes block the run.
@@ -142,30 +163,33 @@ What happens behind the scenes:
 - local dashboard uses synthetic/masked data by default,
 - future hosted preview URL can be recorded through `/deploy`.
 
-## Live UiPath Proof Strategy
+## Live UiPath Track 2 Strategy
 
-Do not try to make every UiPath asset live at once. That creates more risk than value.
+Do not settle for a single side proof if Maestro can be made live. Checkpoint 7 should target a live Track 2 flow where Maestro BPMN is the process spine and the Factory app is the product surface.
 
-Recommended minimum live proof:
+Minimum target:
 
-1. Host or tunnel the Factory API so UiPath Cloud can reach it.
-2. Run one UiPath API Workflow against that endpoint, ideally `AgentFactory_StartBuildWorker` or `AgentFactory_StartDeployment`.
-3. Record the UiPath execution/run identifier in the Factory API timeline.
-4. Show the timeline event and UiPath identifier in the evidence drawer.
+1. Host or tunnel the Factory API so Automation Cloud can reach it.
+2. Publish or run the Maestro BPMN process after explicit approval.
+3. Maestro owns the ordered lifecycle: intake, clarification, governance, scope approval, manifest, build handoff, quality evidence, release approval, sandbox deployment, audit closeout.
+4. At least one API Workflow calls back into Factory API or Build Worker.
+5. At least one human decision is visible, preferably through Action Center where activation allows it.
+6. Record live UiPath identifiers in the Factory API timeline and UI evidence drawer.
+7. Keep production deployment disabled; the output is a sandbox preview.
 
-Stretch live proof:
+Strong stretch:
 
-- create one Action Center approval task for scope approval,
-- complete it manually,
-- store task id and decision in the run,
-- optionally mirror state into Data Service.
+- Data Service mirrors durable request/run/audit state.
+- Test Manager/Test Cloud records live test execution.
+- UiPath Apps presents the operator surface, if app activation is faster than improving the existing console.
 
-Hold until later:
+Can remain scoped or simulated if the live spine exists:
 
-- full Maestro publish/run,
-- full UiPath Apps deployment,
-- full Test Cloud execution,
-- production release.
+- arbitrary app generation beyond the Customer360 template,
+- production customer-data connectors,
+- deployment to a customer-facing prod environment,
+- full public hosting for generated apps,
+- every UiPath component running live in a single demo.
 
 ## Codex Live Build Strategy
 
@@ -203,7 +227,7 @@ The product should say "sample or schema" in the UI, not "upload your customer d
 | Agent Graph And Clarification | Live/provider-backed clarification plus graph-shaped lifecycle steps. | `services/factory-api`, `packages/shared-contracts`, tests |
 | Product UI Live Flow | Reference-style UI wired to actual lifecycle endpoints and timeline. | `apps/factory-console` |
 | Codex Worker Live Execution | Safe opt-in live Codex execution path with evidence and blocked states. | `services/build-worker`, docs |
-| UiPath Live Proof And Hosted Bridge | One approved live UiPath proof against a reachable endpoint or documented final approval path. | `uipath/`, `docs/`, scripts |
+| Maestro Cloud Orchestration | Live Track 2 Maestro BPMN orchestration with hosted/tunneled callbacks, API Workflow, human gate, and UiPath evidence ids. | `uipath/`, `docs/`, scripts |
 | QA, Evidence, And Submission Runbook | Full checks, manual demo guide, truth table, screenshots, and risk register. | `docs/`, scripts |
 
 ## Acceptance Criteria
@@ -215,7 +239,8 @@ Checkpoint 7 is successful when:
 - the UI calls real lifecycle endpoints for answers, spec, governance, approval, manifest, build, deploy, and timeline,
 - live provider mode is visibly different from deterministic fallback,
 - Build Worker can either run Codex live or explain exactly why it is blocked,
-- at least one real UiPath execution/proof id is recorded, or the plan stops before that with explicit user approval still required,
+- a real Maestro BPMN run, or an explicitly approved equivalent Track 2 Automation Cloud execution, is recorded with live UiPath identifiers,
+- at least one UiPath API Workflow or human approval step is live and linked to the request timeline where platform activation allows it,
 - `Open sandbox preview` uses the actual deployment URL,
 - evidence is honest and redacted,
 - the final demo runbook tells the user exactly what is live, local, import-ready, and approval-gated.
@@ -250,7 +275,10 @@ Live checks require explicit approval:
 ```bash
 uip login status --output json
 uip tm project list --limit 5 --output json
-uip api-workflow run <approved workflow command>
+uip maestro bpmn validate <approved BPMN asset> --output json
+uip maestro bpmn <approved publish/run command>
+uip api-workflow <approved run command>
+uip tasks <approved Action Center command>
 ```
 
 ## Decisions Before Execution
@@ -258,5 +286,4 @@ uip api-workflow run <approved workflow command>
 1. Whether Checkpoint 7 may install `@langchain/langgraph` / LangSmith SDK dependencies, or whether to keep the current in-house graph wrapper for speed.
 2. Whether to use Vercel preview, Cloudflare Tunnel, or another host for the UiPath-reachable endpoint.
 3. Whether live Codex execution can be enabled with `BUILD_WORKER_CODEX_ENABLED=true` during the checkpoint.
-4. Which UiPath live proof is approved first: API Workflow execution, Action Center task, or Data Service record.
-5. Whether the demo should create a GitHub PR or use local branch/diff evidence.
+4. Whether Action Center and Data Service are approved as live writes after the first Maestro/API Workflow activation check.

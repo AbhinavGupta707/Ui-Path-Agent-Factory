@@ -6,6 +6,7 @@ Read first:
 
 - `AGENTS.md`
 - `README.md`
+- `docs/hackathon-requirements-analysis.md`
 - `docs/checkpoint-7-live-product-plan.md`
 - `docs/orchestration/checkpoint-7/README.md`
 - `docs/live-agentic-architecture.md`
@@ -37,6 +38,7 @@ Coordinate or avoid:
 ## Implementation Requirements
 
 - `POST /api/requests/:id/clarify` must generate questions after request creation.
+- Lifecycle metadata should be able to store UiPath Maestro run ids, API Workflow execution ids, human approval task ids, and Codex build evidence when other lanes provide them.
 - Use the existing provider runtime patterns: live, deterministic, degraded-no-key, degraded-provider-error.
 - If adding LangGraph dependencies, keep usage server-side and document why.
 - If not adding LangGraph yet, implement a graph-shaped abstraction with explicit nodes and transitions so a later LangGraph swap is narrow.
@@ -75,4 +77,3 @@ Report:
 - any dependency changes,
 - API contract notes for UI lane,
 - residual risks.
-

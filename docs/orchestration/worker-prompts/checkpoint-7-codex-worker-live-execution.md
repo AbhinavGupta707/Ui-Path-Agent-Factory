@@ -5,6 +5,7 @@ You are the Checkpoint 7 Codex Worker Live Execution implementation lane for Age
 Read first:
 
 - `AGENTS.md`
+- `docs/hackathon-requirements-analysis.md`
 - `docs/checkpoint-7-live-product-plan.md`
 - `docs/orchestration/checkpoint-7/README.md`
 - `docs/build-worker.md`
@@ -45,6 +46,7 @@ Coordinate or avoid:
 - Enforce allowed files and forbidden actions before marking a build successful.
 - Report `blocked` clearly when Codex is disabled, unavailable, unauthenticated, or unsafe.
 - Preserve no-GitHub mode as local branch/diff evidence.
+- Report how the run demonstrates Codex/coding-agent work for the AgentHack story without claiming unsupported UiPath for Coding Agents integration.
 - Do not expose provider keys or Codex auth tokens to untrusted build/test commands.
 
 ## Verification
@@ -70,4 +72,3 @@ Report:
 - checks run,
 - live checks skipped or run,
 - UI/API evidence fields the frontend can display.
-

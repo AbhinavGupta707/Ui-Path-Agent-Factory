@@ -1,6 +1,6 @@
-# Checkpoint 7: Live Product Loop
+# Checkpoint 7: Live Maestro Product Loop
 
-Goal: make Agent Factory work like a live product, not a seeded walkthrough.
+Goal: make Agent Factory work like a live Track 2 UiPath AgentHack product, not a seeded walkthrough.
 
 ## Product Outcome
 
@@ -8,7 +8,8 @@ Goal: make Agent Factory work like a live product, not a seeded walkthrough.
 - Clarifying questions are generated after submission.
 - Build plan, governance, approval, manifest, build, test, deployment, and audit state come from lifecycle APIs.
 - Codex performs bounded live build work when enabled, or reports a clear blocked state.
-- UiPath contributes at least one live proof against a hosted/tunneled endpoint, after explicit approval.
+- UiPath Maestro BPMN runs as the Automation Cloud orchestration spine, after explicit approval.
+- UiPath API Workflow, Action Center, Data Service, and Test Manager/Test Cloud provide practical live evidence where activated.
 - The UI remains simple and polished; evidence is available in drawers/details.
 
 ## Base State
@@ -17,7 +18,9 @@ Current integration branch: `main`.
 
 Checkpoint 6 final commit: `5ade6e9`.
 
-Planning changes for Checkpoint 7 are being prepared on top of that commit. Start worker lanes only after the planning commit lands and the user approves execution.
+Initial Checkpoint 7 planning commit: `1166e3a` (`Prepare checkpoint 7 live product loop`).
+
+This pass updates the checkpoint with Devpost-aligned Track 2 Maestro requirements. Start worker lanes only after this requirements update lands and the user approves execution.
 
 ## Non-Goals
 
@@ -25,6 +28,7 @@ Planning changes for Checkpoint 7 are being prepared on top of that commit. Star
 - No raw secrets in UI, docs, logs, traces, or git.
 - No live UiPath mutations without explicit approval for the exact action.
 - No claim that proposal-only UiPath assets are already running.
+- No fallback to "one proof point" if a live Maestro BPMN path is achievable.
 - No arbitrary production-data ingestion; uploads are schema/sample/synthetic only.
 - Do not reuse superseded scratch worktrees under `/private/tmp/agent-factory-cp5`.
 
@@ -56,6 +60,7 @@ Deliver:
 - generated questions shown only after submit,
 - API client for full lifecycle endpoints,
 - live timeline/build/deploy polling,
+- Maestro/API Workflow/Action Center evidence presented as the orchestration spine rather than a side panel,
 - evidence drawer for technical detail.
 
 Primary paths:
@@ -82,20 +87,26 @@ Primary paths:
 - `services/build-worker/test/*`
 - `docs/build-worker.md`
 
-### 4. UiPath Live Proof And Hosted Bridge
+### 4. Maestro Cloud Orchestration
 
 Deliver:
 
-- one approved live UiPath proof path against a reachable Factory API,
-- hosted/tunnel runbook for UiPath Cloud callbacks,
-- record of UiPath run/task/workflow id in the Factory API timeline,
-- updated component map and live demo wording.
+- approved live Maestro BPMN publish/run path against reachable Factory API or Build Worker callbacks,
+- hosted/tunnel runbook for UiPath Automation Cloud callbacks,
+- API Workflow route that calls Factory API or Build Worker,
+- visible human gate through Action Center where practical,
+- record of Maestro run, task, workflow, Data Service, and test ids in the Factory API timeline where available,
+- updated component map and live demo wording aligned to Track 2.
 
 Primary paths:
 
+- `uipath/maestro/*`
 - `uipath/api-workflows/*`
 - `uipath/action-center/*`
+- `uipath/data-service/*`
+- `uipath/test-manager/*`
 - `docs/uipath-setup.md`
+- `docs/maestro-bpmn.md`
 - `docs/api-workflow-contract.md`
 - `docs/deployment.md`
 - scripts only if needed for hosted/tunnel setup
@@ -124,7 +135,7 @@ Primary paths:
 1. Agent Graph And Clarification
 2. Codex Worker Live Execution
 3. Product UI Live Flow
-4. UiPath Live Proof And Hosted Bridge
+4. Maestro Cloud Orchestration
 5. QA, Evidence, And Submission Runbook
 
 ## Verification Target
@@ -142,6 +153,8 @@ git diff --check
 ```
 
 Use browser or Chrome verification for laptop widths around `1280`, `1440`, and `1920`. Mobile should not be broken, but laptop demo quality is the priority.
+
+Final QA must verify Devpost alignment: Track 2 Maestro BPMN, working prototype, end-to-end flow, agents involved, UiPath orchestration, human handoff, Codex/coding-agent evidence, and honest live/local/import-ready labels.
 
 ## Approval Boundaries
 

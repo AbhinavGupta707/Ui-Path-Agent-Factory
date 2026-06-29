@@ -5,6 +5,7 @@ You are the Checkpoint 7 Product UI Live Flow implementation lane for Agent Fact
 Read first:
 
 - `AGENTS.md`
+- `docs/hackathon-requirements-analysis.md`
 - `docs/checkpoint-7-live-product-plan.md`
 - `docs/orchestration/checkpoint-7/README.md`
 - `docs/product-ui-redesign-plan.md`
@@ -50,6 +51,8 @@ Coordinate or avoid:
   - build queue/status,
   - deployment evidence,
   - timeline.
+- Show Maestro/API Workflow/Action Center as the orchestration spine in the run view, not as a side proof.
+- The user-facing UI should stay simple and premium; keep detailed trace ids, raw logs, and technical proof in evidence drawers.
 - Do not silently fall back to seed state when the user is in live mode. Show explicit configuration/degraded states.
 - Move technical proof panels into an evidence drawer or details section.
 - Make primary laptop demo widths polished: `1280`, `1440`, `1920`.
@@ -84,4 +87,3 @@ Report:
 - screenshots if captured,
 - checks run,
 - remaining visual or integration risks.
-
