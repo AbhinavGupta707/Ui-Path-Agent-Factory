@@ -6,10 +6,10 @@ Worker IDs are filled in by the orchestrator after thread creation.
 
 | Lane | Thread | Pending ID | Worktree | Status | Notes |
 |---|---|---|---|---|---|
-| Deployment And Runtime | pending app worktree relaunch | n/a | pending | preparing | Previous CLI scratch worktree `/private/tmp/agent-factory-cp5/deployment-runtime` is superseded and is not a merge candidate |
-| Demo UX Polish | pending app worktree relaunch | n/a | pending | preparing | Previous CLI scratch worktree `/private/tmp/agent-factory-cp5/demo-ux-polish` is superseded and is not a merge candidate |
-| Submission Package | pending app worktree relaunch | n/a | pending | preparing | Previous CLI scratch worktree `/private/tmp/agent-factory-cp5/submission-package` is superseded and is not a merge candidate |
-| Final QA And E2E | pending app worktree relaunch | n/a | pending | preparing | Previous CLI scratch worktree `/private/tmp/agent-factory-cp5/final-qa-e2e` is superseded and is not a merge candidate |
+| Deployment And Runtime | resolving | local:677327e3-e365-4662-8b94-2f260e128b39 | pending app worktree | running | App-managed relaunch queued from `main`; previous CLI scratch worktree `/private/tmp/agent-factory-cp5/deployment-runtime` is superseded and is not a merge candidate |
+| Demo UX Polish | resolving | local:27ea581e-05f9-419b-92a4-b98a7d499aa0 | pending app worktree | running | App-managed relaunch queued from `main`; previous CLI scratch worktree `/private/tmp/agent-factory-cp5/demo-ux-polish` is superseded and is not a merge candidate |
+| Submission Package | resolving | local:9f964e87-a266-41c3-b057-5e52038b4ad4 | pending app worktree | running | App-managed relaunch queued from `main`; previous CLI scratch worktree `/private/tmp/agent-factory-cp5/submission-package` is superseded and is not a merge candidate |
+| Final QA And E2E | resolving | local:3ac17817-0fe4-4d73-9fb9-938fb7fb373c | pending app worktree | running | App-managed relaunch queued from `main`; previous CLI scratch worktree `/private/tmp/agent-factory-cp5/final-qa-e2e` is superseded and is not a merge candidate |
 
 ## Integration Log
 
@@ -25,6 +25,7 @@ Worker IDs are filled in by the orchestrator after thread creation.
 - Rechecked the local process handles after interruption; all four handles were gone and no handoff files existed.
 - The interrupted CLI worktrees contain partial scratch diffs in three lanes and no Final QA changes. They are retained only for inspection and must not be merged.
 - App-managed `list_projects` / `create_thread` tools became available after the interruption, so Checkpoint 5 will be relaunched through normal app-managed worktree sessions.
+- Queued four app-managed Checkpoint 5 worktree sessions from `main` after cleanup commit `c437f8c`.
 - Pre-launch `npm run smoke` passed across workspace builds and tests.
 - Pre-launch CLI probes confirmed:
   - `uip login status --output json` passed for `galacticus / DefaultTenant`.
