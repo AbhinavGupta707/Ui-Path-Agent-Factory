@@ -25,13 +25,14 @@ npm run dev:worker
 ```
 
 The server listens on `BUILD_WORKER_PORT` or `8790` by default. It exposes `GET /health`, `POST /build`, and `GET /build/:id`.
-Without an injected live Codex/Git runner, a submitted build is accepted and then honestly returns `blocked` with a clear runner configuration message instead of faking output.
+By default, the worker uses the Codex/Git runner adapter in safe degraded mode. A submitted build is accepted and then honestly returns `blocked` with runner configuration evidence until `BUILD_WORKER_CODEX_ENABLED=true` is set. Tests still use injected fakes; they do not invoke live Codex.
 
 ## Environment Variables
 
 | Variable | Required | Purpose |
 |---|---:|---|
 | `BUILD_WORKER_PORT` | No | Local HTTP port for the scaffold server. |
+| `BUILD_WORKER_CODEX_ENABLED` | No | Set to `true` only after local Codex readiness has been verified. When absent, builds return a safe `blocked` degraded result. |
 | `GITHUB_PAT_TOKEN` | No | Enables future PR creation. When absent, the worker must return local branch/diff evidence instead of failing. |
 | `CODEX_MODEL` | No | Future override for the Codex model. The current manifest fixture uses `gpt-5.5`. |
 
@@ -62,6 +63,16 @@ codex exec --sandbox read-only --skip-git-repo-check "Reply only: Codex ready."
 ```
 
 The production invocation must use `workspace-write`, `--skip-git-repo-check`, an isolated workspace, and the approved Customer360 manifest plus local `AGENTS.md` instructions. Repair attempts are bounded by the manifest and should redact prior logs before including them in repair context.
+
+Current Checkpoint 6 runner behavior:
+
+- `GET /health` returns `runnerConfiguration` with `mode`, `codexEnabled`, `githubConfigured`, workspace mode, output bounds, and configuration issues.
+- `POST /build` writes `build_manifest.json` and workspace `AGENTS.md` into the isolated run workspace before invoking Codex.
+- Live invocation is gated by `BUILD_WORKER_CODEX_ENABLED=true`; otherwise the run finishes `blocked` with a skipped configuration check.
+- When enabled, the worker first runs `codex exec --sandbox read-only --skip-git-repo-check`, then runs the build with `workspace-write`, JSON output, `--skip-git-repo-check`, and the manifest model.
+- Codex stdout/stderr evidence is bounded and redacted before event/log capture.
+- Discovered workspace files are checked against `allowed_files_json`; any out-of-bound file blocks release evidence even if Codex exits successfully.
+- `GET /build/:id` includes a compact `data.evidence` object for polling UIs: status, branch, commit, PR URL, Codex session, logs URI, generated files, checks, artifacts, and latest event.
 
 ## Guardrail Coverage
 

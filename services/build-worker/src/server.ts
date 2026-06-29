@@ -141,7 +141,34 @@ function serializeRun(run: BuildWorkerRun) {
     acceptedAt: run.accepted_at,
     startedAt: run.started_at,
     completedAt: run.completed_at,
-    updatedAt: run.updated_at
+    updatedAt: run.updated_at,
+    evidence: summarizeRunEvidence(run)
+  };
+}
+
+function summarizeRunEvidence(run: BuildWorkerRun) {
+  return {
+    status: run.status,
+    branchName: run.branch_name,
+    commitSha: run.commit_sha,
+    prUrl: run.pr_url,
+    codexSessionId: run.codex_session_id,
+    logsUri: run.logs_uri,
+    generatedFiles: run.generated_files_json,
+    checks: run.checks.map((check) => ({
+      name: check.name,
+      status: check.status,
+      summary: check.summary,
+      reportUri: check.report_uri
+    })),
+    artifacts: run.artifacts.map((artifact) => ({
+      name: artifact.name,
+      type: artifact.type,
+      path: artifact.path,
+      uri: artifact.uri,
+      summary: artifact.summary
+    })),
+    latestEvent: run.events.at(-1)
   };
 }
 

@@ -1,5 +1,10 @@
 import { normalizeBuildManifestPayload, type NormalizedBuildRequest } from "./manifest.js";
 import {
+  createCodexGitBuildRunner,
+  type CodexLiveRunnerConfiguration
+} from "./codex/live-runner.js";
+import { redactSensitiveText } from "./codex/redaction.js";
+import {
   createInMemoryBuildRunStore,
   type BuildArtifact,
   type BuildCheckResult,
@@ -40,7 +45,18 @@ export interface BuildRunnerResult {
 
 export interface BuildRunner {
   execute(input: BuildRunnerInput, context: BuildRunnerContext): Promise<BuildRunnerResult>;
+  describeConfiguration?(): BuildRunnerConfiguration;
 }
+
+export type BuildRunnerConfiguration =
+  | CodexLiveRunnerConfiguration
+  | {
+      mode: "injected" | "unconfigured";
+      codexEnabled: boolean;
+      githubConfigured: boolean;
+      workspaceMode: "isolated-workspace";
+      issues: string[];
+    };
 
 export type BuildRunnerFunction = (
   input: BuildRunnerInput,
@@ -78,13 +94,16 @@ export class BuildWorkerRuntime {
   }
 
   async health() {
+    const runnerConfiguration = describeRunnerConfiguration(this.runner);
+
     return {
       ok: true,
       service: "build-worker",
       platformMode: "uipath-ready" as const,
       workerId: this.workerId,
       runs: (await this.store.listRuns()).length,
-      runnerConfigured: !isUnconfiguredRunner(this.runner)
+      runnerConfigured: runnerConfiguration.codexEnabled || runnerConfiguration.mode === "injected",
+      runnerConfiguration
     };
   }
 
@@ -227,7 +246,9 @@ export class BuildWorkerRuntime {
         }
       );
     } catch (error) {
-      const message = error instanceof Error ? error.message : "Unknown build runner error.";
+      const message = redactSensitiveText(error instanceof Error ? error.message : "Unknown build runner error.", {
+        maxLength: 2_000
+      });
       return this.store.updateRun(
         buildRunId,
         {
@@ -304,11 +325,20 @@ export function createUnconfiguredRunner(): BuildRunner {
 
 function normalizeRunner(runner: BuildWorkerRuntimeOptions["runner"]): BuildRunner {
   if (!runner) {
-    return createUnconfiguredRunner();
+    return createCodexGitBuildRunner();
   }
 
   if (typeof runner === "function") {
-    return { execute: runner };
+    return {
+      execute: runner,
+      describeConfiguration: () => ({
+        mode: "injected",
+        codexEnabled: true,
+        githubConfigured: Boolean(process.env.GITHUB_PAT_TOKEN),
+        workspaceMode: "isolated-workspace",
+        issues: []
+      })
+    };
   }
 
   return runner;
@@ -316,6 +346,30 @@ function normalizeRunner(runner: BuildWorkerRuntimeOptions["runner"]): BuildRunn
 
 function isUnconfiguredRunner(runner: BuildRunner): boolean {
   return unconfiguredRunners.has(runner);
+}
+
+function describeRunnerConfiguration(runner: BuildRunner): BuildRunnerConfiguration {
+  if (runner.describeConfiguration) {
+    return runner.describeConfiguration();
+  }
+
+  if (isUnconfiguredRunner(runner)) {
+    return {
+      mode: "unconfigured",
+      codexEnabled: false,
+      githubConfigured: Boolean(process.env.GITHUB_PAT_TOKEN),
+      workspaceMode: "isolated-workspace",
+      issues: ["No BuildRunner was injected."]
+    };
+  }
+
+  return {
+    mode: "injected",
+    codexEnabled: true,
+    githubConfigured: Boolean(process.env.GITHUB_PAT_TOKEN),
+    workspaceMode: "isolated-workspace",
+    issues: []
+  };
 }
 
 function patchFromRunnerResult(result: BuildRunnerResult): BuildRunPatch {

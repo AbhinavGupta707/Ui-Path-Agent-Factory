@@ -98,6 +98,12 @@ describe("build worker HTTP handler", () => {
     const health = await handler({ method: "GET", pathname: "/health" });
     expect(health.statusCode).toBe(200);
     expect(readField(health.body, "service")).toBe("build-worker");
+    expect(readField(health.body, "runnerConfiguration")).toEqual(
+      expect.objectContaining({
+        mode: "injected",
+        workspaceMode: "isolated-workspace"
+      })
+    );
 
     const queued = await handler({
       method: "POST",
@@ -120,6 +126,23 @@ describe("build worker HTTP handler", () => {
 
     expect(readField(data, "status")).toBe("awaiting_release_approval");
     expect(readField(data, "generatedFiles")).toEqual(["README.md"]);
+    expect(readField(readField(data, "evidence"), "generatedFiles")).toEqual(["README.md"]);
+  });
+
+  it("reports safe degraded runner configuration from the default runtime", async () => {
+    const runtime = createBuildWorkerRuntime({
+      workspaceRoot: path.join(tmpdir(), "agent-factory-build-worker-default")
+    });
+    const health = await runtime.health();
+
+    expect(health.runnerConfigured).toBe(false);
+    expect(health.runnerConfiguration).toEqual(
+      expect.objectContaining({
+        mode: "disabled",
+        codexEnabled: false,
+        workspaceMode: "isolated-workspace"
+      })
+    );
   });
 });
 

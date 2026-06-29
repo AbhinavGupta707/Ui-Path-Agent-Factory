@@ -108,18 +108,21 @@ Checks:
 
 Deliver:
 
-- inject a real runner into Build Worker
-- create branch/workspace
-- call Codex or controlled generation layer
-- run targeted tests
-- capture changed files and logs
-- optionally create GitHub PR when `GITHUB_PAT_TOKEN` exists
+- use the Build Worker Codex/Git runner adapter as the default execution seam
+- create an isolated workspace for each run and write approved manifest/agent instructions into it
+- gate live Codex invocation behind `BUILD_WORKER_CODEX_ENABLED=true`
+- run a Codex readiness check before any workspace-write build
+- call Codex with `workspace-write`, `--skip-git-repo-check`, JSON output, bounded output capture, and manifest-bounded repair attempts
+- preserve `allowed_files_json` enforcement after Codex exits
+- capture changed files, checks, redacted logs, local diff evidence, and release approval status
+- optionally create GitHub PR evidence when `GITHUB_PAT_TOKEN` exists and a PR client/remote are configured
 
 Important:
 
 - keep generated output within manifest `allowed_files_json`
 - redact secrets and PII from logs
 - fail closed on forbidden files
+- keep no-Codex and no-GitHub modes explicit: no Codex returns `blocked`; no GitHub returns local branch/diff evidence
 
 Checks:
 
