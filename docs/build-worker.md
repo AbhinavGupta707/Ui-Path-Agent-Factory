@@ -18,13 +18,14 @@ npm --workspace @agent-factory/build-worker run build
 npm run smoke:build-worker
 ```
 
-Start the scaffold worker server:
+Start the worker server:
 
 ```bash
 npm run dev:worker
 ```
 
-The server listens on `BUILD_WORKER_PORT` or `8790` by default and currently responds with a scaffold health payload.
+The server listens on `BUILD_WORKER_PORT` or `8790` by default. It exposes `GET /health`, `POST /build`, and `GET /build/:id`.
+Without an injected live Codex/Git runner, a submitted build is accepted and then honestly returns `blocked` with a clear runner configuration message instead of faking output.
 
 ## Environment Variables
 

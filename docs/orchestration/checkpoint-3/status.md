@@ -40,6 +40,7 @@ Worker IDs are filled in by the orchestrator after thread creation.
 - After all merges: `npm run smoke` passed across workspace builds/tests.
 - After all merges: `git diff --check` passed.
 - After all merges: Codex readiness probe passed with `Codex ready.`
+- Local HTTP smoke passed with `BUILD_WORKER_PORT=8791 node services/build-worker/dist/server.js`: `GET /health` returned ok, `POST /build` returned `202`, and `GET /build/:id` returned honest `blocked` status because no live Codex/Git runner is injected yet.
 - `npm audit --audit-level=moderate` was not run: the approval system rejected it because it sends dependency graph/private package metadata to the external npm registry. Explicit user approval is required before running it.
 
 ## Manual Smoke Target
