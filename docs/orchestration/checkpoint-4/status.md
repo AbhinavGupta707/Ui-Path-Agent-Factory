@@ -25,7 +25,7 @@ Worker IDs are filled in by the orchestrator after thread creation.
 | Item | Value |
 |---|---|
 | Branch | `main` |
-| Base commit | pending |
+| Base commit | `b0c00fb` |
 | Launch time UTC | `2026-06-29T00:30:34Z` |
 | UiPath CLI | `1.195.1` |
 | Organization | `galacticus` |
