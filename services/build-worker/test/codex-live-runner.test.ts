@@ -1,9 +1,10 @@
-import { mkdir, writeFile } from "node:fs/promises";
+import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { tmpdir } from "node:os";
 import { describe, expect, it } from "vitest";
 import {
   createBuildWorkerRuntime,
+  createBuildWorkerRequestHandler,
   createCodexGitBuildRunner,
   type CodexCommand,
   type CodexCommandExecutor,
@@ -45,6 +46,7 @@ describe("Codex live runner integration seam", () => {
     const queued = await runtime.queueBuild(manifestPayload, { waitForCompletion: true });
 
     expect(queued.run.status).toBe("blocked");
+    expect(queued.run.logs_uri).toBeDefined();
     expect(queued.run.failure_reason).toContain("BUILD_WORKER_CODEX_ENABLED=true");
     expect(queued.run.checks).toEqual([
       expect.objectContaining({
@@ -53,6 +55,44 @@ describe("Codex live runner integration seam", () => {
       })
     ]);
     expect(queued.run.events.map((event) => event.action)).toContain("runner_configuration_checked");
+    expect(queued.run.events.map((event) => event.action)).toContain("codex_workspace_inputs_written");
+
+    const log = JSON.parse(await readFile(queued.run.logs_uri ?? "", "utf8")) as Record<string, unknown>;
+    expect(log).toEqual(
+      expect.objectContaining({
+        workspace: expect.objectContaining({
+          written: true
+        }),
+        guardrails: expect.objectContaining({
+          forbiddenActions: expect.arrayContaining(["secret_access", "log_raw_pii"])
+        })
+      })
+    );
+
+    const handler = createBuildWorkerRequestHandler(runtime);
+    const fetched = await handler({ method: "GET", pathname: `/build/${queued.run.build_run_id}` });
+    expect(fetched.body).toEqual(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          evidence: expect.objectContaining({
+            blockedReason: expect.stringContaining("BUILD_WORKER_CODEX_ENABLED=true"),
+            codex: expect.objectContaining({
+              enabled: false,
+              executable: "codex",
+              readinessSandbox: "read-only",
+              buildSandbox: "workspace-write",
+              jsonlCapture: true
+            }),
+            workspace: expect.objectContaining({
+              written: true
+            }),
+            guardrails: expect.objectContaining({
+              allowedFiles: expect.arrayContaining(["src/**"])
+            })
+          })
+        })
+      })
+    );
   });
 
   it("runs Codex through an injected executor and returns local diff evidence without GitHub", async () => {
@@ -83,6 +123,8 @@ describe("Codex live runner integration seam", () => {
     expect(queued.run.checks.map((check) => [check.name, check.status])).toEqual([
       ["codex-readiness", "passed"],
       ["codex-build", "passed"],
+      ["workspace-inputs", "passed"],
+      ["forbidden-actions", "passed"],
       ["manifest-allowlist", "passed"]
     ]);
     expect(queued.run.artifacts.map((artifact) => artifact.name)).toContain("local-diff");
@@ -126,6 +168,63 @@ describe("Codex live runner integration seam", () => {
       expect.objectContaining({
         name: "manifest-allowlist",
         status: "failed"
+      })
+    );
+  });
+
+  it("blocks unauthenticated or unavailable Codex readiness before build execution", async () => {
+    const executor: CodexCommandExecutor = {
+      async run(command) {
+        return {
+          exitCode: command.sandbox === "read-only" ? 1 : 0,
+          signal: null,
+          durationMs: 10,
+          stdout: "",
+          stderr: "Not authenticated. Run codex login.",
+          timedOut: false
+        };
+      }
+    };
+    const runtime = createBuildWorkerRuntime({
+      workspaceRoot: path.join(tmpdir(), "agent-factory-codex-readiness-blocked"),
+      runner: createCodexGitBuildRunner({
+        enabled: true,
+        executor,
+        gitRunner: createFakeGitRunner()
+      })
+    });
+
+    const queued = await runtime.queueBuild(
+      {
+        ...manifestPayload,
+        operationId: "readiness-blocked-run",
+        requestId: "REQ-2026-CODEX-READINESS",
+        manifest: {
+          ...manifestPayload.manifest,
+          request_id: "REQ-2026-CODEX-READINESS",
+          manifest_id: "MAN-REQ-2026-CODEX-READINESS"
+        }
+      },
+      { waitForCompletion: true }
+    );
+
+    expect(queued.run.status).toBe("blocked");
+    expect(queued.run.failure_reason).toContain("Codex readiness failed");
+    expect(queued.run.checks).toContainEqual(
+      expect.objectContaining({
+        name: "codex-readiness",
+        status: "failed"
+      })
+    );
+    expect(queued.run.events).toContainEqual(
+      expect.objectContaining({
+        action: "codex_readiness_checked",
+        payload_json: expect.objectContaining({
+          codex: expect.objectContaining({
+            authStatus: "unauthenticated",
+            sandbox: "read-only"
+          })
+        })
       })
     );
   });

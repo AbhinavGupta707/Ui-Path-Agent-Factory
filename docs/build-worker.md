@@ -25,7 +25,7 @@ npm run dev:worker
 ```
 
 The server listens on `BUILD_WORKER_PORT` or `8790` by default. It exposes `GET /health`, `POST /build`, and `GET /build/:id`.
-By default, the worker uses the Codex/Git runner adapter in safe degraded mode. A submitted build is accepted and then honestly returns `blocked` with runner configuration evidence until `BUILD_WORKER_CODEX_ENABLED=true` is set. Tests still use injected fakes; they do not invoke live Codex.
+By default, the worker uses the Codex/Git runner adapter in safe degraded mode. A submitted build is accepted and then honestly returns `blocked` with runner configuration, workspace, and guardrail evidence until `BUILD_WORKER_CODEX_ENABLED=true` is set. Tests still use injected fakes; they do not invoke live Codex.
 
 ## Environment Variables
 
@@ -36,7 +36,7 @@ By default, the worker uses the Codex/Git runner adapter in safe degraded mode. 
 | `GITHUB_PAT_TOKEN` | No | Enables future PR creation. When absent, the worker must return local branch/diff evidence instead of failing. |
 | `CODEX_MODEL` | No | Future override for the Codex model. The current manifest fixture uses `gpt-5.5`. |
 
-Do not put tokens, `.env` files, browser storage, Orchestrator assets, or UiPath credentials in manifests, logs, generated artifacts, docs, or tests.
+Do not put tokens, `.env` files, browser storage, Orchestrator assets, or UiPath credentials in manifests, logs, generated artifacts, docs, or tests. The live Codex process is spawned with a restricted environment that keeps provider keys and platform tokens such as `FIREWORKS_API_KEY`, `GITHUB_PAT_TOKEN`, `UIPATH_*`, `LANGSMITH_API_KEY`, `OPENAI_API_KEY`, `*_TOKEN`, and `*_SECRET` out of the child process environment.
 
 ## No-Key Behavior
 
@@ -64,15 +64,26 @@ codex exec --sandbox read-only --skip-git-repo-check "Reply only: Codex ready."
 
 The production invocation must use `workspace-write`, `--skip-git-repo-check`, an isolated workspace, and the approved Customer360 manifest plus local `AGENTS.md` instructions. Repair attempts are bounded by the manifest and should redact prior logs before including them in repair context.
 
-Current Checkpoint 6 runner behavior:
+Current Checkpoint 7 runner behavior:
 
-- `GET /health` returns `runnerConfiguration` with `mode`, `codexEnabled`, `githubConfigured`, workspace mode, output bounds, and configuration issues.
-- `POST /build` writes `build_manifest.json` and workspace `AGENTS.md` into the isolated run workspace before invoking Codex.
+- `GET /health` returns `runnerConfiguration` with `mode`, `codexEnabled`, Codex executable, model, readiness/build sandbox modes, JSONL capture, `githubConfigured`, workspace mode, output bounds, and configuration issues.
+- `POST /build` writes `build_manifest.json` and workspace `AGENTS.md` into the isolated run workspace before readiness or live execution decisions.
 - Live invocation is gated by `BUILD_WORKER_CODEX_ENABLED=true`; otherwise the run finishes `blocked` with a skipped configuration check.
 - When enabled, the worker first runs `codex exec --sandbox read-only --skip-git-repo-check`, then runs the build with `workspace-write`, JSON output, `--skip-git-repo-check`, and the manifest model.
 - Codex stdout/stderr evidence is bounded and redacted before event/log capture.
-- Discovered workspace files are checked against `allowed_files_json`; any out-of-bound file blocks release evidence even if Codex exits successfully.
-- `GET /build/:id` includes a compact `data.evidence` object for polling UIs: status, branch, commit, PR URL, Codex session, logs URI, generated files, checks, artifacts, and latest event.
+- Readiness failures are reported as blocked states, with evidence that distinguishes executable unavailable, unauthenticated, model unavailable, timeout, and other unavailable states when the output is specific enough.
+- Discovered workspace files are checked against `allowed_files_json`, and forbidden actions must remain present in the manifest/prompt guardrails; any guardrail failure blocks release evidence even if Codex exits successfully.
+- `GET /build/:id` includes a compact `data.evidence` object for polling UIs: status, blocked/failure reason, branch, commit, PR URL, Codex session, logs URI, generated files, checks, artifacts, latest event, and the nested evidence objects below.
+
+### UI/API Evidence Fields
+
+Polling UIs can display these `data.evidence` fields without opening the redacted log file:
+
+- `evidence.codex`: `enabled`, `ready`, `authStatus`, `executable`, `model`, `readinessSandbox`, `buildSandbox`, `jsonlCapture`, `sessionId`, and `logsUri`.
+- `evidence.workspace`: isolated `workspaceRoot`, `manifestPath`, `agentInstructionsPath`, `logsRoot`, output app path, and whether approved inputs were written.
+- `evidence.guardrails`: `allowedFiles`, `forbiddenActions`, `sandboxOnly`, `piiPolicy`, discovered file count, and blocked `forbiddenFiles`.
+- `evidence.checks`: `codex-readiness`, `codex-build`, `workspace-inputs`, `forbidden-actions`, and `manifest-allowlist` results when a live run reaches those stages.
+- `evidence.artifacts`: local diff, generated files, and optional GitHub PR evidence. Missing GitHub credentials should show local branch/diff evidence, not an error.
 
 ## Guardrail Coverage
 

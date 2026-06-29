@@ -19,8 +19,15 @@ import type {
 import type { BuildArtifact, BuildCheckResult } from "../store.js";
 import type { GitHubPullRequestClient } from "../github/index.js";
 import type { CodexCommandExecutor } from "./executor.js";
+import { assertCodexManifestSafe, normalizeCodexManifest, type NormalizedCodexManifest } from "./manifest.js";
 import { redactSensitiveText, redactUnknownJson } from "./redaction.js";
-import { runCodexBuild, runCodexReadiness, type CodexBuildRunResult, type CodexRunAttempt } from "./runner.js";
+import {
+  runCodexBuild,
+  runCodexReadiness,
+  writeCodexWorkspaceInputs,
+  type CodexBuildRunResult,
+  type CodexRunAttempt
+} from "./runner.js";
 
 export type CodexLiveRunnerMode = "disabled" | "codex-cli";
 
@@ -28,11 +35,16 @@ export interface CodexLiveRunnerConfiguration {
   mode: CodexLiveRunnerMode;
   codexEnabled: boolean;
   codexReady?: boolean;
+  executable: "codex";
   githubConfigured: boolean;
   workspaceMode: "isolated-workspace";
   model?: string;
+  readinessSandbox: "read-only";
+  buildSandbox: "workspace-write";
+  jsonlCapture: boolean;
   maxRepairAttempts?: number;
   maxOutputBytes: number;
+  maxJsonlLines: number;
   issues: string[];
 }
 
@@ -75,23 +87,46 @@ export class CodexGitBuildRunner implements BuildRunner {
     return {
       mode: this.enabled ? "codex-cli" : "disabled",
       codexEnabled: this.enabled,
+      executable: "codex",
       githubConfigured: Boolean(this.options.githubToken ?? process.env.GITHUB_PAT_TOKEN),
       workspaceMode: "isolated-workspace",
       model: this.options.model ?? process.env.CODEX_MODEL,
+      readinessSandbox: "read-only",
+      buildSandbox: "workspace-write",
+      jsonlCapture: true,
       maxOutputBytes: this.maxOutputBytes,
+      maxJsonlLines: MAX_JSONL_LINES,
       issues
     };
   }
 
   async execute(input: BuildRunnerInput, context: BuildRunnerContext): Promise<BuildRunnerResult> {
-    const configuration = this.describeConfiguration();
+    const manifest = normalizeCodexManifest(input.request.manifest);
+    const model = this.options.model ?? process.env.CODEX_MODEL ?? input.request.manifest.codexModel;
+    const configuration = { ...this.describeConfiguration(), model };
+    assertCodexManifestSafe(manifest);
+    await writeCodexWorkspaceInputs(input.workspace.workspaceRoot, manifest);
+    await context.recordEvent("codex_workspace_inputs_written", "Wrote approved manifest and AGENTS.md into the isolated workspace.", {
+      workspace: workspaceInputEvidence(input, true),
+      guardrails: guardrailEvidence(manifest, input)
+    });
     await context.recordEvent("runner_configuration_checked", runnerConfigurationSummary(configuration), {
       runner: redactUnknownJson(configuration) as Record<string, unknown>
     });
 
     if (!configuration.codexEnabled) {
+      const logsUri = await writeRunnerLog(input, {
+        configuration,
+        manifest,
+        readiness: undefined,
+        build: undefined,
+        evidence: undefined,
+        workspaceInputsWritten: true
+      });
+
       return {
         status: "blocked",
+        logsUri,
         branchName: input.request.manifest.branchName,
         failureReason:
           "Codex CLI execution is disabled. Set BUILD_WORKER_CODEX_ENABLED=true after local Codex readiness has been verified.",
@@ -113,7 +148,6 @@ export class CodexGitBuildRunner implements BuildRunner {
     }
 
     await context.updateStatus("building", "Checking Codex CLI readiness before build execution.");
-    const model = this.options.model ?? process.env.CODEX_MODEL ?? input.request.manifest.codexModel;
     const readiness = await runCodexReadiness({
       workspacePath: input.workspace.workspaceRoot,
       executor: this.options.executor,
@@ -123,15 +157,17 @@ export class CodexGitBuildRunner implements BuildRunner {
     });
 
     await context.recordEvent("codex_readiness_checked", readinessSummary(readiness), {
-      codex: attemptEvidence(readiness)
+      codex: codexReadinessEvidence(readiness, model, input)
     });
 
     if (!readiness.succeeded) {
       const logsUri = await writeRunnerLog(input, {
         configuration: { ...configuration, codexReady: false },
+        manifest,
         readiness,
         build: undefined,
-        evidence: undefined
+        evidence: undefined,
+        workspaceInputsWritten: true
       });
 
       return {
@@ -162,6 +198,12 @@ export class CodexGitBuildRunner implements BuildRunner {
 
     await context.recordEvent("codex_build_completed", codexBuildSummary(build), {
       codex: {
+        executable: configuration.executable,
+        model,
+        sandbox: configuration.buildSandbox,
+        workspaceMode: configuration.workspaceMode,
+        workspaceRoot: input.workspace.workspaceRoot,
+        jsonlCapture: configuration.jsonlCapture,
         succeeded: build.succeeded,
         sessionId: build.sessionId,
         attempts: build.attempts.map(attemptEvidence),
@@ -173,19 +215,24 @@ export class CodexGitBuildRunner implements BuildRunner {
     const allowedFiles = discoveredFiles.filter((file) => isAllowedByManifest(file, input.workspace.allowedFilePatterns));
     const forbiddenFiles = discoveredFiles.filter((file) => !isAllowedByManifest(file, input.workspace.allowedFilePatterns));
     const codexChecks = createCodexChecks(build, readiness, forbiddenFiles);
+    const guardrailFailures = codexChecks.filter((check) =>
+      ["manifest-allowlist", "workspace-inputs", "forbidden-actions"].includes(check.name) && check.status === "failed"
+    );
 
-    if (!build.succeeded || forbiddenFiles.length > 0) {
+    if (!build.succeeded || guardrailFailures.length > 0) {
       const logsUri = await writeRunnerLog(input, {
         configuration: { ...configuration, codexReady: true },
+        manifest,
         readiness,
         build,
         evidence: undefined,
         discoveredFiles,
-        forbiddenFiles
+        forbiddenFiles,
+        workspaceInputsWritten: build.workspaceInputsWritten
       });
 
       return {
-        status: forbiddenFiles.length > 0 ? "blocked" : "build_failed",
+        status: guardrailFailures.length > 0 ? "blocked" : "build_failed",
         codexSessionId: build.sessionId,
         logsUri,
         branchName: input.request.manifest.branchName,
@@ -193,8 +240,8 @@ export class CodexGitBuildRunner implements BuildRunner {
         checks: codexChecks,
         artifacts: await artifactsFromFiles(allowedFiles, input.workspace.workspaceRoot),
         failureReason:
-          forbiddenFiles.length > 0
-            ? `Codex produced file(s) outside the manifest allowlist: ${forbiddenFiles.join(", ")}`
+          guardrailFailures.length > 0
+            ? guardrailFailureReason(forbiddenFiles, guardrailFailures)
             : build.failureReason
       };
     }
@@ -215,10 +262,12 @@ export class CodexGitBuildRunner implements BuildRunner {
     const generatedFiles = evidence.generatedFiles.length > 0 ? evidence.generatedFiles : allowedFiles;
     const logsUri = await writeRunnerLog(input, {
       configuration: { ...configuration, codexReady: true },
+      manifest,
       readiness,
       build,
       evidence,
-      discoveredFiles
+      discoveredFiles,
+      workspaceInputsWritten: build.workspaceInputsWritten
     });
 
     return {
@@ -287,6 +336,21 @@ function createCodexChecks(
       name: "codex-build",
       status: build.succeeded ? "passed" : "failed",
       summary: codexBuildSummary(build)
+    },
+    {
+      name: "workspace-inputs",
+      status: build.workspaceInputsWritten ? "passed" : "failed",
+      summary: build.workspaceInputsWritten
+        ? "Approved build_manifest.json and AGENTS.md were written before live Codex execution."
+        : "Approved workspace manifest and instructions were not written before Codex execution."
+    },
+    {
+      name: "forbidden-actions",
+      status: build.manifest.forbiddenActions.length > 0 ? "passed" : "failed",
+      summary:
+        build.manifest.forbiddenActions.length > 0
+          ? `Forbidden actions remained active in the manifest and prompt guardrails: ${build.manifest.forbiddenActions.join(", ")}.`
+          : "The manifest did not include forbidden action guardrails."
     }
   ];
 
@@ -302,6 +366,14 @@ function createCodexChecks(
   return checks;
 }
 
+function guardrailFailureReason(forbiddenFiles: string[], guardrailFailures: BuildCheckResult[]): string {
+  if (forbiddenFiles.length > 0) {
+    return `Codex produced file(s) outside the manifest allowlist: ${forbiddenFiles.join(", ")}`;
+  }
+
+  return `Codex safety guardrails failed: ${guardrailFailures.map((check) => check.name).join(", ")}`;
+}
+
 function toEvidenceCheck(check: BuildCheckResult): EvidenceCheck {
   return {
     name: check.name,
@@ -315,11 +387,13 @@ async function writeRunnerLog(
   input: BuildRunnerInput,
   payload: {
     configuration: CodexLiveRunnerConfiguration;
+    manifest: NormalizedCodexManifest;
     readiness?: CodexRunAttempt;
     build?: CodexBuildRunResult;
     evidence?: BuildEvidenceResult;
     discoveredFiles?: string[];
     forbiddenFiles?: string[];
+    workspaceInputsWritten: boolean;
   }
 ): Promise<string> {
   const logPath = path.join(input.workspace.logsRoot, "codex-runner-evidence.json");
@@ -328,7 +402,9 @@ async function writeRunnerLog(
     requestId: input.request.requestId,
     capturedAt: new Date().toISOString(),
     configuration: payload.configuration,
-    readiness: payload.readiness ? attemptEvidence(payload.readiness) : undefined,
+    workspace: workspaceInputEvidence(input, payload.workspaceInputsWritten),
+    guardrails: guardrailEvidence(payload.manifest, input, payload.discoveredFiles, payload.forbiddenFiles),
+    readiness: payload.readiness ? codexReadinessEvidence(payload.readiness, payload.configuration.model, input) : undefined,
     build: payload.build
       ? {
           succeeded: payload.build.succeeded,
@@ -373,6 +449,77 @@ function attemptEvidence(attempt: CodexRunAttempt): Record<string, unknown> {
     stderr: redactSensitiveText(attempt.stderr, { maxLength: MAX_LOG_TEXT_LENGTH }),
     jsonl: attempt.jsonl.slice(-MAX_JSONL_LINES)
   };
+}
+
+function codexReadinessEvidence(
+  attempt: CodexRunAttempt,
+  model: string | undefined,
+  input: BuildRunnerInput
+): Record<string, unknown> {
+  return {
+    executable: "codex",
+    model,
+    sandbox: "read-only",
+    workspaceMode: "isolated-workspace",
+    workspaceRoot: input.workspace.workspaceRoot,
+    authStatus: classifyReadiness(attempt),
+    jsonlCaptured: attempt.jsonl.length,
+    ...attemptEvidence(attempt)
+  };
+}
+
+function workspaceInputEvidence(input: BuildRunnerInput, written: boolean): Record<string, unknown> {
+  return {
+    mode: "isolated-workspace",
+    workspaceRoot: input.workspace.workspaceRoot,
+    manifestPath: input.workspace.manifestPath,
+    agentInstructionsPath: input.workspace.agentInstructionsPath,
+    logsRoot: input.workspace.logsRoot,
+    outputApp: input.workspace.relativeOutputApp,
+    written
+  };
+}
+
+function guardrailEvidence(
+  manifest: NormalizedCodexManifest,
+  input: BuildRunnerInput,
+  discoveredFiles: string[] = [],
+  forbiddenFiles: string[] = []
+): Record<string, unknown> {
+  return {
+    allowedFiles: input.workspace.allowedFilePatterns,
+    forbiddenActions: manifest.forbiddenActions,
+    sandboxOnly: manifest.sandboxOnly,
+    piiPolicy: manifest.piiPolicy,
+    discoveredFileCount: discoveredFiles.length,
+    forbiddenFiles
+  };
+}
+
+function classifyReadiness(attempt: CodexRunAttempt): string {
+  if (attempt.succeeded) {
+    return "ready";
+  }
+
+  if (attempt.timedOut) {
+    return "timeout";
+  }
+
+  const text = `${attempt.stderr}\n${attempt.stdout}`.toLowerCase();
+
+  if (/(enoent|not found|no such file|spawn codex)/u.test(text)) {
+    return "executable_unavailable";
+  }
+
+  if (/(auth|login|credential|unauthori[sz]ed|401|token)/u.test(text)) {
+    return "unauthenticated";
+  }
+
+  if (/\bmodel\b/u.test(text)) {
+    return "model_unavailable";
+  }
+
+  return "unavailable";
 }
 
 function failureReasonFromAttempt(attempt: CodexRunAttempt): string {

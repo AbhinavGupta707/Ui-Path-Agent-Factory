@@ -35,6 +35,7 @@ export class SpawnCodexCommandExecutor implements CodexCommandExecutor {
 
       const child = spawn(command.executable, command.args, {
         cwd: options.cwd,
+        env: createCodexProcessEnv(process.env),
         stdio: ["ignore", "pipe", "pipe"]
       });
 
@@ -95,6 +96,38 @@ export class SpawnCodexCommandExecutor implements CodexCommandExecutor {
       });
     });
   }
+}
+
+export function createCodexProcessEnv(source: NodeJS.ProcessEnv): NodeJS.ProcessEnv {
+  const env: NodeJS.ProcessEnv = {};
+  const allowedNames = new Set([
+    "CI",
+    "COLORTERM",
+    "HOME",
+    "LANG",
+    "LC_ALL",
+    "LOGNAME",
+    "PATH",
+    "SHELL",
+    "TERM",
+    "TMPDIR",
+    "USER",
+    "XDG_CACHE_HOME",
+    "XDG_CONFIG_HOME",
+    "XDG_DATA_HOME"
+  ]);
+
+  for (const [name, value] of Object.entries(source)) {
+    if (value === undefined) {
+      continue;
+    }
+
+    if (allowedNames.has(name)) {
+      env[name] = value;
+    }
+  }
+
+  return env;
 }
 
 function appendBounded(current: string, addition: string, maxOutputBytes: number): string {

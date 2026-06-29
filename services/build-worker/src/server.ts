@@ -147,13 +147,37 @@ function serializeRun(run: BuildWorkerRun) {
 }
 
 function summarizeRunEvidence(run: BuildWorkerRun) {
+  const runnerConfiguration = findEventPayload(run, "runner_configuration_checked", "runner");
+  const workspace = findEventPayload(run, "codex_workspace_inputs_written", "workspace");
+  const guardrails =
+    findEventPayload(run, "codex_workspace_inputs_written", "guardrails") ??
+    findEventPayload(run, "codex_build_completed", "guardrails");
+  const readiness = findEventPayload(run, "codex_readiness_checked", "codex");
+  const build = findEventPayload(run, "codex_build_completed", "codex");
+
   return {
     status: run.status,
+    blockedReason: run.status === "blocked" ? run.failure_reason : undefined,
+    failureReason: run.failure_reason,
     branchName: run.branch_name,
     commitSha: run.commit_sha,
     prUrl: run.pr_url,
     codexSessionId: run.codex_session_id,
     logsUri: run.logs_uri,
+    codex: {
+      enabled: readBoolean(runnerConfiguration, "codexEnabled"),
+      ready: readiness ? readBoolean(readiness, "succeeded") : undefined,
+      authStatus: readString(readiness, "authStatus"),
+      executable: readString(runnerConfiguration, "executable") ?? readString(readiness, "executable"),
+      model: readString(runnerConfiguration, "model") ?? readString(readiness, "model") ?? readString(build, "model"),
+      readinessSandbox: readString(runnerConfiguration, "readinessSandbox") ?? readString(readiness, "sandbox"),
+      buildSandbox: readString(runnerConfiguration, "buildSandbox") ?? readString(build, "sandbox"),
+      jsonlCapture: readBoolean(runnerConfiguration, "jsonlCapture") ?? readBoolean(build, "jsonlCapture"),
+      sessionId: run.codex_session_id,
+      logsUri: run.logs_uri
+    },
+    workspace,
+    guardrails,
     generatedFiles: run.generated_files_json,
     checks: run.checks.map((check) => ({
       name: check.name,
@@ -170,6 +194,31 @@ function summarizeRunEvidence(run: BuildWorkerRun) {
     })),
     latestEvent: run.events.at(-1)
   };
+}
+
+function findEventPayload(run: BuildWorkerRun, action: string, field: string): Record<string, unknown> | undefined {
+  for (const event of [...run.events].reverse()) {
+    if (event.action !== action) {
+      continue;
+    }
+
+    const value = event.payload_json?.[field];
+    if (value !== null && typeof value === "object" && !Array.isArray(value)) {
+      return value as Record<string, unknown>;
+    }
+  }
+
+  return undefined;
+}
+
+function readString(value: Record<string, unknown> | undefined, field: string): string | undefined {
+  const candidate = value?.[field];
+  return typeof candidate === "string" && candidate.trim().length > 0 ? candidate : undefined;
+}
+
+function readBoolean(value: Record<string, unknown> | undefined, field: string): boolean | undefined {
+  const candidate = value?.[field];
+  return typeof candidate === "boolean" ? candidate : undefined;
 }
 
 async function readJson(request: IncomingMessage): Promise<unknown> {
