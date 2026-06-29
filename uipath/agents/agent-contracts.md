@@ -1,6 +1,8 @@
 # Agent Builder Contracts
 
-Status: planned Agent Builder contracts, not live-created agent solutions.
+Status: `uipath-ready` low-code Agent Builder solution, scaffolded locally and
+validated with `uip agent validate`. No agents were uploaded, published,
+deployed, or run in UiPath Automation Cloud.
 
 ## Verified Folder
 
@@ -9,6 +11,26 @@ Status: planned Agent Builder contracts, not live-created agent solutions.
 - Folder: `AgentFactoryDemo`
 - Folder key: `cba41e19-47cc-4a0a-bf73-de88b60a61be`
 - Folder id: `7986306`
+
+## Local Solution
+
+The import-ready low-code solution lives at:
+
+- `uipath/agents/AgentFactoryAgents/AgentFactoryAgents.uipx`
+
+Projects registered in the solution:
+
+| Agent | Project path | Validation |
+|---|---|---|
+| Requirements Agent | `AgentFactoryAgents/RequirementsAgent/project.uiproj` | Valid |
+| Clarification Agent | `AgentFactoryAgents/ClarificationAgent/project.uiproj` | Valid |
+| Governance Agent | `AgentFactoryAgents/GovernanceAgent/project.uiproj` | Valid |
+| Build Planner Agent | `AgentFactoryAgents/BuildPlannerAgent/project.uiproj` | Valid |
+| Test Summary Agent | `AgentFactoryAgents/TestSummaryAgent/project.uiproj` | Valid |
+
+All five agents use deterministic `temperature: 0`, `mode: "standard"`,
+`engine: "basic-v2"`, and scoped Customer360 JSON-only prompts. They do not
+declare external tools or Integration Service connections.
 
 ## Requirements Agent
 
@@ -20,25 +42,30 @@ Inputs:
 - Intake `sourceSystems` and `constraints`
 - Existing clarification answers, if any
 
-Output shape:
+Output shape, configured in
+`uipath/agents/AgentFactoryAgents/RequirementsAgent/agent.json`:
 
 ```json
 {
   "requestId": "req_123",
   "objective": "Build a Customer360 dashboard for renewal-risk review.",
-  "requiredCapabilities": ["risk scoring", "account summary", "refresh timestamp"],
-  "dataSources": ["CRM", "Product analytics"],
-  "acceptanceCriteria": ["Dashboard builds", "Risk accounts are visible"],
-  "governanceNotes": ["Do not expose personal contact fields."],
-  "clarificationQuestions": []
+  "templateId": "customer360_dashboard_v1",
+  "outputType": "dashboard_app",
+  "dataSourcesJson": ["CRM", "Product analytics"],
+  "metricsJson": ["revenue", "churn_risk_proxy"],
+  "filtersJson": ["date_range", "segment"],
+  "acceptanceCriteriaJson": ["Dashboard builds", "Risk accounts are visible"],
+  "governanceNotesJson": ["Do not expose personal contact fields."],
+  "clarificationQuestionsJson": []
 }
 ```
 
 Validation:
 
 - `objective` must be at least 12 characters.
-- `requiredCapabilities` and `acceptanceCriteria` must be non-empty.
+- `acceptanceCriteriaJson` must be non-empty.
 - Data sources must come from intake or clarification answers.
+- `templateId` and `outputType` must stay Customer360-scoped.
 
 ## Clarification Agent
 
@@ -51,19 +78,23 @@ Inputs:
 - Intake fields
 - Governance notes
 
-Output shape:
+Output shape, configured in
+`uipath/agents/AgentFactoryAgents/ClarificationAgent/agent.json`:
 
 ```json
 {
   "requestId": "req_123",
-  "questions": [
+  "questionsJson": [
     {
       "id": "clarify_data_scope",
       "question": "Which CRM account fields may the generated dashboard use?",
       "required": true,
-      "answerType": "text"
+      "answerType": "text",
+      "default": "Mask customer names, emails, and phone numbers"
     }
-  ]
+  ],
+  "routingStatus": "clarifying",
+  "auditSummary": "Generated one required data-scope question."
 }
 ```
 
@@ -82,16 +113,20 @@ Inputs:
 - `StructuredSpec`
 - Approved data constraints
 
-Output shape aligned to `GovernanceAssessment`:
+Output shape aligned to `GovernanceAssessment`, configured in
+`uipath/agents/AgentFactoryAgents/GovernanceAgent/agent.json`:
 
 ```json
 {
   "requestId": "req_123",
-  "riskLevel": "medium",
+  "riskTier": "medium",
+  "piiDetected": true,
   "requiresHumanApproval": true,
-  "requiredPermissions": ["read:crm_accounts", "read:product_usage"],
-  "blockers": [],
-  "policySummary": "Medium risk because CRM and product usage data are combined."
+  "requiredPermissionsJson": ["read:crm_accounts", "read:product_usage"],
+  "blockersJson": [],
+  "requiredApprovalsJson": ["scope_data_approval", "release_approval"],
+  "policySummary": "Medium risk because CRM and product usage data are combined.",
+  "auditSummary": "Governance classified req_123 as medium risk."
 }
 ```
 
@@ -112,24 +147,33 @@ Inputs:
 - `GovernanceAssessment`
 - Scope approval decision, if required
 
-Output shape:
+Output shape, configured in
+`uipath/agents/AgentFactoryAgents/BuildPlannerAgent/agent.json`:
 
 ```json
 {
   "requestId": "req_123",
+  "manifestId": "MAN-req_123",
   "template": "customer360-dashboard",
+  "templateId": "customer360_dashboard_v1",
+  "artifactType": "dashboard_app",
   "branchName": "factory/req-123",
   "outputApp": "apps/customer360-template",
-  "acceptanceCriteria": ["Dashboard builds", "Risk accounts are visible"],
-  "permissions": ["read:crm_accounts", "read:product_usage"],
-  "codexModel": "gpt-5.5"
+  "acceptanceCriteriaJson": ["Dashboard builds", "Risk accounts are visible"],
+  "permissionsJson": ["read:crm_accounts", "read:product_usage"],
+  "allowedFilesJson": ["src/**", "tests/**", "public/data/**", "README.md", "deployment.json", "package.json"],
+  "maxRepairAttempts": 1,
+  "sandboxOnly": true,
+  "codexModel": "gpt-5.5",
+  "auditSummary": "Created sandbox Customer360 build manifest."
 }
 ```
 
 Validation:
 
 - `template` must be `customer360-dashboard`.
-- `acceptanceCriteria` must be non-empty.
+- `templateId` must be `customer360_dashboard_v1`.
+- `acceptanceCriteriaJson` must be non-empty.
 - Permissions must be no broader than the approved governance payload.
 
 ## Test Summary Agent
@@ -142,7 +186,8 @@ Inputs:
 - `TestRun`
 - Worker logs and test URLs
 
-Output shape:
+Output shape, configured in
+`uipath/agents/AgentFactoryAgents/TestSummaryAgent/agent.json`:
 
 ```json
 {
@@ -151,8 +196,11 @@ Output shape:
   "testRunId": "test_req_123_001",
   "qualityGateDecision": "passed",
   "summary": "Required gates passed.",
-  "releaseRisks": [],
-  "waiversRequested": []
+  "checksJson": ["npm run smoke passed"],
+  "releaseRisksJson": [],
+  "waiversRequestedJson": [],
+  "nextStatus": "awaiting_release_approval",
+  "auditSummary": "Quality gate passed for req_123."
 }
 ```
 
@@ -170,3 +218,18 @@ Routing:
 - Agents must not invent tenant, folder, or credential facts.
 - Agents must preserve the verified folder key and folder id.
 - Agents must write audit-friendly summaries without secrets.
+- Agents are scoped to `customer360_dashboard_v1` and sandbox-only output.
+- Agent projects contain no Integration Service connection IDs.
+
+## Validation Commands
+
+```bash
+uip agent validate uipath/agents/AgentFactoryAgents/RequirementsAgent --output json
+uip agent validate uipath/agents/AgentFactoryAgents/ClarificationAgent --output json
+uip agent validate uipath/agents/AgentFactoryAgents/GovernanceAgent --output json
+uip agent validate uipath/agents/AgentFactoryAgents/BuildPlannerAgent --output json
+uip agent validate uipath/agents/AgentFactoryAgents/TestSummaryAgent --output json
+```
+
+Each command returned `Result: "Success"`, `Status: "Valid"`,
+`StorageVersion: "50.0.0"`, and `MigrationPending: false`.

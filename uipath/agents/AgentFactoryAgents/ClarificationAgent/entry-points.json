@@ -1,0 +1,83 @@
+{
+  "$schema": "https://cloud.uipath.com/draft/2024-12/entry-point",
+  "$id": "entry-points.json",
+  "entryPoints": [
+    {
+      "filePath": "/content/agent.json",
+      "uniqueId": "fde98682-4090-4b3c-bdd1-6b7e3853a2e3",
+      "type": "agent",
+      "input": {
+        "type": "object",
+        "properties": {
+          "requestId": {
+            "type": "string",
+            "description": "AutomationRequest.request_id correlation key."
+          },
+          "platformContextJson": {
+            "type": "string",
+            "description": "JSON string containing verified UiPath organization, tenant, folder, folder key, and folder id."
+          },
+          "partialSpecJson": {
+            "type": "string",
+            "description": "Partial StructuredSpec projection as a JSON string."
+          },
+          "intakeJson": {
+            "type": "string",
+            "description": "Original intake/request payload as a JSON string."
+          },
+          "governanceNotesJson": {
+            "type": "string",
+            "description": "Governance notes or constraints as a JSON string."
+          }
+        },
+        "required": [
+          "requestId",
+          "platformContextJson",
+          "partialSpecJson",
+          "intakeJson",
+          "governanceNotesJson"
+        ]
+      },
+      "output": {
+        "type": "object",
+        "properties": {
+          "requestId": {
+            "type": "string"
+          },
+          "questionsJson": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "question": {
+                  "type": "string"
+                },
+                "required": {
+                  "type": "boolean"
+                },
+                "answerType": {
+                  "type": "string"
+                },
+                "default": {
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Zero or more deterministic clarification questions."
+          },
+          "routingStatus": {
+            "type": "string",
+            "description": "clarifying when questions exist, otherwise ready_for_governance."
+          },
+          "auditSummary": {
+            "type": "string",
+            "description": "Human-readable, secret-free summary."
+          }
+        }
+      }
+    }
+  ]
+}

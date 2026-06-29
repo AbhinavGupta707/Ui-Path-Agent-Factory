@@ -1,0 +1,85 @@
+{
+  "$schema": "https://cloud.uipath.com/draft/2024-12/entry-point",
+  "$id": "entry-points.json",
+  "entryPoints": [
+    {
+      "filePath": "/content/agent.json",
+      "uniqueId": "81c00197-da6a-46db-a071-b3cbb9e054b9",
+      "type": "agent",
+      "input": {
+        "type": "object",
+        "properties": {
+          "requestId": {
+            "type": "string",
+            "description": "AutomationRequest.request_id correlation key."
+          },
+          "platformContextJson": {
+            "type": "string",
+            "description": "JSON string containing verified UiPath organization, tenant, folder, folder key, and folder id."
+          },
+          "automationRequestJson": {
+            "type": "string",
+            "description": "AutomationRequest as a JSON string."
+          },
+          "structuredSpecJson": {
+            "type": "string",
+            "description": "StructuredSpec as a JSON string."
+          },
+          "approvedConstraintsJson": {
+            "type": "string",
+            "description": "Approved constraints and policy answers as a JSON string."
+          }
+        },
+        "required": [
+          "requestId",
+          "platformContextJson",
+          "automationRequestJson",
+          "structuredSpecJson",
+          "approvedConstraintsJson"
+        ]
+      },
+      "output": {
+        "type": "object",
+        "properties": {
+          "requestId": {
+            "type": "string"
+          },
+          "riskTier": {
+            "type": "string",
+            "description": "low, medium, or high."
+          },
+          "piiDetected": {
+            "type": "boolean"
+          },
+          "requiresHumanApproval": {
+            "type": "boolean"
+          },
+          "requiredPermissionsJson": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "blockersJson": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "requiredApprovalsJson": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "policySummary": {
+            "type": "string"
+          },
+          "auditSummary": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  ]
+}

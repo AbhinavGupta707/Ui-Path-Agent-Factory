@@ -1,0 +1,89 @@
+{
+  "$schema": "https://cloud.uipath.com/draft/2024-12/entry-point",
+  "$id": "entry-points.json",
+  "entryPoints": [
+    {
+      "filePath": "/content/agent.json",
+      "uniqueId": "f7c954b3-9895-446a-9668-948c03abe25f",
+      "type": "agent",
+      "input": {
+        "type": "object",
+        "properties": {
+          "requestId": {
+            "type": "string",
+            "description": "AutomationRequest.request_id correlation key."
+          },
+          "platformContextJson": {
+            "type": "string",
+            "description": "JSON string containing verified UiPath organization, tenant, folder, folder key, and folder id."
+          },
+          "buildRunJson": {
+            "type": "string",
+            "description": "BuildRun or BuildWorkerRun as a JSON string."
+          },
+          "testRunJson": {
+            "type": "string",
+            "description": "TestRun/Test Cloud evidence as a JSON string. Use {} when unavailable."
+          },
+          "workerLogsSummary": {
+            "type": "string",
+            "description": "Redacted worker log summary."
+          }
+        },
+        "required": [
+          "requestId",
+          "platformContextJson",
+          "buildRunJson",
+          "testRunJson",
+          "workerLogsSummary"
+        ]
+      },
+      "output": {
+        "type": "object",
+        "properties": {
+          "requestId": {
+            "type": "string"
+          },
+          "buildRunId": {
+            "type": "string"
+          },
+          "testRunId": {
+            "type": "string"
+          },
+          "qualityGateDecision": {
+            "type": "string",
+            "description": "passed, failed, blocked, or waiver_requested."
+          },
+          "summary": {
+            "type": "string"
+          },
+          "checksJson": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "releaseRisksJson": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "waiversRequestedJson": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "nextStatus": {
+            "type": "string",
+            "description": "awaiting_release_approval, tests_failed, or blocked."
+          },
+          "auditSummary": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  ]
+}

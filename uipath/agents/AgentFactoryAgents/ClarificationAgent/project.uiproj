@@ -1,0 +1,6 @@
+{
+  "ProjectType": "Agent",
+  "Name": "ClarificationAgent",
+  "Description": "Creates deterministic questions for missing Customer360 scope, data, metric, filter, or approval-owner details.",
+  "MainFile": null
+}

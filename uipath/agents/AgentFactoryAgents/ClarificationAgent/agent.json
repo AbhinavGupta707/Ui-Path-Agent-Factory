@@ -1,0 +1,149 @@
+{
+  "version": "1.1.0",
+  "settings": {
+    "model": "gpt-4o-2024-11-20",
+    "maxTokens": 16384,
+    "temperature": 0,
+    "engine": "basic-v2",
+    "maxIterations": 8,
+    "mode": "standard"
+  },
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "requestId": {
+        "type": "string",
+        "description": "AutomationRequest.request_id correlation key."
+      },
+      "platformContextJson": {
+        "type": "string",
+        "description": "JSON string containing verified UiPath organization, tenant, folder, folder key, and folder id."
+      },
+      "partialSpecJson": {
+        "type": "string",
+        "description": "Partial StructuredSpec projection as a JSON string."
+      },
+      "intakeJson": {
+        "type": "string",
+        "description": "Original intake/request payload as a JSON string."
+      },
+      "governanceNotesJson": {
+        "type": "string",
+        "description": "Governance notes or constraints as a JSON string."
+      }
+    },
+    "required": [
+      "requestId",
+      "platformContextJson",
+      "partialSpecJson",
+      "intakeJson",
+      "governanceNotesJson"
+    ]
+  },
+  "outputSchema": {
+    "type": "object",
+    "properties": {
+      "requestId": {
+        "type": "string"
+      },
+      "questionsJson": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string"
+            },
+            "question": {
+              "type": "string"
+            },
+            "required": {
+              "type": "boolean"
+            },
+            "answerType": {
+              "type": "string"
+            },
+            "default": {
+              "type": "string"
+            }
+          }
+        },
+        "description": "Zero or more deterministic clarification questions."
+      },
+      "routingStatus": {
+        "type": "string",
+        "description": "clarifying when questions exist, otherwise ready_for_governance."
+      },
+      "auditSummary": {
+        "type": "string",
+        "description": "Human-readable, secret-free summary."
+      }
+    }
+  },
+  "metadata": {
+    "storageVersion": "50.0.0",
+    "isConversational": false,
+    "showProjectCreationExperience": false,
+    "targetRuntime": "pythonAgent"
+  },
+  "type": "lowCode",
+  "messages": [
+    {
+      "role": "system",
+      "content": "You are the Clarification Agent for the Governed Agentic Automation Factory.\nReturn only a JSON object matching the configured output schema. Do not use markdown.\nAsk only deterministic questions needed to complete a Customer360 dashboard request.\nUse stable ids such as pii_policy, approved_sources, approved_metrics, required_filters, approval_owner, and due_date when applicable.\nDo not ask for secrets, credentials, Integration Service connection ids, or production deployment approval in this agent.\nIf no questions are needed, return questionsJson as [] and routingStatus as ready_for_governance.",
+      "contentTokens": [
+        {
+          "type": "simpleText",
+          "rawString": "You are the Clarification Agent for the Governed Agentic Automation Factory.\nReturn only a JSON object matching the configured output schema. Do not use markdown.\nAsk only deterministic questions needed to complete a Customer360 dashboard request.\nUse stable ids such as pii_policy, approved_sources, approved_metrics, required_filters, approval_owner, and due_date when applicable.\nDo not ask for secrets, credentials, Integration Service connection ids, or production deployment approval in this agent.\nIf no questions are needed, return questionsJson as [] and routingStatus as ready_for_governance."
+        }
+      ]
+    },
+    {
+      "role": "user",
+      "content": "requestId: {{input.requestId}}\nplatformContextJson: {{input.platformContextJson}}\npartialSpecJson: {{input.partialSpecJson}}\nintakeJson: {{input.intakeJson}}\ngovernanceNotesJson: {{input.governanceNotesJson}}",
+      "contentTokens": [
+        {
+          "type": "simpleText",
+          "rawString": "requestId: "
+        },
+        {
+          "type": "variable",
+          "rawString": "input.requestId"
+        },
+        {
+          "type": "simpleText",
+          "rawString": "\nplatformContextJson: "
+        },
+        {
+          "type": "variable",
+          "rawString": "input.platformContextJson"
+        },
+        {
+          "type": "simpleText",
+          "rawString": "\npartialSpecJson: "
+        },
+        {
+          "type": "variable",
+          "rawString": "input.partialSpecJson"
+        },
+        {
+          "type": "simpleText",
+          "rawString": "\nintakeJson: "
+        },
+        {
+          "type": "variable",
+          "rawString": "input.intakeJson"
+        },
+        {
+          "type": "simpleText",
+          "rawString": "\ngovernanceNotesJson: "
+        },
+        {
+          "type": "variable",
+          "rawString": "input.governanceNotesJson"
+        }
+      ]
+    }
+  ],
+  "projectId": "41ae08d6-dcdc-4723-bc1d-d9b14568fc25"
+}

@@ -1,0 +1,207 @@
+{
+  "document": {
+    "dsl": "1.0.0",
+    "name": "AgentFactory_PostStatusUpdate",
+    "version": "0.0.1",
+    "namespace": "agent-factory",
+    "metadata": {
+      "description": "No-auth local HTTP workflow that mirrors worker status into the Factory API build status endpoint.",
+      "variables": {
+        "schema": {
+          "format": "json",
+          "document": {
+            "type": "object",
+            "properties": {},
+            "title": "Variables"
+          }
+        }
+      }
+    }
+  },
+  "input": {
+    "schema": {
+      "format": "json",
+      "document": {
+        "type": "object",
+        "properties": {
+          "operationId": {
+            "type": "string",
+            "description": "Idempotency key. Retries must reuse the same value."
+          },
+          "requestId": {
+            "type": "string",
+            "description": "AutomationRequest.request_id correlation key."
+          },
+          "platformMode": {
+            "type": "string",
+            "default": "uipath-ready",
+            "description": "local-simulated, uipath-ready, or uipath-live. Use uipath-live only after real platform execution."
+          },
+          "folderKey": {
+            "type": "string",
+            "default": "cba41e19-47cc-4a0a-bf73-de88b60a61be"
+          },
+          "folderId": {
+            "type": "integer",
+            "default": 7986306
+          },
+          "factoryApiBaseUrl": {
+            "type": "string",
+            "default": "http://localhost:8787"
+          },
+          "buildRunId": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "description": "BuildRun status accepted by the Factory API."
+          },
+          "statusPayload": {
+            "type": "object",
+            "additionalProperties": true,
+            "default": {},
+            "description": "Optional BuildStatusUpdate fields such as worker_id, logs_uri, generated_files_json."
+          }
+        },
+        "required": [
+          "operationId",
+          "requestId",
+          "buildRunId",
+          "status"
+        ],
+        "title": "Inputs"
+      }
+    }
+  },
+  "output": {
+    "schema": {
+      "format": "json",
+      "document": {
+        "type": "object",
+        "properties": {
+          "workflow": {
+            "type": "string"
+          },
+          "requestId": {
+            "type": "string"
+          },
+          "operationId": {
+            "type": "string"
+          },
+          "statusCode": {
+            "type": "integer"
+          },
+          "ok": {
+            "type": "boolean"
+          },
+          "body": {
+            "type": "object",
+            "additionalProperties": true
+          }
+        },
+        "title": "Outputs"
+      }
+    }
+  },
+  "do": [
+    {
+      "Sequence_1": {
+        "do": [
+          {
+            "WorkflowStart": {
+              "set": "${Object.entries($workflow.definition?.document?.metadata?.variables?.schema?.document?.properties || {}).reduce((acc, [name, def]) => ({ ...acc, [name]: def?.default }), {}) }",
+              "output": {
+                "as": "${$input}"
+              },
+              "export": {
+                "as": "{ ...$context, variables: { ...$context.variables, ...$output } }"
+              },
+              "metadata": {
+                "activityType": "Assign",
+                "displayName": "Workflow start",
+                "fullName": "Assign",
+                "isTransparent": true
+              }
+            }
+          },
+          {
+            "StatusPayload": {
+              "run": {
+                "script": {
+                  "code": "const extra = $workflow.input.statusPayload ?? {};\nreturn { ...extra, status: $workflow.input.status };",
+                  "language": "javascript",
+                  "arguments": "${{ \"$context\": $context, \"$workflow\": $workflow, \"$input\": $input }}"
+                }
+              },
+              "export": {
+                "as": "{ ...$context, outputs: { ...$context?.outputs, \"StatusPayload\": $output } }"
+              },
+              "metadata": {
+                "activityType": "JsInvoke",
+                "displayName": "Status payload",
+                "fullName": "JsInvoke"
+              }
+            }
+          },
+          {
+            "HttpRequest_1": {
+              "call": "UiPath.Http",
+              "with": {
+                "connector": "uipath-uipath-http",
+                "connectionId": "ImplicitConnection",
+                "connectionResourceId": "ImplicitConnection",
+                "method": "POST",
+                "endpoint": "/http-request",
+                "bodyParameters": {
+                  "authentication": "manual",
+                  "method": "PATCH",
+                  "url": "${$workflow.input.factoryApiBaseUrl + '/api/builds/' + $workflow.input.buildRunId + '/status'}",
+                  "headers": {
+                    "content-type": "application/json",
+                    "x-agent-factory-operation-id": "${$workflow.input.operationId}"
+                  },
+                  "body": "${$context.outputs.StatusPayload}"
+                }
+              },
+              "export": {
+                "as": "{ ...$context, outputs: { ...$context?.outputs, \"http_request_1\": $output } }"
+              },
+              "metadata": {
+                "fullName": "Connector",
+                "activityType": "Connector",
+                "displayName": "Post status update",
+                "uiPathActivityTypeId": "5c4cc855-b42a-37e6-b910-de8588998fce",
+                "assemblyQualifiedName": "Connector",
+                "configuration": "{\"essentialConfiguration\":{\"connectorVersion\":\"\",\"executionType\":null,\"customFieldsRequestDetails\":null,\"instanceParameters\":{\"version\":\"1.0.0\",\"connectorKey\":\"uipath-uipath-http\",\"activityType\":\"Curated\",\"objectName\":\"http-request\",\"httpMethod\":\"POST\",\"operation\":null,\"eventOperation\":null,\"eventMode\":null,\"connectorObjects\":null,\"previewEndpoint\":null},\"objectName\":\"http-request\",\"operation\":null,\"packageVersion\":\"1.0.0\",\"httpMethod\":\"POST\",\"path\":\"/http-request\",\"unifiedTypesCompatible\":true,\"savedJitInputFieldId\":\"in_http-request\"}}"
+              }
+            }
+          },
+          {
+            "Response_1": {
+              "response": "${{ workflow: 'AgentFactory_PostStatusUpdate', requestId: $workflow.input.requestId, operationId: $workflow.input.operationId, statusCode: $context.outputs.http_request_1.statusCode, ok: $context.outputs.http_request_1.ok, body: $context.outputs.http_request_1.content, buildRunId: $workflow.input.buildRunId, postedStatus: $workflow.input.status }}",
+              "markJobAsFailed": false,
+              "then": "end",
+              "export": {
+                "as": "{ ...$context, outputs: { ...$context?.outputs, \"Response_1\": $output } }"
+              },
+              "metadata": {
+                "activityType": "Response",
+                "displayName": "Response",
+                "fullName": "Response"
+              }
+            }
+          }
+        ],
+        "metadata": {
+          "activityType": "Sequence",
+          "displayName": "Sequence",
+          "fullName": "Sequence"
+        }
+      }
+    }
+  ],
+  "evaluate": {
+    "mode": "strict",
+    "language": "javascript"
+  }
+}
