@@ -87,6 +87,122 @@ describe("agent runtime provider wiring", () => {
     expect(output.confidence).toBe(0.91);
   });
 
+  it("generates degraded no-key clarification questions with labeled deterministic fallback", async () => {
+    const store = createInMemoryFactoryStore({ now: () => "2026-06-28T10:00:00.000Z" });
+    const record = await store.createRequest({
+      ...intakeBody,
+      source_systems: [],
+      requested_metrics: [],
+      constraints: []
+    });
+    const runtime = createAgentRuntime({
+      config: loadAgentProviderConfig({})
+    });
+
+    const output = await runtime.generateClarificationQuestions(record, store.now());
+
+    expect(output.trace.step_id).toBe("clarification_generation");
+    expect(output.trace.mode).toBe("degraded-no-key");
+    expect(output.missing_fields).toEqual(
+      expect.arrayContaining(["approved data sources", "required metrics", "release approval owner"])
+    );
+    expect(output.basis.constraints).toEqual(["sandbox-only preview"]);
+    expect(output.questions[0]?.source).toContain("degraded: no provider key");
+  });
+
+  it("uses live provider clarification output without storing raw prompts or contact fields", async () => {
+    const store = createInMemoryFactoryStore({ now: () => "2026-06-28T10:00:00.000Z" });
+    const record = await store.createRequest(intakeBody);
+    const prompts: string[] = [];
+    const client: ChatCompletionClient = {
+      async complete(request) {
+        prompts.push(request.messages.map((message) => message.content).join("\n"));
+        return {
+          model: "accounts/fireworks/models/gpt-oss-120b",
+          content: JSON.stringify({
+            questions: [
+              {
+                id: "refresh_cadence",
+                question: "What refresh cadence should the Customer360 dashboard use for sandbox review?",
+                default: "Daily sandbox refresh",
+                required: true
+              },
+              {
+                id: "metric_definition",
+                question: "Which revenue definition should the dashboard use for the selected metrics?",
+                default: "Net revenue",
+                required: true
+              },
+              {
+                id: "release_owner",
+                question: "Which role should approve the sandbox release after quality checks pass?",
+                default: "Revenue Ops owner",
+                required: true
+              }
+            ],
+            missing_fields: ["refresh cadence", "release approval owner"],
+            selected_sources: ["synthetic_customers_csv"],
+            requested_metrics: ["revenue"],
+            constraints: ["sandbox-only preview"]
+          }),
+          usage: {
+            prompt_tokens: 25,
+            completion_tokens: 40,
+            total_tokens: 65
+          }
+        };
+      }
+    };
+    const runtime = createAgentRuntime({
+      config: loadAgentProviderConfig({
+        FIREWORKS_API_KEY: "fw_unit_test_key_not_real"
+      }),
+      client
+    });
+
+    const output = await runtime.generateClarificationQuestions(record, store.now());
+
+    expect(output.trace.mode).toBe("live");
+    expect(output.questions.map((question) => question.id)).toEqual([
+      "refresh_cadence",
+      "metric_definition",
+      "release_owner"
+    ]);
+    expect(output.questions[0]?.source).toContain("Fireworks live");
+    expect(output.trace.redaction.raw_prompt_stored).toBe(false);
+    expect(output.trace.redaction.raw_response_stored).toBe(false);
+    expect(prompts.join("\n")).not.toContain(intakeBody.requester_email);
+    expect(prompts.join("\n")).not.toContain(intakeBody.owner_email);
+  });
+
+  it("falls back to deterministic clarification questions when provider schema validation fails", async () => {
+    const store = createInMemoryFactoryStore({ now: () => "2026-06-28T10:00:00.000Z" });
+    const record = await store.createRequest(intakeBody);
+    const attemptedProfiles: string[] = [];
+    const client: ChatCompletionClient = {
+      async complete(request) {
+        attemptedProfiles.push(request.profile);
+        return {
+          model: `model-for-${request.profile}`,
+          content: JSON.stringify({ questions: [] })
+        };
+      }
+    };
+    const runtime = createAgentRuntime({
+      config: loadAgentProviderConfig({
+        FIREWORKS_API_KEY: "fw_unit_test_key_not_real"
+      }),
+      client
+    });
+
+    const output = await runtime.generateClarificationQuestions(record, store.now());
+
+    expect(attemptedProfiles).toEqual(["fast", "fallback"]);
+    expect(output.trace.mode).toBe("degraded-provider-error");
+    expect(output.questions.map((question) => question.id)).toContain("pii_policy");
+    expect(output.questions[0]?.source).toContain("degraded: provider error");
+  });
+
   it("retries the fallback model profile when the primary profile cannot produce schema-valid JSON", async () => {
     const store = createInMemoryFactoryStore({ now: () => "2026-06-28T10:00:00.000Z" });
     const record = await store.createRequest(intakeBody);

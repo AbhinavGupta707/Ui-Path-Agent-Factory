@@ -10,6 +10,8 @@ import type {
   CreateAutomationRequest,
   FactoryBuildManifest,
   GovernanceAssessment,
+  LifecycleMetadata,
+  LifecycleMetadataPatch,
   PlatformMode,
   StructuredSpec
 } from "@agent-factory/shared-contracts";
@@ -43,6 +45,7 @@ export interface FactoryRequestRecord {
   buildManifest?: FactoryBuildManifest;
   buildRuns: BuildRun[];
   deploymentRecords: DeploymentRecord[];
+  lifecycleMetadata?: LifecycleMetadata;
 }
 
 export interface FactoryStore {
@@ -66,6 +69,7 @@ export interface FactoryStore {
   ): Promise<FactoryRequestRecord>;
   saveApprovalTask(requestId: string, task: ApprovalTask): Promise<FactoryRequestRecord>;
   saveBuildManifest(requestId: string, manifest: FactoryBuildManifest): Promise<FactoryRequestRecord>;
+  mergeLifecycleMetadata(requestId: string, patch: LifecycleMetadataPatch): Promise<FactoryRequestRecord>;
   createBuildRun(run: BuildRun): Promise<FactoryRequestRecord>;
   updateBuildRun(buildRunId: string, patch: Partial<BuildRun>): Promise<FactoryRequestRecord>;
   createDeploymentRecord(record: DeploymentRecord): Promise<FactoryRequestRecord>;
@@ -221,6 +225,36 @@ class InMemoryFactoryStore implements FactoryStore {
     return record;
   }
 
+  async mergeLifecycleMetadata(
+    requestId: string,
+    patch: LifecycleMetadataPatch
+  ): Promise<FactoryRequestRecord> {
+    const record = this.requireRecord(requestId);
+    record.lifecycleMetadata = {
+      ...record.lifecycleMetadata,
+      ...patch,
+      api_workflow_execution_ids: mergeUnique(
+        record.lifecycleMetadata?.api_workflow_execution_ids,
+        patch.api_workflow_execution_ids
+      ),
+      human_approval_task_ids: mergeUnique(
+        record.lifecycleMetadata?.human_approval_task_ids,
+        patch.human_approval_task_ids
+      ),
+      data_service_record_ids: mergeUnique(
+        record.lifecycleMetadata?.data_service_record_ids,
+        patch.data_service_record_ids
+      ),
+      codex_build_evidence: [
+        ...(record.lifecycleMetadata?.codex_build_evidence ?? []),
+        ...(patch.codex_build_evidence ?? [])
+      ],
+      updated_at: patch.updated_at ?? this.now()
+    };
+    record.request.updated_at = this.now();
+    return record;
+  }
+
   async createBuildRun(run: BuildRun): Promise<FactoryRequestRecord> {
     const record = this.requireRecord(run.request_id);
     const buildRun = run.build_run_id.length > 0 ? run : { ...run, build_run_id: this.nextBuildRunId(run.request_id) };
@@ -295,4 +329,8 @@ class InMemoryFactoryStore implements FactoryStore {
 
     return record;
   }
+}
+
+function mergeUnique(existing: string[] | undefined, incoming: string[] | undefined): string[] {
+  return [...new Set([...(existing ?? []), ...(incoming ?? [])])];
 }

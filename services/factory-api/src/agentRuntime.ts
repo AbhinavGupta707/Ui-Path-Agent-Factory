@@ -2,6 +2,8 @@ import { z } from "zod";
 import {
   ApprovalTaskSchema,
   BuildPlanAgentOutputSchema,
+  ClarificationGenerationOutputSchema,
+  ClarificationQuestionSchema,
   FactoryBuildManifestSchema,
   GovernanceAgentOutputSchema,
   GovernanceAssessmentSchema,
@@ -13,6 +15,8 @@ import {
   type AgentStepId,
   type AgentStepTraceEnvelope,
   type BuildPlanAgentOutput,
+  type ClarificationGenerationOutput,
+  type ClarificationQuestion,
   type GovernanceAgentOutput,
   type IntakeClassificationOutput,
   type RequirementsSpecGenerationOutput
@@ -20,6 +24,7 @@ import {
 import { FireworksChatClient, type ChatCompletionClient } from "./fireworksClient.js";
 import {
   generateBuildManifest,
+  generateClarificationQuestions,
   generateGovernanceAssessment,
   generateStructuredSpec
 } from "./lifecycle.js";
@@ -46,6 +51,21 @@ const classificationPayloadSchema = z.object({
   inferred_source_systems: normalizedStringListSchema("name", "source", "system", "data_source"),
   inferred_metrics: normalizedStringListSchema("metric", "name", "kpi", "description"),
   summary: z.string().min(1)
+});
+
+const clarificationQuestionPayloadSchema = z.object({
+  id: z.string().min(1).optional(),
+  question: z.string().min(8),
+  default: z.string().min(1),
+  required: z.boolean().default(true)
+});
+
+const clarificationPayloadSchema = z.object({
+  questions: z.array(clarificationQuestionPayloadSchema).min(3).max(7),
+  missing_fields: normalizedStringListSchema("field", "missing_field", "description", "text"),
+  selected_sources: normalizedStringListSchema("name", "source", "system", "data_source"),
+  requested_metrics: normalizedStringListSchema("metric", "name", "kpi", "description"),
+  constraints: normalizedStringListSchema("constraint", "policy", "rule", "description")
 });
 
 const requirementsPayloadSchema = z.object({
@@ -127,6 +147,74 @@ export class AgentRuntime {
       template_id: "customer360_dashboard_v1",
       ...providerResult.payload,
       trace: withRequestId(providerResult.trace, record.request.request_id)
+    });
+  }
+
+  async generateClarificationQuestions(
+    record: FactoryRequestRecord,
+    now: string
+  ): Promise<ClarificationGenerationOutput> {
+    const basis = clarificationBasis(record);
+    const fallback = (trace: AgentStepTraceEnvelope) =>
+      ClarificationGenerationOutputSchema.parse({
+        output_id: `CLARIFY-${record.request.request_id}`,
+        request_id: record.request.request_id,
+        questions: deterministicClarificationQuestions(record, trace),
+        missing_fields: basis.missing_fields,
+        basis: {
+          selected_sources: basis.selected_sources,
+          requested_metrics: basis.requested_metrics,
+          constraints: basis.constraints
+        },
+        trace
+      });
+    const providerResult = await this.runProviderStep({
+      stepId: "clarification_generation",
+      profile: "fast",
+      now,
+      schema: clarificationPayloadSchema,
+      prompt: [
+        "Generate clarifying questions after request creation for a governed Customer360 dashboard build.",
+        "Questions must be specific to missing fields, selected sources, requested metrics, constraints, approval ownership, and sandbox/PII policy.",
+        "Return JSON with questions, missing_fields, selected_sources, requested_metrics, and constraints. Do not include emails, phone numbers, secrets, raw prompts, or raw customer PII.",
+        JSON.stringify({
+          request_id: record.request.request_id,
+          artifact_type: record.request.requested_artifact_type,
+          request_text: record.request.request_text,
+          selected_sources: basis.selected_sources,
+          requested_metrics: basis.requested_metrics,
+          constraints: basis.constraints,
+          missing_fields: basis.missing_fields
+        })
+      ].join("\n")
+    });
+    const trace = withRequestId(providerResult.trace, record.request.request_id);
+
+    if (!providerResult.payload) {
+      return fallback(trace);
+    }
+
+    const providerBasis = {
+      selected_sources:
+        providerResult.payload.selected_sources.length > 0
+          ? providerResult.payload.selected_sources
+          : basis.selected_sources,
+      requested_metrics:
+        providerResult.payload.requested_metrics.length > 0
+          ? providerResult.payload.requested_metrics
+          : basis.requested_metrics,
+      constraints: providerResult.payload.constraints.length > 0 ? providerResult.payload.constraints : basis.constraints
+    };
+    const missingFields =
+      providerResult.payload.missing_fields.length > 0 ? providerResult.payload.missing_fields : basis.missing_fields;
+
+    return ClarificationGenerationOutputSchema.parse({
+      output_id: `CLARIFY-${record.request.request_id}`,
+      request_id: record.request.request_id,
+      questions: normalizeProviderQuestions(providerResult.payload.questions, trace),
+      missing_fields: missingFields,
+      basis: providerBasis,
+      trace
     });
   }
 
@@ -592,12 +680,106 @@ function parseProviderJson(content: string): unknown {
 function maxTokensForStep(stepId: AgentStepId): number {
   const budgetByStep: Record<AgentStepId, number> = {
     intake_classification: 1600,
+    clarification_generation: 2200,
     requirements_spec_generation: 4096,
     governance_assessment: 4096,
     build_plan: 4096
   };
 
   return budgetByStep[stepId];
+}
+
+function clarificationBasis(record: FactoryRequestRecord): {
+  selected_sources: string[];
+  requested_metrics: string[];
+  constraints: string[];
+  missing_fields: string[];
+} {
+  const selectedSources =
+    record.intake.source_systems.length > 0 ? record.intake.source_systems : ["synthetic Customer360 source list"];
+  const requestedMetrics =
+    record.intake.requested_metrics.length > 0 ? record.intake.requested_metrics : ["Customer360 metric list"];
+  const constraints = record.intake.constraints.length > 0 ? record.intake.constraints : ["sandbox-only preview"];
+  const missingFields = [
+    record.intake.source_systems.length === 0 ? "approved data sources" : undefined,
+    record.intake.requested_metrics.length === 0 ? "required metrics" : undefined,
+    record.intake.constraints.length === 0 ? "sandbox, refresh, and PII constraints" : undefined,
+    record.request.owner_email ? undefined : "approval owner contact route",
+    "release approval owner"
+  ].filter((value): value is string => Boolean(value));
+
+  return {
+    selected_sources: selectedSources,
+    requested_metrics: requestedMetrics,
+    constraints,
+    missing_fields: missingFields
+  };
+}
+
+function deterministicClarificationQuestions(
+  record: FactoryRequestRecord,
+  trace: AgentStepTraceEnvelope
+): ClarificationQuestion[] {
+  return generateClarificationQuestions(record).map((question) =>
+    ClarificationQuestionSchema.parse({
+      ...question,
+      source: clarificationSourceLabel(trace.mode)
+    })
+  );
+}
+
+function normalizeProviderQuestions(
+  questions: Array<{ id?: string; question: string; default: string; required?: boolean }>,
+  trace: AgentStepTraceEnvelope
+): ClarificationQuestion[] {
+  const seen = new Set<string>();
+
+  return questions.map((question, index) => {
+    const id = uniqueQuestionId(question.id ?? question.question, index, seen);
+
+    return ClarificationQuestionSchema.parse({
+      id,
+      question: question.question,
+      default: question.default,
+      required: question.required ?? true,
+      source: clarificationSourceLabel(trace.mode)
+    });
+  });
+}
+
+function uniqueQuestionId(raw: string, index: number, seen: Set<string>): string {
+  const base =
+    raw
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "_")
+      .replace(/^_+|_+$/g, "")
+      .slice(0, 48) || `clarification_${index + 1}`;
+  let candidate = base;
+  let suffix = 2;
+
+  while (seen.has(candidate)) {
+    candidate = `${base}_${suffix}`;
+    suffix += 1;
+  }
+
+  seen.add(candidate);
+  return candidate;
+}
+
+function clarificationSourceLabel(mode: AgentRuntimeMode): string {
+  if (mode === "live") {
+    return "UiPath Clarification Agent (Fireworks live)";
+  }
+
+  if (mode === "deterministic-fallback") {
+    return "UiPath Clarification Agent (deterministic fallback)";
+  }
+
+  if (mode === "degraded-no-key") {
+    return "UiPath Clarification Agent (degraded: no provider key)";
+  }
+
+  return "UiPath Clarification Agent (degraded: provider error)";
 }
 
 function deterministicClassification(
