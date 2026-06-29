@@ -68,15 +68,23 @@ Checks:
 
 Deliver:
 
-- LangGraph-based coded agent package for the actual agentic reasoning path
-- Fireworks model profiles
-- LangSmith tracing
-- JSON schemas for every agent output
-- retry and repair logic
+- Factory API server-side agent runtime foundation
+- Fireworks OpenAI-compatible chat client abstraction
+- typed Fireworks model profiles
+- LangSmith trace envelope metadata hooks
+- JSON schemas for intake classification, requirements/spec generation, governance, and build-plan outputs
+- explicit degraded/no-key and provider-error fallback behavior
 
-Suggested package:
+Current package placement:
 
-- `services/agent-runtime`
+- `services/factory-api/src/agentRuntime.ts`
+- `services/factory-api/src/providerConfig.ts`
+- `services/factory-api/src/fireworksClient.ts`
+- `packages/shared-contracts/src/index.ts`
+
+Deferred package split:
+
+- `services/agent-runtime` remains a good later home if the runtime grows into full LangGraph orchestration.
 
 Model profiles:
 
@@ -102,7 +110,15 @@ Checks:
 
 - unit tests with mocked model calls
 - schema validation tests
-- LangSmith trace appears for a local request
+- LangSmith trace envelope appears for a local request; full SDK trace export is still deferred until live calls are approved
+
+Behavior:
+
+- `AGENT_RUNTIME_MODE=auto` uses Fireworks when `FIREWORKS_API_KEY` exists and otherwise returns deterministic fallback marked `degraded-no-key`.
+- `AGENT_RUNTIME_MODE=live` still reports missing key state explicitly if the key is absent.
+- `AGENT_RUNTIME_MODE=deterministic` skips live calls and marks output `deterministic-fallback`.
+- Provider failures or schema validation failures are marked `degraded-provider-error`; deterministic fallback remains available but is not labeled as live output.
+- Audit and trace payloads store sanitized metadata only and do not persist raw prompts, raw responses, keys, emails, or phone numbers.
 
 ## Lane 4: Build Worker Live Runner
 

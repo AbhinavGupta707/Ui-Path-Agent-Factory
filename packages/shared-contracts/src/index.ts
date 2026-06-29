@@ -37,6 +37,22 @@ export const buildRunStatuses = [
   "cancelled"
 ] as const;
 
+export const agentModelProfiles = ["fast", "reasoning", "code", "fallback"] as const;
+
+export const agentRuntimeModes = [
+  "live",
+  "deterministic-fallback",
+  "degraded-no-key",
+  "degraded-provider-error"
+] as const;
+
+export const agentStepIds = [
+  "intake_classification",
+  "requirements_spec_generation",
+  "governance_assessment",
+  "build_plan"
+] as const;
+
 export const UiPathContextSchema = z.object({
   baseUrl: z.string().url(),
   organization: z.string().min(1),
@@ -206,6 +222,88 @@ export const BuildStatusUpdateSchema = z.object({
   logs_uri: z.string().optional()
 });
 
+export const AgentModelProfileSchema = z.enum(agentModelProfiles);
+
+export const AgentRuntimeModeSchema = z.enum(agentRuntimeModes);
+
+export const AgentStepIdSchema = z.enum(agentStepIds);
+
+export const AgentTokenUsageSchema = z.object({
+  prompt_tokens: z.number().int().nonnegative().optional(),
+  completion_tokens: z.number().int().nonnegative().optional(),
+  total_tokens: z.number().int().nonnegative().optional()
+});
+
+export const LangSmithTraceMetadataSchema = z.object({
+  enabled: z.boolean(),
+  project: z.string().min(1).optional(),
+  run_name: z.string().min(1),
+  tags: z.array(z.string().min(1)).default([]),
+  metadata: z.record(z.union([z.string(), z.number(), z.boolean(), z.null()])).default({})
+});
+
+export const AgentStepTraceEnvelopeSchema = z.object({
+  trace_id: z.string().min(1),
+  request_id: z.string().min(1).optional(),
+  step_id: AgentStepIdSchema,
+  provider: z.literal("fireworks"),
+  profile: AgentModelProfileSchema,
+  model_id: z.string().min(1),
+  mode: AgentRuntimeModeSchema,
+  langsmith: LangSmithTraceMetadataSchema,
+  redaction: z.object({
+    pii_redacted: z.boolean(),
+    secrets_redacted: z.boolean(),
+    raw_prompt_stored: z.literal(false),
+    raw_response_stored: z.literal(false)
+  }),
+  usage: AgentTokenUsageSchema.optional(),
+  started_at: z.string().datetime(),
+  completed_at: z.string().datetime().optional(),
+  latency_ms: z.number().nonnegative().optional(),
+  warnings: z.array(z.string().min(1)).default([])
+});
+
+export const IntakeClassificationOutputSchema = z.object({
+  output_id: z.string().min(1),
+  request_id: z.string().min(1),
+  artifact_type: z.literal("dashboard_app"),
+  template_id: z.literal("customer360_dashboard_v1"),
+  complexity: z.enum(["low", "medium", "high"]),
+  confidence: z.number().min(0).max(1),
+  pii_likelihood: z.enum(["none", "possible", "likely"]),
+  missing_information: z.array(z.string().min(1)),
+  inferred_source_systems: z.array(z.string().min(1)),
+  inferred_metrics: z.array(z.string().min(1)),
+  summary: z.string().min(1),
+  trace: AgentStepTraceEnvelopeSchema
+});
+
+export const RequirementsSpecGenerationOutputSchema = z.object({
+  output_id: z.string().min(1),
+  request_id: z.string().min(1),
+  spec: StructuredSpecSchema,
+  assumptions: z.array(z.string().min(1)).default([]),
+  trace: AgentStepTraceEnvelopeSchema
+});
+
+export const GovernanceAgentOutputSchema = z.object({
+  output_id: z.string().min(1),
+  request_id: z.string().min(1),
+  assessment: GovernanceAssessmentSchema,
+  approval_tasks: z.array(ApprovalTaskSchema),
+  trace: AgentStepTraceEnvelopeSchema
+});
+
+export const BuildPlanAgentOutputSchema = z.object({
+  output_id: z.string().min(1),
+  request_id: z.string().min(1),
+  manifest: FactoryBuildManifestSchema,
+  worker_instructions: z.array(z.string().min(1)),
+  acceptance_criteria: z.array(z.string().min(1)),
+  trace: AgentStepTraceEnvelopeSchema
+});
+
 export const AuditEventSchema = z.object({
   event_id: z.string().min(1),
   request_id: z.string().min(1),
@@ -269,6 +367,15 @@ export type FactoryBuildManifest = z.infer<typeof FactoryBuildManifestSchema>;
 export type BuildManifest = z.infer<typeof BuildManifestSchema>;
 export type BuildRun = z.infer<typeof BuildRunSchema>;
 export type BuildStatusUpdate = z.infer<typeof BuildStatusUpdateSchema>;
+export type AgentModelProfile = z.infer<typeof AgentModelProfileSchema>;
+export type AgentRuntimeMode = z.infer<typeof AgentRuntimeModeSchema>;
+export type AgentStepId = z.infer<typeof AgentStepIdSchema>;
+export type AgentTokenUsage = z.infer<typeof AgentTokenUsageSchema>;
+export type AgentStepTraceEnvelope = z.infer<typeof AgentStepTraceEnvelopeSchema>;
+export type IntakeClassificationOutput = z.infer<typeof IntakeClassificationOutputSchema>;
+export type RequirementsSpecGenerationOutput = z.infer<typeof RequirementsSpecGenerationOutputSchema>;
+export type GovernanceAgentOutput = z.infer<typeof GovernanceAgentOutputSchema>;
+export type BuildPlanAgentOutput = z.infer<typeof BuildPlanAgentOutputSchema>;
 export type AuditEvent = z.infer<typeof AuditEventSchema>;
 export type AutomationRequestStatus = (typeof automationRequestStatuses)[number];
 export type AutomationRequest = z.infer<typeof AutomationRequestSchema>;

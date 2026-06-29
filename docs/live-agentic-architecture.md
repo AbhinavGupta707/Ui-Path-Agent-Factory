@@ -148,11 +148,30 @@ Useful but optional:
 
 Never commit credentials. Store them in local `.env` or deployment secrets.
 
-Add typed config validation before live implementation:
+Checkpoint 6 adds the typed Factory API provider boundary:
 
-- fail fast if a required live key is missing
-- expose degraded mode clearly in API and UI
-- make local simulation an explicit mode, not a silent fallback
+- Factory API reads provider configuration from environment only and never returns key values.
+- `GET /api/provider/status` and health responses expose safe readiness: provider, live/degraded state, missing env names, model profile IDs, and LangSmith project metadata.
+- Lifecycle endpoints now run through schema-first agent step envelopes for intake classification, requirements/spec generation, governance, and build planning.
+- If `FIREWORKS_API_KEY` is missing, outputs are marked `degraded-no-key` and deterministic fallback is used.
+- If live provider calls fail validation or request handling, outputs are marked `degraded-provider-error` and deterministic fallback is used.
+- `AGENT_RUNTIME_MODE=deterministic` forces local fallback and marks traces `deterministic-fallback`.
+- Trace and audit payloads store redacted metadata only: raw prompts, raw responses, secrets, emails, and phone numbers are not stored.
+
+Environment used by the runtime:
+
+```bash
+AGENT_RUNTIME_MODE=auto # auto | live | deterministic
+FIREWORKS_API_KEY=
+FIREWORKS_BASE_URL=https://api.fireworks.ai/inference/v1
+AGENT_MODEL_FAST=accounts/fireworks/models/gpt-oss-120b
+AGENT_MODEL_REASONING=accounts/fireworks/models/deepseek-v4-pro
+AGENT_MODEL_CODE=accounts/fireworks/models/kimi-k2p6
+AGENT_MODEL_FALLBACK=accounts/fireworks/models/glm-5p2
+LANGSMITH_TRACING=true
+LANGSMITH_API_KEY=
+LANGSMITH_PROJECT=agent-factory-live
+```
 
 ## Research References
 
