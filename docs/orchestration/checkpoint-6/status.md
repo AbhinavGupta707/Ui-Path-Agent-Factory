@@ -2,7 +2,7 @@
 
 Setup commit: `9d3375f` (`Prepare checkpoint 6 live orchestration`).
 
-Worker launch base: pending worker creation.
+Worker launch base: `7d02d37`.
 
 Started: 2026-06-29.
 
@@ -10,10 +10,10 @@ Started: 2026-06-29.
 
 | Lane | Worker | State | Notes |
 |---|---|---|---|
-| Agent Runtime And Provider Wiring | pending | pending | Server-side Fireworks/LangSmith runtime and lifecycle integration. |
-| Codex Build Worker Orchestration | pending | pending | Codex/Git runner wiring and build evidence. |
-| Premium Product UI | pending | pending | Reference-led Factory Console redesign. |
-| Integration QA And Live Runbook | pending | pending | Cross-lane QA, docs, browser verification. |
+| Agent Runtime And Provider Wiring | `local:7db51020-7d77-404e-8b62-1ab9a15066a0` | queued | Server-side Fireworks/LangSmith runtime and lifecycle integration. |
+| Codex Build Worker Orchestration | `local:b3219824-2e66-4b38-a08c-aa5836dc3182` | queued | Codex/Git runner wiring and build evidence. |
+| Premium Product UI | `local:5d7d8231-ef53-431b-b14c-154ad52e7af9` | queued | Reference-led Factory Console redesign. |
+| Integration QA And Live Runbook | `local:045b9f0e-ad87-465c-bf37-7ac5b0776b2f` | queued | Cross-lane QA, docs, browser verification. |
 
 ## Setup Facts
 
