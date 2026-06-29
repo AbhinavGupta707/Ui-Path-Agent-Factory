@@ -1,81 +1,127 @@
 # UiPath Apps Companion Surface
 
-Status: planned app, not live-created.
+Status: `uipath-ready`, proposal-only. No UiPath Apps or Coded App assets were
+created, pushed, published, or deployed by this lane.
+
+Machine-readable assets:
+
+- `companion-app.contract.json`
+- `companion-app.schema.json`
+- `validate-companion-app.mjs`
 
 The custom Factory Console remains the polished primary demo UI. UiPath Apps is
 the enterprise companion surface that proves the lifecycle is available inside
-the UiPath platform.
+UiPath without replacing the console.
 
-## Planned App
+## Verified Context
 
-- App name: `Agent Factory Intake Companion`
-- Organization: `galacticus`
-- Tenant: `DefaultTenant`
-- Folder: `AgentFactoryDemo`
-- Folder key: `cba41e19-47cc-4a0a-bf73-de88b60a61be`
-- Folder id: `7986306`
-
-## Role In The Product
-
-| Surface | Role |
+| Field | Value |
 |---|---|
-| Factory Console | Primary polished intake, status, manifest, approval, and audit experience |
-| UiPath Apps | Official UiPath companion for intake and status mirroring |
-| Action Center | Human decision tasks |
-| Maestro | Lifecycle orchestration source of truth |
-| Data Service | Shared state for both UI surfaces |
+| App name | `Agent Factory Intake Companion` |
+| Coded app package | `AgentFactoryIntakeCompanion` |
+| App type | Coded Web App |
+| Organization | `galacticus` |
+| Tenant | `DefaultTenant` |
+| Folder | `AgentFactoryDemo` |
+| Folder key | `cba41e19-47cc-4a0a-bf73-de88b60a61be` |
+| Folder id | `7986306` |
+| Path name | `agent-factory-intake-companion` |
+| Vite base | `./` |
+
+## Discovery Evidence
+
+Read-only probes passed:
+
+```bash
+uip codedapp --help --output json
+uip codedapp init --help --output json
+uip codedapp pack --help --output json
+uip codedapp publish --help --output json
+uip codedapp deploy --help --output json
+uip codedapp list --help --output json
+```
+
+Results:
+
+- `codedapp` is installed and exposes `init`, `push`, `pull`, `pack`,
+  `publish`, and `deploy`.
+- `uip codedapp list` is not available in this installed CLI surface, so live
+  app inventory should be checked in Studio Web/Automation Cloud if needed.
+- Deploy supports `--folder-key`, which must be set to
+  `cba41e19-47cc-4a0a-bf73-de88b60a61be`.
 
 ## Screens
 
-### Intake
+| Screen | Purpose | Data |
+|---|---|---|
+| Intake | Submit or mirror one Customer360 request | `AutomationRequest`, `AuditEvent` |
+| Request Status | Show current lifecycle state and evidence | `AutomationRequest`, `ApprovalTask`, `BuildRun`, `TestRun`, `DeploymentRecord`, `AuditEvent` |
+| Clarifications | Capture answers when Maestro routes back for missing scope | `StructuredSpec`, `AuditEvent` |
+| Approval Links | Show scope/release task references and deep links | `ApprovalTask.actionCenterTaskId` |
 
-Fields:
+The companion app should not complete Action Center tasks. Decisions remain in
+Action Center so the audit trail is unambiguous.
 
-- `title`
-- `requesterEmail`
-- `businessGoal`
-- `targetAudience`
-- `dueDate`
-- `sourceSystems`
-- `constraints`
+## Intake Fields
 
-Action:
+| Field | Writes to |
+|---|---|
+| `title` | `AutomationRequest.title` |
+| `requesterEmail` | `AutomationRequest.requesterEmail` |
+| `businessGoal` | `AutomationRequest.businessGoal` |
+| `targetAudience` | `AutomationRequest.targetAudience` |
+| `dueDate` | `AutomationRequest.dueDate` |
+| `sourceSystems` | `AutomationRequest.sourceSystemsJson` |
+| `constraints` | `AutomationRequest.constraintsJson` |
 
-- Create `AutomationRequest` in Data Service or call the local/hosted Factory API
-  through an API Workflow.
-- Set initial status to `clarifying` after submission.
+Submit behavior:
 
-### Request Status
+- Create or mirror `AutomationRequest`.
+- Set initial status to `clarifying`.
+- Set `platformMode = "uipath-ready"` until live UiPath execution starts.
+- Append `AuditEvent.action = "intake_created"`.
+- Let Maestro continue orchestration.
 
-Display:
+## Setup Plan
 
-- Request title
-- Current status
-- Platform mode
-- Latest approval state
-- Latest build run state
-- Latest test gate decision
-- Deployment URL when available
-- Audit timeline summary
+Local scaffold and build steps:
 
-Data source:
+```bash
+uip codedapp init uipath/apps/agent-factory-intake-companion --template dashboard
+```
 
-- Data Service `AutomationRequest`
-- Related `ApprovalTask`, `BuildRun`, `TestRun`, `DeploymentRecord`, and
-  `AuditEvent` records filtered by `requestId`
+Set the generated Vite config to:
 
-### Clarifications
+```ts
+export default defineConfig({
+  base: "./"
+});
+```
 
-Display open questions from `StructuredSpec.clarificationQuestionsJson`.
+Then build before packaging:
 
-Action:
+```bash
+npm install
+npm run build
+```
 
-- Save answers to `StructuredSpec.clarificationAnswersJson`.
-- Notify Maestro to continue the clarification loop.
+Package to `/tmp` so generated package output is not committed:
 
-## Checkpoint 4 Acceptance Criteria
+```bash
+uip codedapp pack ./dist --name "AgentFactoryIntakeCompanion" --version "0.1.0" --output /tmp/agent-factory-uipath-packages --description "Governed Agentic Automation Factory UiPath companion" --content-type webapp
+```
+
+Publish and deploy only after explicit approval:
+
+```bash
+uip codedapp publish --name "AgentFactoryIntakeCompanion" --version "0.1.0" --type Web --uipath-dir /tmp/agent-factory-uipath-packages --output json
+uip codedapp deploy --name "AgentFactoryIntakeCompanion" --path-name agent-factory-intake-companion --version "0.1.0" --folder-key cba41e19-47cc-4a0a-bf73-de88b60a61be --tags governance,agent-factory --output json
+```
+
+## Acceptance Criteria
 
 - The app can submit or mirror one Customer360 intake.
 - The app can show status for an existing `AutomationRequest`.
+- The app can display current scope and release approval task references.
+- The app does not store credentials, cookies, access tokens, or private keys.
 - The Factory Console remains the primary UI in the demo narrative.
-- The app does not store credentials or secrets.

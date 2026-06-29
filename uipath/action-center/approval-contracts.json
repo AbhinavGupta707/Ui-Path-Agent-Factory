@@ -1,0 +1,715 @@
+{
+  "$schema": "./approval-contracts.schema.json",
+  "status": "proposal-only",
+  "platformMode": "uipath-ready",
+  "environment": {
+    "organization": "galacticus",
+    "tenant": "DefaultTenant",
+    "folderName": "AgentFactoryDemo",
+    "folderKey": "cba41e19-47cc-4a0a-bf73-de88b60a61be",
+    "folderId": 7986306
+  },
+  "lastSafeDiscovery": {
+    "checkedAtUtc": "2026-06-29T00:40:00Z",
+    "loginStatus": "logged-in",
+    "taskListCommand": "uip tasks list --folder-id 7986306 --limit 5 --output json",
+    "taskListResult": "no tasks returned",
+    "folderCommand": "uip or folders get AgentFactoryDemo --output json",
+    "folderResult": "id and key matched"
+  },
+  "actionCenter": {
+    "cliSurface": {
+      "safeInspection": [
+        "uip tasks list --folder-id 7986306 --limit 5 --output json",
+        "uip tasks get <task-id> --task-type <FormTask|AppTask> --folder-id 7986306 --output json",
+        "uip tasks users 7986306 --limit 10 --output json"
+      ],
+      "completionRequiresApproval": "uip tasks complete <task-id> --type <FormTask|AppTask> --folder-id 7986306 --action <ActionName> --data '<json>'"
+    },
+    "creationSurface": "Create tasks from the Maestro process or an Orchestrator workflow/activity that instantiates FormTask or AppTask records; the installed tasks CLI exposes list/get/assign/reassign/unassign/complete/users, not task creation.",
+    "liveMutationPolicy": "Do not create, assign, complete, cancel, or overwrite live Action Center tasks without explicit approval in this lane."
+  },
+  "approvalTypes": [
+    {
+      "approvalType": "scope",
+      "taskTitle": "Agent Factory Scope Approval",
+      "taskPurpose": "Confirm the normalized scope, data access, policy result, and approved permissions before the build manifest is created.",
+      "createWhen": [
+        "GovernanceAssessment.requiresHumanApproval is true",
+        "GovernanceAssessment.riskLevel is medium or high",
+        "GovernanceAssessment.blockersJson contains at least one blocker",
+        "The request has not already received an approved scope decision for the same StructuredSpec revision"
+      ],
+      "reviewerVisibleFields": [
+        {
+          "field": "request.title",
+          "label": "Request title",
+          "source": "AutomationRequest.title",
+          "type": "Text",
+          "required": true
+        },
+        {
+          "field": "request.requesterEmail",
+          "label": "Requester",
+          "source": "AutomationRequest.requesterEmail",
+          "type": "Text",
+          "required": true
+        },
+        {
+          "field": "request.businessGoal",
+          "label": "Business goal",
+          "source": "AutomationRequest.businessGoal",
+          "type": "LongText",
+          "required": true
+        },
+        {
+          "field": "request.targetAudience",
+          "label": "Target audience",
+          "source": "AutomationRequest.targetAudience",
+          "type": "Text",
+          "required": true
+        },
+        {
+          "field": "structuredSpec.objective",
+          "label": "Normalized objective",
+          "source": "StructuredSpec.objective",
+          "type": "LongText",
+          "required": true
+        },
+        {
+          "field": "structuredSpec.requiredCapabilities",
+          "label": "Required capabilities",
+          "source": "StructuredSpec.requiredCapabilitiesJson",
+          "type": "JsonArray",
+          "required": true
+        },
+        {
+          "field": "structuredSpec.acceptanceCriteria",
+          "label": "Acceptance criteria",
+          "source": "StructuredSpec.acceptanceCriteriaJson",
+          "type": "JsonArray",
+          "required": true
+        },
+        {
+          "field": "data.sourceSystems",
+          "label": "Source systems requested",
+          "source": "AutomationRequest.sourceSystemsJson",
+          "type": "JsonArray",
+          "required": true
+        },
+        {
+          "field": "data.requiredPermissions",
+          "label": "Permissions requested",
+          "source": "GovernanceAssessment.requiredPermissionsJson",
+          "type": "JsonArray",
+          "required": true
+        },
+        {
+          "field": "data.constraints",
+          "label": "Data handling constraints",
+          "source": "AutomationRequest.constraintsJson",
+          "type": "JsonArray",
+          "required": true
+        },
+        {
+          "field": "governance.riskLevel",
+          "label": "Risk level",
+          "source": "GovernanceAssessment.riskLevel",
+          "type": "Choice",
+          "required": true
+        },
+        {
+          "field": "governance.policySummary",
+          "label": "Policy summary",
+          "source": "GovernanceAssessment.policySummary",
+          "type": "LongText",
+          "required": true
+        },
+        {
+          "field": "governance.blockers",
+          "label": "Blockers",
+          "source": "GovernanceAssessment.blockersJson",
+          "type": "JsonArray",
+          "required": true
+        }
+      ],
+      "decisionFormFields": [
+        {
+          "field": "decision",
+          "label": "Decision",
+          "source": "approver",
+          "type": "Choice",
+          "required": true,
+          "allowedValues": ["approved", "rejected", "changes_requested"]
+        },
+        {
+          "field": "decisionNotes",
+          "label": "Decision notes",
+          "source": "approver",
+          "type": "LongText",
+          "required": "required for rejected or changes_requested"
+        },
+        {
+          "field": "approvedPermissions",
+          "label": "Approved permissions",
+          "source": "approver",
+          "type": "JsonArray",
+          "required": "required for approved"
+        },
+        {
+          "field": "dataHandlingNotes",
+          "label": "Data handling notes",
+          "source": "approver",
+          "type": "LongText",
+          "required": false
+        }
+      ],
+      "outcomes": [
+        {
+          "decision": "approved",
+          "approvalTaskStatus": "approved",
+          "automationRequestStatus": "approved_for_build",
+          "maestroRoute": "continue_to_build_manifest",
+          "nextUiPathAsset": "Build Planner Agent"
+        },
+        {
+          "decision": "rejected",
+          "approvalTaskStatus": "rejected",
+          "automationRequestStatus": "blocked",
+          "maestroRoute": "blocked_closeout",
+          "nextUiPathAsset": "Maestro boundary/error handling"
+        },
+        {
+          "decision": "changes_requested",
+          "approvalTaskStatus": "changes_requested",
+          "automationRequestStatus": "clarifying",
+          "maestroRoute": "return_to_clarification",
+          "nextUiPathAsset": "Requirements Agent"
+        },
+        {
+          "decision": "cancelled",
+          "approvalTaskStatus": "cancelled",
+          "automationRequestStatus": "cancelled",
+          "maestroRoute": "cancelled_closeout",
+          "nextUiPathAsset": "Maestro cancellation closeout"
+        },
+        {
+          "decision": "expired",
+          "approvalTaskStatus": "expired",
+          "automationRequestStatus": "blocked",
+          "maestroRoute": "timer_boundary_escalation",
+          "nextUiPathAsset": "Maestro exception handling"
+        }
+      ],
+      "requiredDecisionPayload": {
+        "type": "object",
+        "required": ["approvalId", "approvalType", "requestId", "decision", "decidedBy", "decidedAt"],
+        "conditionalRequirements": [
+          "decisionNotes is required when decision is rejected or changes_requested",
+          "approvedPermissions is required and must be non-empty when decision is approved"
+        ],
+        "properties": {
+          "approvalId": "string",
+          "approvalType": "scope",
+          "requestId": "string",
+          "decision": "approved | rejected | changes_requested | cancelled | expired",
+          "decisionNotes": "string",
+          "approvedPermissions": "string[]",
+          "dataHandlingNotes": "string",
+          "decidedBy": "Action Center display name or user id",
+          "decidedAt": "ISO-8601 timestamp",
+          "actionCenterTaskId": "string"
+        }
+      },
+      "dataServiceMirror": [
+        {
+          "entity": "ApprovalTask",
+          "field": "approvalId",
+          "write": "create",
+          "value": "payload.approvalId"
+        },
+        {
+          "entity": "ApprovalTask",
+          "field": "approvalType",
+          "write": "create",
+          "value": "scope"
+        },
+        {
+          "entity": "ApprovalTask",
+          "field": "actionCenterTaskId",
+          "write": "update-after-live-create",
+          "value": "Action Center task id"
+        },
+        {
+          "entity": "ApprovalTask",
+          "field": "status",
+          "write": "create-and-update",
+          "value": "pending, then final approvalTaskStatus"
+        },
+        {
+          "entity": "ApprovalTask",
+          "field": "payloadJson",
+          "write": "create",
+          "value": "full sampleTaskPayload JSON"
+        },
+        {
+          "entity": "ApprovalTask",
+          "field": "decisionJson",
+          "write": "update-on-completion",
+          "value": "requiredDecisionPayload JSON"
+        },
+        {
+          "entity": "AutomationRequest",
+          "field": "currentApprovalId",
+          "write": "update-on-create",
+          "value": "payload.approvalId"
+        },
+        {
+          "entity": "AutomationRequest",
+          "field": "status",
+          "write": "update-on-create-and-completion",
+          "value": "awaiting_scope_approval on create, then mapped automationRequestStatus"
+        },
+        {
+          "entity": "AuditEvent",
+          "field": "action",
+          "write": "append",
+          "value": "scope_approval_requested or scope_approval_decided"
+        }
+      ],
+      "maestroTransitions": [
+        {
+          "from": "awaiting_scope_approval",
+          "on": "task_created",
+          "to": "awaiting_scope_approval",
+          "auditAction": "scope_approval_requested"
+        },
+        {
+          "from": "awaiting_scope_approval",
+          "on": "approved",
+          "to": "approved_for_build",
+          "auditAction": "scope_approval_decided"
+        },
+        {
+          "from": "awaiting_scope_approval",
+          "on": "changes_requested",
+          "to": "clarifying",
+          "auditAction": "scope_approval_decided"
+        },
+        {
+          "from": "awaiting_scope_approval",
+          "on": "rejected",
+          "to": "blocked",
+          "auditAction": "scope_approval_decided"
+        },
+        {
+          "from": "awaiting_scope_approval",
+          "on": "cancelled",
+          "to": "cancelled",
+          "auditAction": "request_cancelled"
+        },
+        {
+          "from": "awaiting_scope_approval",
+          "on": "expired",
+          "to": "blocked",
+          "auditAction": "request_blocked"
+        }
+      ],
+      "auditEvents": [
+        "scope_approval_requested",
+        "scope_approval_decided"
+      ],
+      "sampleTaskPayload": {
+        "approvalId": "appr_req_123_scope_001",
+        "approvalType": "scope",
+        "requestId": "req_123",
+        "title": "Agent Factory Scope Approval",
+        "request": {
+          "title": "Build customer health dashboard",
+          "requesterEmail": "requester@example.com",
+          "businessGoal": "Give customer success leaders a renewal-risk cockpit.",
+          "targetAudience": "Customer success leaders",
+          "sourceSystems": ["CRM", "Product analytics"],
+          "constraints": ["No personal contact fields in generated app"]
+        },
+        "structuredSpec": {
+          "objective": "Build a Customer360 dashboard for renewal-risk review.",
+          "requiredCapabilities": ["risk scoring", "account summary", "refresh timestamp"],
+          "dataSources": ["CRM", "Product analytics"],
+          "acceptanceCriteria": ["Dashboard builds", "Risk accounts are visible"]
+        },
+        "governance": {
+          "riskLevel": "medium",
+          "requiresHumanApproval": true,
+          "requiredPermissions": ["read:crm_accounts", "read:product_usage"],
+          "blockers": [],
+          "policySummary": "Customer account and aggregate usage data are allowed; direct personal contact fields are excluded."
+        },
+        "decisionOptions": ["approved", "rejected", "changes_requested"]
+      },
+      "sampleDecisionPayload": {
+        "approvalId": "appr_req_123_scope_001",
+        "approvalType": "scope",
+        "requestId": "req_123",
+        "decision": "approved",
+        "decisionNotes": "Scope and data access are approved for sandbox build.",
+        "approvedPermissions": ["read:crm_accounts", "read:product_usage"],
+        "dataHandlingNotes": "Keep contact fields excluded from generated outputs.",
+        "decidedBy": "Action Center approver",
+        "decidedAt": "2026-06-29T00:00:00.000Z",
+        "actionCenterTaskId": "task_123"
+      }
+    },
+    {
+      "approvalType": "release",
+      "taskTitle": "Agent Factory Release Approval",
+      "taskPurpose": "Approve sandbox deployment after build output and quality gate evidence are available.",
+      "createWhen": [
+        "BuildRun.status indicates the build passed",
+        "TestRun.qualityGateDecision is passed or waived",
+        "DeploymentRecord.status is not deployed for the same buildRunId",
+        "The release has not already received an approved release decision for the same buildRunId"
+      ],
+      "reviewerVisibleFields": [
+        {
+          "field": "request.title",
+          "label": "Request title",
+          "source": "AutomationRequest.title",
+          "type": "Text",
+          "required": true
+        },
+        {
+          "field": "build.buildRunId",
+          "label": "Build run",
+          "source": "BuildRun.buildRunId",
+          "type": "Text",
+          "required": true
+        },
+        {
+          "field": "build.branchName",
+          "label": "Branch",
+          "source": "BuildRun.branchName",
+          "type": "Text",
+          "required": true
+        },
+        {
+          "field": "build.outputApp",
+          "label": "Generated app",
+          "source": "BuildManifest.outputApp",
+          "type": "Text",
+          "required": true
+        },
+        {
+          "field": "build.logsUrl",
+          "label": "Build logs",
+          "source": "BuildRun.logsUrl",
+          "type": "Url",
+          "required": false
+        },
+        {
+          "field": "build.pullRequestUrl",
+          "label": "Pull request",
+          "source": "BuildRun.pullRequestUrl",
+          "type": "Url",
+          "required": false
+        },
+        {
+          "field": "quality.testRunId",
+          "label": "Test run",
+          "source": "TestRun.testRunId",
+          "type": "Text",
+          "required": true
+        },
+        {
+          "field": "quality.smokeResult",
+          "label": "Smoke result",
+          "source": "TestRun.smokeResult",
+          "type": "Choice",
+          "required": true
+        },
+        {
+          "field": "quality.securityReviewResult",
+          "label": "Security review",
+          "source": "TestRun.securityReviewResult",
+          "type": "Choice",
+          "required": true
+        },
+        {
+          "field": "quality.accessibilityResult",
+          "label": "Accessibility result",
+          "source": "TestRun.accessibilityResult",
+          "type": "Choice",
+          "required": true
+        },
+        {
+          "field": "quality.qualityGateDecision",
+          "label": "Quality gate decision",
+          "source": "TestRun.qualityGateDecision",
+          "type": "Choice",
+          "required": true
+        },
+        {
+          "field": "deployment.environment",
+          "label": "Deployment environment",
+          "source": "DeploymentRecord.environment",
+          "type": "Text",
+          "required": true
+        },
+        {
+          "field": "deployment.rollbackNotes",
+          "label": "Rollback notes",
+          "source": "DeploymentRecord.rollbackNotes",
+          "type": "LongText",
+          "required": true
+        }
+      ],
+      "decisionFormFields": [
+        {
+          "field": "decision",
+          "label": "Decision",
+          "source": "approver",
+          "type": "Choice",
+          "required": true,
+          "allowedValues": ["approved", "rejected", "changes_requested"]
+        },
+        {
+          "field": "decisionNotes",
+          "label": "Decision notes",
+          "source": "approver",
+          "type": "LongText",
+          "required": "required for rejected, changes_requested, or waived gates"
+        },
+        {
+          "field": "approvedDeploymentTarget",
+          "label": "Approved deployment target",
+          "source": "approver",
+          "type": "Text",
+          "required": "required for approved"
+        },
+        {
+          "field": "waiverReason",
+          "label": "Waiver reason",
+          "source": "approver",
+          "type": "LongText",
+          "required": "required when any quality gate is waived"
+        }
+      ],
+      "outcomes": [
+        {
+          "decision": "approved",
+          "approvalTaskStatus": "approved",
+          "automationRequestStatus": "deploying",
+          "maestroRoute": "call_AgentFactory_StartDeployment",
+          "nextUiPathAsset": "API Workflow and Orchestrator deployment route"
+        },
+        {
+          "decision": "rejected",
+          "approvalTaskStatus": "rejected",
+          "automationRequestStatus": "blocked",
+          "maestroRoute": "blocked_closeout",
+          "nextUiPathAsset": "Maestro boundary/error handling"
+        },
+        {
+          "decision": "changes_requested",
+          "approvalTaskStatus": "changes_requested",
+          "automationRequestStatus": "approved_for_build",
+          "maestroRoute": "return_to_build_planning_or_execution",
+          "nextUiPathAsset": "Build Planner Agent or Build Worker"
+        },
+        {
+          "decision": "cancelled",
+          "approvalTaskStatus": "cancelled",
+          "automationRequestStatus": "cancelled",
+          "maestroRoute": "cancelled_closeout",
+          "nextUiPathAsset": "Maestro cancellation closeout"
+        },
+        {
+          "decision": "expired",
+          "approvalTaskStatus": "expired",
+          "automationRequestStatus": "blocked",
+          "maestroRoute": "timer_boundary_escalation",
+          "nextUiPathAsset": "Maestro exception handling"
+        }
+      ],
+      "requiredDecisionPayload": {
+        "type": "object",
+        "required": ["approvalId", "approvalType", "requestId", "buildRunId", "decision", "decidedBy", "decidedAt"],
+        "conditionalRequirements": [
+          "approvedDeploymentTarget is required when decision is approved",
+          "decisionNotes is required when decision is rejected, changes_requested, or any gate is waived",
+          "waiverReason is required when qualityGateDecision is waived or an individual gate is waived"
+        ],
+        "properties": {
+          "approvalId": "string",
+          "approvalType": "release",
+          "requestId": "string",
+          "buildRunId": "string",
+          "decision": "approved | rejected | changes_requested | cancelled | expired",
+          "decisionNotes": "string",
+          "approvedDeploymentTarget": "string",
+          "waiverReason": "string",
+          "decidedBy": "Action Center display name or user id",
+          "decidedAt": "ISO-8601 timestamp",
+          "actionCenterTaskId": "string"
+        }
+      },
+      "dataServiceMirror": [
+        {
+          "entity": "ApprovalTask",
+          "field": "approvalId",
+          "write": "create",
+          "value": "payload.approvalId"
+        },
+        {
+          "entity": "ApprovalTask",
+          "field": "approvalType",
+          "write": "create",
+          "value": "release"
+        },
+        {
+          "entity": "ApprovalTask",
+          "field": "actionCenterTaskId",
+          "write": "update-after-live-create",
+          "value": "Action Center task id"
+        },
+        {
+          "entity": "ApprovalTask",
+          "field": "status",
+          "write": "create-and-update",
+          "value": "pending, then final approvalTaskStatus"
+        },
+        {
+          "entity": "ApprovalTask",
+          "field": "payloadJson",
+          "write": "create",
+          "value": "full sampleTaskPayload JSON"
+        },
+        {
+          "entity": "ApprovalTask",
+          "field": "decisionJson",
+          "write": "update-on-completion",
+          "value": "requiredDecisionPayload JSON"
+        },
+        {
+          "entity": "AutomationRequest",
+          "field": "currentApprovalId",
+          "write": "update-on-create",
+          "value": "payload.approvalId"
+        },
+        {
+          "entity": "AutomationRequest",
+          "field": "status",
+          "write": "update-on-create-and-completion",
+          "value": "awaiting_release_approval on create, then mapped automationRequestStatus"
+        },
+        {
+          "entity": "AuditEvent",
+          "field": "action",
+          "write": "append",
+          "value": "release_approval_requested or release_approval_decided"
+        }
+      ],
+      "maestroTransitions": [
+        {
+          "from": "awaiting_release_approval",
+          "on": "task_created",
+          "to": "awaiting_release_approval",
+          "auditAction": "release_approval_requested"
+        },
+        {
+          "from": "awaiting_release_approval",
+          "on": "approved",
+          "to": "deploying",
+          "auditAction": "release_approval_decided"
+        },
+        {
+          "from": "deploying",
+          "on": "deployment_completed",
+          "to": "deployed",
+          "auditAction": "deployment_completed"
+        },
+        {
+          "from": "awaiting_release_approval",
+          "on": "changes_requested",
+          "to": "approved_for_build",
+          "auditAction": "release_approval_decided"
+        },
+        {
+          "from": "awaiting_release_approval",
+          "on": "rejected",
+          "to": "blocked",
+          "auditAction": "release_approval_decided"
+        },
+        {
+          "from": "awaiting_release_approval",
+          "on": "cancelled",
+          "to": "cancelled",
+          "auditAction": "request_cancelled"
+        },
+        {
+          "from": "awaiting_release_approval",
+          "on": "expired",
+          "to": "blocked",
+          "auditAction": "request_blocked"
+        }
+      ],
+      "auditEvents": [
+        "release_approval_requested",
+        "release_approval_decided",
+        "deployment_started",
+        "deployment_completed"
+      ],
+      "sampleTaskPayload": {
+        "approvalId": "appr_req_123_release_001",
+        "approvalType": "release",
+        "requestId": "req_123",
+        "title": "Agent Factory Release Approval",
+        "build": {
+          "buildRunId": "build_req_123_001",
+          "branchName": "factory/req-123",
+          "outputApp": "apps/customer360-template",
+          "logsUrl": "https://example.invalid/build-log",
+          "pullRequestUrl": "https://github.com/AbhinavGupta707/Ui-Path-Agent-Factory/pull/123"
+        },
+        "qualityGate": {
+          "testRunId": "test_req_123_001",
+          "smokeResult": "passed",
+          "securityReviewResult": "passed",
+          "accessibilityResult": "passed",
+          "qualityGateDecision": "passed"
+        },
+        "deployment": {
+          "environment": "sandbox",
+          "target": "Vercel or sandbox web host",
+          "rollbackNotes": "Disable the deployment alias and retain the pull request for audit."
+        },
+        "decisionOptions": ["approved", "rejected", "changes_requested"]
+      },
+      "sampleDecisionPayload": {
+        "approvalId": "appr_req_123_release_001",
+        "approvalType": "release",
+        "requestId": "req_123",
+        "buildRunId": "build_req_123_001",
+        "decision": "approved",
+        "decisionNotes": "Quality gates passed and sandbox release is approved.",
+        "approvedDeploymentTarget": "sandbox",
+        "waiverReason": "",
+        "decidedBy": "Action Center approver",
+        "decidedAt": "2026-06-29T00:00:00.000Z",
+        "actionCenterTaskId": "task_456"
+      }
+    }
+  ],
+  "liveCompletionCommandTemplates": [
+    {
+      "approvalType": "scope",
+      "requiresExplicitApproval": true,
+      "command": "uip tasks complete <task-id> --type FormTask --folder-id 7986306 --action Approve --data '{\"decision\":\"approved\",\"decisionNotes\":\"Scope approved\",\"approvedPermissions\":[\"read:crm_accounts\"]}' --output json"
+    },
+    {
+      "approvalType": "release",
+      "requiresExplicitApproval": true,
+      "command": "uip tasks complete <task-id> --type FormTask --folder-id 7986306 --action Approve --data '{\"decision\":\"approved\",\"approvedDeploymentTarget\":\"sandbox\",\"decisionNotes\":\"Release approved\"}' --output json"
+    }
+  ]
+}

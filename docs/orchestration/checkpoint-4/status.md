@@ -8,7 +8,7 @@ Worker IDs are filled in by the orchestrator after thread creation.
 |---|---|---|---|---|---|
 | Maestro And Data Service | pending | pending | pending | preparing | Owns Data Service schema and Maestro BPMN/process assets |
 | Agents And API Workflow | pending | pending | pending | preparing | Owns Agent Builder contracts and API Workflow assets |
-| Apps And Action Center | pending | pending | pending | preparing | Owns UiPath Apps companion and Action Center approval contracts |
+| Apps And Action Center | pending | pending | `/Users/abhinavgupta/.codex/worktrees/a8e9/Agent Factory` | completed | Created proposal-only `uipath-ready` Action Center and UiPath Apps contracts; no live assets mutated |
 | Test Cloud And Quality Gates | pending | pending | pending | preparing | Owns Test Manager/Test Cloud quality-gate assets |
 
 ## Integration Log
@@ -19,6 +19,9 @@ Worker IDs are filled in by the orchestrator after thread creation.
 - Integration Service has no configured connections. API Workflow work must avoid fake connection IDs and must not use vendor connector placeholders without explicit approval.
 - Data Service has no native entities yet. Entity creation must follow the schema proposal approval rule before live mutation.
 - Test Manager has no projects yet. Test Cloud lane should create/import if permitted, otherwise keep the fallback clearly labeled `Test Cloud-ready`.
+- Apps And Action Center lane re-ran read-only UiPath probes for login, folder, tasks, and coded app discovery. Action Center task list returned no tasks; `codedapp` is installed but has no `list` subcommand in this CLI surface.
+- Apps And Action Center lane found that worker-prompt skill paths under `.agents/skills/...` are absent from this worktree, so it used the checked-in UiPath docs and CLI help as the source of truth.
+- Apps And Action Center lane produced import-ready, proposal-only contracts under `uipath/action-center` and `uipath/apps`. No Action Center tasks, Coded Apps, Studio Web pushes, publishes, or deployments were created.
 
 ## Launch Baseline
 
@@ -58,6 +61,15 @@ Worker IDs are filled in by the orchestrator after thread creation.
 ## Checks Run
 
 - Pre-launch `npm run smoke` passed across workspace builds and tests.
+- Apps And Action Center lane: `uip login status --output json` passed for `galacticus / DefaultTenant`.
+- Apps And Action Center lane: `uip or folders get AgentFactoryDemo --output json` passed with folder id `7986306` and key `cba41e19-47cc-4a0a-bf73-de88b60a61be`.
+- Apps And Action Center lane: `uip tasks list --folder-id 7986306 --limit 5 --output json` passed with no tasks.
+- Apps And Action Center lane: `uip codedapp --help --output json` passed and exposed `init`, `push`, `pull`, `pack`, `publish`, and `deploy`.
+- Apps And Action Center lane: `uip codedapp list --help --output json` returned an expected validation error because `list` is not an installed subcommand.
+- Apps And Action Center lane: `node uipath/action-center/validate-approval-contracts.mjs` passed.
+- Apps And Action Center lane: `node uipath/apps/validate-companion-app.mjs` passed.
+- Apps And Action Center lane: `git diff --check` passed.
+- Apps And Action Center lane: `npm run smoke` initially found missing local npm dependencies (`tsc`/`vite` not installed); after `npm install`, `npm run smoke` passed across all workspace builds and tests.
 
 ## Manual Smoke Target
 

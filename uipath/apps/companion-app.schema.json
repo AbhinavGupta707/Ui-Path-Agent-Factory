@@ -1,0 +1,35 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://agent-factory.local/uipath/apps/companion-app.schema.json",
+  "title": "Agent Factory UiPath Apps companion contract",
+  "type": "object",
+  "required": ["status", "platformMode", "environment", "app", "screens", "dataBindings", "setupPlan"],
+  "properties": {
+    "status": {
+      "const": "proposal-only"
+    },
+    "platformMode": {
+      "const": "uipath-ready"
+    },
+    "environment": {
+      "type": "object",
+      "required": ["organization", "tenant", "folderName", "folderKey", "folderId"]
+    },
+    "app": {
+      "type": "object",
+      "required": ["name", "type", "pathName", "role", "viteBase"]
+    },
+    "screens": {
+      "type": "array",
+      "minItems": 3
+    },
+    "dataBindings": {
+      "type": "array",
+      "minItems": 5
+    },
+    "setupPlan": {
+      "type": "array",
+      "minItems": 5
+    }
+  }
+}

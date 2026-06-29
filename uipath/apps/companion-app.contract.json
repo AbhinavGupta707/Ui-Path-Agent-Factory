@@ -1,0 +1,332 @@
+{
+  "$schema": "./companion-app.schema.json",
+  "status": "proposal-only",
+  "platformMode": "uipath-ready",
+  "environment": {
+    "organization": "galacticus",
+    "tenant": "DefaultTenant",
+    "folderName": "AgentFactoryDemo",
+    "folderKey": "cba41e19-47cc-4a0a-bf73-de88b60a61be",
+    "folderId": 7986306
+  },
+  "lastSafeDiscovery": {
+    "checkedAtUtc": "2026-06-29T00:40:00Z",
+    "codedAppHelpCommand": "uip codedapp --help --output json",
+    "codedAppSurface": "init, push, pull, pack, publish, deploy",
+    "codedAppListCommand": "uip codedapp list --help --output json",
+    "codedAppListResult": "not available in installed CLI surface",
+    "folderCommand": "uip or folders get AgentFactoryDemo --output json",
+    "folderResult": "id and key matched"
+  },
+  "app": {
+    "name": "Agent Factory Intake Companion",
+    "packageName": "AgentFactoryIntakeCompanion",
+    "type": "Coded Web App",
+    "pathName": "agent-factory-intake-companion",
+    "role": "Official UiPath companion for intake and status mirroring; the custom Factory Console remains the polished primary demo surface.",
+    "viteBase": "./",
+    "targetSourceDirectory": "uipath/apps/agent-factory-intake-companion",
+    "packageOutputDirectory": "/tmp/agent-factory-uipath-packages",
+    "liveMutationPolicy": "Do not publish, deploy, push to Studio Web, or overwrite an existing app without explicit approval."
+  },
+  "screens": [
+    {
+      "id": "intake",
+      "name": "Intake",
+      "route": "/",
+      "purpose": "Submit or mirror one Customer360 automation request from inside UiPath.",
+      "fields": [
+        {
+          "field": "title",
+          "label": "Title",
+          "type": "Text",
+          "required": true,
+          "writesTo": "AutomationRequest.title"
+        },
+        {
+          "field": "requesterEmail",
+          "label": "Requester email",
+          "type": "Email",
+          "required": true,
+          "writesTo": "AutomationRequest.requesterEmail"
+        },
+        {
+          "field": "businessGoal",
+          "label": "Business goal",
+          "type": "LongText",
+          "required": true,
+          "writesTo": "AutomationRequest.businessGoal"
+        },
+        {
+          "field": "targetAudience",
+          "label": "Target audience",
+          "type": "Text",
+          "required": true,
+          "writesTo": "AutomationRequest.targetAudience"
+        },
+        {
+          "field": "dueDate",
+          "label": "Due date",
+          "type": "Date",
+          "required": false,
+          "writesTo": "AutomationRequest.dueDate"
+        },
+        {
+          "field": "sourceSystems",
+          "label": "Source systems",
+          "type": "TagList",
+          "required": true,
+          "writesTo": "AutomationRequest.sourceSystemsJson"
+        },
+        {
+          "field": "constraints",
+          "label": "Constraints",
+          "type": "TagList",
+          "required": false,
+          "writesTo": "AutomationRequest.constraintsJson"
+        }
+      ],
+      "actions": [
+        {
+          "id": "submitIntake",
+          "label": "Submit intake",
+          "safeModeBehavior": "Create or mirror the Data Service AutomationRequest record, then let Maestro continue orchestration.",
+          "preferredUiPathPath": "Data Service create AutomationRequest and start the Maestro process once the Maestro/Data Service lane has created live assets.",
+          "fallbackPath": "Call the Factory API intake endpoint through an API Workflow when the hosted API path is approved.",
+          "writes": [
+            "AutomationRequest.status = clarifying",
+            "AutomationRequest.platformMode = uipath-ready until live UiPath execution starts",
+            "AuditEvent.action = intake_created"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "requestStatus",
+      "name": "Request Status",
+      "route": "/requests/:requestId",
+      "purpose": "Mirror the current lifecycle state and evidence for an existing AutomationRequest.",
+      "displayFields": [
+        {
+          "field": "request.title",
+          "label": "Request title",
+          "source": "AutomationRequest.title"
+        },
+        {
+          "field": "request.status",
+          "label": "Current status",
+          "source": "AutomationRequest.status"
+        },
+        {
+          "field": "request.platformMode",
+          "label": "Platform mode",
+          "source": "AutomationRequest.platformMode"
+        },
+        {
+          "field": "approval.status",
+          "label": "Latest approval",
+          "source": "ApprovalTask.status filtered by currentApprovalId"
+        },
+        {
+          "field": "build.status",
+          "label": "Latest build",
+          "source": "BuildRun.status filtered by currentBuildRunId"
+        },
+        {
+          "field": "quality.qualityGateDecision",
+          "label": "Quality gate",
+          "source": "TestRun.qualityGateDecision filtered by current buildRunId"
+        },
+        {
+          "field": "deployment.deploymentUrl",
+          "label": "Deployment URL",
+          "source": "DeploymentRecord.deploymentUrl filtered by requestId"
+        },
+        {
+          "field": "audit.summary",
+          "label": "Audit timeline",
+          "source": "AuditEvent ordered by createdAt desc"
+        }
+      ],
+      "actions": [
+        {
+          "id": "refreshStatus",
+          "label": "Refresh",
+          "reads": [
+            "AutomationRequest",
+            "ApprovalTask",
+            "BuildRun",
+            "TestRun",
+            "DeploymentRecord",
+            "AuditEvent"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "clarifications",
+      "name": "Clarifications",
+      "route": "/requests/:requestId/clarifications",
+      "purpose": "Collect missing scope details when Maestro routes the request back to clarification.",
+      "displayFields": [
+        {
+          "field": "questions",
+          "label": "Open questions",
+          "source": "StructuredSpec.clarificationQuestionsJson"
+        },
+        {
+          "field": "answers",
+          "label": "Answers",
+          "source": "StructuredSpec.clarificationAnswersJson"
+        }
+      ],
+      "actions": [
+        {
+          "id": "saveClarifications",
+          "label": "Save clarifications",
+          "writes": [
+            "StructuredSpec.clarificationAnswersJson",
+            "AuditEvent.action = clarification_answered"
+          ],
+          "nextUiPathStep": "Notify Maestro to return to the Requirements Agent"
+        }
+      ]
+    },
+    {
+      "id": "approvals",
+      "name": "Approval Links",
+      "route": "/requests/:requestId/approvals",
+      "purpose": "Show Action Center task references without completing tasks from the companion app.",
+      "displayFields": [
+        {
+          "field": "scopeApproval",
+          "label": "Scope approval",
+          "source": "ApprovalTask where approvalType = scope"
+        },
+        {
+          "field": "releaseApproval",
+          "label": "Release approval",
+          "source": "ApprovalTask where approvalType = release"
+        },
+        {
+          "field": "actionCenterTaskId",
+          "label": "Action Center task id",
+          "source": "ApprovalTask.actionCenterTaskId"
+        }
+      ],
+      "actions": [
+        {
+          "id": "openActionCenter",
+          "label": "Open task",
+          "behavior": "Open the Action Center task URL when a live task id exists; do not complete tasks from this companion view."
+        }
+      ]
+    }
+  ],
+  "dataBindings": [
+    {
+      "entity": "AutomationRequest",
+      "read": true,
+      "write": true,
+      "key": "requestId"
+    },
+    {
+      "entity": "StructuredSpec",
+      "read": true,
+      "write": true,
+      "key": "requestId"
+    },
+    {
+      "entity": "ApprovalTask",
+      "read": true,
+      "write": false,
+      "key": "requestId"
+    },
+    {
+      "entity": "BuildRun",
+      "read": true,
+      "write": false,
+      "key": "requestId"
+    },
+    {
+      "entity": "TestRun",
+      "read": true,
+      "write": false,
+      "key": "requestId"
+    },
+    {
+      "entity": "DeploymentRecord",
+      "read": true,
+      "write": false,
+      "key": "requestId"
+    },
+    {
+      "entity": "AuditEvent",
+      "read": true,
+      "write": true,
+      "key": "requestId"
+    }
+  ],
+  "integrationContracts": {
+    "maestroProcess": "Governed Agentic Automation Factory - Customer360 Build",
+    "apiWorkflows": [
+      "AgentFactory_StartBuildWorker",
+      "AgentFactory_PostStatusUpdate",
+      "AgentFactory_StartDeployment"
+    ],
+    "approvalContracts": "uipath/action-center/approval-contracts.json",
+    "dataServiceSchema": "uipath/data-service/schema.json",
+    "factoryConsoleRole": "Primary polished demo UI and local status surface"
+  },
+  "setupPlan": [
+    {
+      "step": "Initialize local coded app starter",
+      "workingDirectory": ".",
+      "command": "uip codedapp init uipath/apps/agent-factory-intake-companion --template dashboard",
+      "mutatesLiveUiPath": false,
+      "notes": "Use --force only when explicitly replacing a local scaffold."
+    },
+    {
+      "step": "Set Vite base",
+      "workingDirectory": "uipath/apps/agent-factory-intake-companion",
+      "command": "set vite.config.* base to './'",
+      "mutatesLiveUiPath": false,
+      "notes": "Coded App packages must use relative asset paths."
+    },
+    {
+      "step": "Install and build locally",
+      "workingDirectory": "uipath/apps/agent-factory-intake-companion",
+      "command": "npm install && npm run build",
+      "mutatesLiveUiPath": false,
+      "notes": "Run the build before pack, publish, or deploy."
+    },
+    {
+      "step": "Pack to a temp directory",
+      "workingDirectory": "uipath/apps/agent-factory-intake-companion",
+      "command": "uip codedapp pack ./dist --name \"AgentFactoryIntakeCompanion\" --version \"0.1.0\" --output /tmp/agent-factory-uipath-packages --description \"Governed Agentic Automation Factory UiPath companion\" --content-type webapp",
+      "mutatesLiveUiPath": false,
+      "notes": "Using /tmp avoids committing generated .uipath package output."
+    },
+    {
+      "step": "Publish package",
+      "workingDirectory": "uipath/apps/agent-factory-intake-companion",
+      "command": "uip codedapp publish --name \"AgentFactoryIntakeCompanion\" --version \"0.1.0\" --type Web --uipath-dir /tmp/agent-factory-uipath-packages --output json",
+      "mutatesLiveUiPath": true,
+      "requiresExplicitApproval": true
+    },
+    {
+      "step": "Deploy to AgentFactoryDemo folder",
+      "workingDirectory": "uipath/apps/agent-factory-intake-companion",
+      "command": "uip codedapp deploy --name \"AgentFactoryIntakeCompanion\" --path-name agent-factory-intake-companion --version \"0.1.0\" --folder-key cba41e19-47cc-4a0a-bf73-de88b60a61be --tags governance,agent-factory --output json",
+      "mutatesLiveUiPath": true,
+      "requiresExplicitApproval": true
+    }
+  ],
+  "acceptanceCriteria": [
+    "The app can submit or mirror one Customer360 intake.",
+    "The app can show status for an existing AutomationRequest.",
+    "The app can display current scope and release approval task references.",
+    "The app does not store credentials, cookies, access tokens, or private keys.",
+    "The Factory Console remains the primary demo surface."
+  ]
+}
