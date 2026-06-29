@@ -1,0 +1,32 @@
+{
+  "DocVersion": "1.0.0",
+  "StudioMinVersion": "2025.10.0",
+  "SolutionId": "8f876be2-7685-49b3-a2a0-aca9706b0747",
+  "Projects": [
+    {
+      "Type": "Agent",
+      "ProjectRelativePath": "RequirementsAgent/project.uiproj",
+      "Id": "4b97fae5-01db-454d-86fb-995cd3e3a40a"
+    },
+    {
+      "Type": "Agent",
+      "ProjectRelativePath": "ClarificationAgent/project.uiproj",
+      "Id": "95237512-d20c-4840-bafb-e98dd987f95e"
+    },
+    {
+      "Type": "Agent",
+      "ProjectRelativePath": "GovernanceAgent/project.uiproj",
+      "Id": "e7a32ebe-cd47-4c5b-b4f5-88b2049eaead"
+    },
+    {
+      "Type": "Agent",
+      "ProjectRelativePath": "BuildPlannerAgent/project.uiproj",
+      "Id": "69e6dc40-8d2b-4eb7-8af0-3875f354a658"
+    },
+    {
+      "Type": "Agent",
+      "ProjectRelativePath": "TestSummaryAgent/project.uiproj",
+      "Id": "c30cba64-087f-4d92-8c8d-4ea569ebd732"
+    }
+  ]
+}

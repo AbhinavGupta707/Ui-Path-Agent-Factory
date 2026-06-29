@@ -1,0 +1,155 @@
+{
+  "version": "1.1.0",
+  "settings": {
+    "model": "gpt-4o-2024-11-20",
+    "maxTokens": 16384,
+    "temperature": 0,
+    "engine": "basic-v2",
+    "maxIterations": 8,
+    "mode": "standard"
+  },
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "requestId": {
+        "type": "string",
+        "description": "AutomationRequest.request_id correlation key."
+      },
+      "platformContextJson": {
+        "type": "string",
+        "description": "JSON string containing verified UiPath organization, tenant, folder, folder key, and folder id."
+      },
+      "buildRunJson": {
+        "type": "string",
+        "description": "BuildRun or BuildWorkerRun as a JSON string."
+      },
+      "testRunJson": {
+        "type": "string",
+        "description": "TestRun/Test Cloud evidence as a JSON string. Use {} when unavailable."
+      },
+      "workerLogsSummary": {
+        "type": "string",
+        "description": "Redacted worker log summary."
+      }
+    },
+    "required": [
+      "requestId",
+      "platformContextJson",
+      "buildRunJson",
+      "testRunJson",
+      "workerLogsSummary"
+    ]
+  },
+  "outputSchema": {
+    "type": "object",
+    "properties": {
+      "requestId": {
+        "type": "string"
+      },
+      "buildRunId": {
+        "type": "string"
+      },
+      "testRunId": {
+        "type": "string"
+      },
+      "qualityGateDecision": {
+        "type": "string",
+        "description": "passed, failed, blocked, or waiver_requested."
+      },
+      "summary": {
+        "type": "string"
+      },
+      "checksJson": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      },
+      "releaseRisksJson": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      },
+      "waiversRequestedJson": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      },
+      "nextStatus": {
+        "type": "string",
+        "description": "awaiting_release_approval, tests_failed, or blocked."
+      },
+      "auditSummary": {
+        "type": "string"
+      }
+    }
+  },
+  "metadata": {
+    "storageVersion": "50.0.0",
+    "isConversational": false,
+    "showProjectCreationExperience": false,
+    "targetRuntime": "pythonAgent"
+  },
+  "type": "lowCode",
+  "messages": [
+    {
+      "role": "system",
+      "content": "You are the Test Summary Agent for the Governed Agentic Automation Factory.\nReturn only a JSON object matching the configured output schema. Do not use markdown.\nSummarize Customer360 build and quality evidence for release approval. Do not hide failed, skipped, blocked, or waived checks.\nPassed gates route to awaiting_release_approval. Failed gates route to tests_failed. Missing critical evidence routes to blocked unless a waiver is explicit.\nNever include raw PII, secrets, bearer tokens, credentials, or full logs. Keep summaries audit-friendly.",
+      "contentTokens": [
+        {
+          "type": "simpleText",
+          "rawString": "You are the Test Summary Agent for the Governed Agentic Automation Factory.\nReturn only a JSON object matching the configured output schema. Do not use markdown.\nSummarize Customer360 build and quality evidence for release approval. Do not hide failed, skipped, blocked, or waived checks.\nPassed gates route to awaiting_release_approval. Failed gates route to tests_failed. Missing critical evidence routes to blocked unless a waiver is explicit.\nNever include raw PII, secrets, bearer tokens, credentials, or full logs. Keep summaries audit-friendly."
+        }
+      ]
+    },
+    {
+      "role": "user",
+      "content": "requestId: {{input.requestId}}\nplatformContextJson: {{input.platformContextJson}}\nbuildRunJson: {{input.buildRunJson}}\ntestRunJson: {{input.testRunJson}}\nworkerLogsSummary: {{input.workerLogsSummary}}",
+      "contentTokens": [
+        {
+          "type": "simpleText",
+          "rawString": "requestId: "
+        },
+        {
+          "type": "variable",
+          "rawString": "input.requestId"
+        },
+        {
+          "type": "simpleText",
+          "rawString": "\nplatformContextJson: "
+        },
+        {
+          "type": "variable",
+          "rawString": "input.platformContextJson"
+        },
+        {
+          "type": "simpleText",
+          "rawString": "\nbuildRunJson: "
+        },
+        {
+          "type": "variable",
+          "rawString": "input.buildRunJson"
+        },
+        {
+          "type": "simpleText",
+          "rawString": "\ntestRunJson: "
+        },
+        {
+          "type": "variable",
+          "rawString": "input.testRunJson"
+        },
+        {
+          "type": "simpleText",
+          "rawString": "\nworkerLogsSummary: "
+        },
+        {
+          "type": "variable",
+          "rawString": "input.workerLogsSummary"
+        }
+      ]
+    }
+  ],
+  "projectId": "423e06b4-d08a-441c-86a2-9d9cc0940afb"
+}

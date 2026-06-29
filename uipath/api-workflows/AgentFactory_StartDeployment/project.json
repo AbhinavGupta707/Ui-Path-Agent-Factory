@@ -1,0 +1,11 @@
+{
+  "name": "AgentFactory_StartDeployment",
+  "type": "Api",
+  "main": "Workflow.json",
+  "platformMode": "uipath-ready",
+  "runMode": "import-ready-no-auth-local-deploy-service-required",
+  "folderName": "AgentFactoryDemo",
+  "folderKey": "cba41e19-47cc-4a0a-bf73-de88b60a61be",
+  "folderId": 7986306,
+  "description": "Import-ready no-auth HTTP workflow for an approved sandbox deployment service. The local repo does not expose /deploy yet."
+}

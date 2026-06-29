@@ -1,0 +1,168 @@
+{
+  "version": "1.1.0",
+  "settings": {
+    "model": "gpt-4o-2024-11-20",
+    "maxTokens": 16384,
+    "temperature": 0,
+    "engine": "basic-v2",
+    "maxIterations": 8,
+    "mode": "standard"
+  },
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "requestId": {
+        "type": "string",
+        "description": "AutomationRequest.request_id correlation key."
+      },
+      "platformContextJson": {
+        "type": "string",
+        "description": "JSON string containing verified UiPath organization, tenant, folder, folder key, and folder id."
+      },
+      "structuredSpecJson": {
+        "type": "string",
+        "description": "StructuredSpec as a JSON string."
+      },
+      "governanceAssessmentJson": {
+        "type": "string",
+        "description": "GovernanceAssessment as a JSON string."
+      },
+      "scopeApprovalJson": {
+        "type": "string",
+        "description": "Scope approval decision as a JSON string."
+      }
+    },
+    "required": [
+      "requestId",
+      "platformContextJson",
+      "structuredSpecJson",
+      "governanceAssessmentJson",
+      "scopeApprovalJson"
+    ]
+  },
+  "outputSchema": {
+    "type": "object",
+    "properties": {
+      "requestId": {
+        "type": "string"
+      },
+      "manifestId": {
+        "type": "string"
+      },
+      "template": {
+        "type": "string",
+        "description": "Must be customer360-dashboard."
+      },
+      "templateId": {
+        "type": "string",
+        "description": "Must be customer360_dashboard_v1."
+      },
+      "artifactType": {
+        "type": "string",
+        "description": "Must be dashboard_app."
+      },
+      "branchName": {
+        "type": "string"
+      },
+      "outputApp": {
+        "type": "string"
+      },
+      "acceptanceCriteriaJson": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      },
+      "permissionsJson": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      },
+      "allowedFilesJson": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      },
+      "maxRepairAttempts": {
+        "type": "integer"
+      },
+      "sandboxOnly": {
+        "type": "boolean"
+      },
+      "codexModel": {
+        "type": "string"
+      },
+      "auditSummary": {
+        "type": "string"
+      }
+    }
+  },
+  "metadata": {
+    "storageVersion": "50.0.0",
+    "isConversational": false,
+    "showProjectCreationExperience": false,
+    "targetRuntime": "pythonAgent"
+  },
+  "type": "lowCode",
+  "messages": [
+    {
+      "role": "system",
+      "content": "You are the Build Planner Agent for the Governed Agentic Automation Factory.\nReturn only a JSON object matching the configured output schema. Do not use markdown.\nOnly create sandbox Customer360 manifests for template customer360-dashboard and templateId customer360_dashboard_v1.\nSet sandboxOnly true, artifactType dashboard_app, outputApp apps/customer360-template, maxRepairAttempts no more than 1, and codexModel gpt-5.5 unless the approved input says otherwise.\nAllowed files must stay within src/**, tests/**, public/data/**, README.md, deployment.json, and package.json.\nPermissions must be no broader than the governanceAssessmentJson approved permissions.\nNever include secrets, credentials, .env paths, .uipath/.skills, .agents/skills, node_modules, or generated build output.",
+      "contentTokens": [
+        {
+          "type": "simpleText",
+          "rawString": "You are the Build Planner Agent for the Governed Agentic Automation Factory.\nReturn only a JSON object matching the configured output schema. Do not use markdown.\nOnly create sandbox Customer360 manifests for template customer360-dashboard and templateId customer360_dashboard_v1.\nSet sandboxOnly true, artifactType dashboard_app, outputApp apps/customer360-template, maxRepairAttempts no more than 1, and codexModel gpt-5.5 unless the approved input says otherwise.\nAllowed files must stay within src/**, tests/**, public/data/**, README.md, deployment.json, and package.json.\nPermissions must be no broader than the governanceAssessmentJson approved permissions.\nNever include secrets, credentials, .env paths, .uipath/.skills, .agents/skills, node_modules, or generated build output."
+        }
+      ]
+    },
+    {
+      "role": "user",
+      "content": "requestId: {{input.requestId}}\nplatformContextJson: {{input.platformContextJson}}\nstructuredSpecJson: {{input.structuredSpecJson}}\ngovernanceAssessmentJson: {{input.governanceAssessmentJson}}\nscopeApprovalJson: {{input.scopeApprovalJson}}",
+      "contentTokens": [
+        {
+          "type": "simpleText",
+          "rawString": "requestId: "
+        },
+        {
+          "type": "variable",
+          "rawString": "input.requestId"
+        },
+        {
+          "type": "simpleText",
+          "rawString": "\nplatformContextJson: "
+        },
+        {
+          "type": "variable",
+          "rawString": "input.platformContextJson"
+        },
+        {
+          "type": "simpleText",
+          "rawString": "\nstructuredSpecJson: "
+        },
+        {
+          "type": "variable",
+          "rawString": "input.structuredSpecJson"
+        },
+        {
+          "type": "simpleText",
+          "rawString": "\ngovernanceAssessmentJson: "
+        },
+        {
+          "type": "variable",
+          "rawString": "input.governanceAssessmentJson"
+        },
+        {
+          "type": "simpleText",
+          "rawString": "\nscopeApprovalJson: "
+        },
+        {
+          "type": "variable",
+          "rawString": "input.scopeApprovalJson"
+        }
+      ]
+    }
+  ],
+  "projectId": "3bf44b95-fea7-4b3b-96b2-dcb081215158"
+}

@@ -1,0 +1,102 @@
+{
+  "$schema": "https://cloud.uipath.com/draft/2024-12/entry-point",
+  "$id": "entry-points.json",
+  "entryPoints": [
+    {
+      "filePath": "/content/agent.json",
+      "uniqueId": "2057b084-23f6-4206-9ce5-7c9e21bb85b9",
+      "type": "agent",
+      "input": {
+        "type": "object",
+        "properties": {
+          "requestId": {
+            "type": "string",
+            "description": "AutomationRequest.request_id correlation key."
+          },
+          "platformContextJson": {
+            "type": "string",
+            "description": "JSON string containing verified UiPath organization, tenant, folder, folder key, and folder id."
+          },
+          "structuredSpecJson": {
+            "type": "string",
+            "description": "StructuredSpec as a JSON string."
+          },
+          "governanceAssessmentJson": {
+            "type": "string",
+            "description": "GovernanceAssessment as a JSON string."
+          },
+          "scopeApprovalJson": {
+            "type": "string",
+            "description": "Scope approval decision as a JSON string."
+          }
+        },
+        "required": [
+          "requestId",
+          "platformContextJson",
+          "structuredSpecJson",
+          "governanceAssessmentJson",
+          "scopeApprovalJson"
+        ]
+      },
+      "output": {
+        "type": "object",
+        "properties": {
+          "requestId": {
+            "type": "string"
+          },
+          "manifestId": {
+            "type": "string"
+          },
+          "template": {
+            "type": "string",
+            "description": "Must be customer360-dashboard."
+          },
+          "templateId": {
+            "type": "string",
+            "description": "Must be customer360_dashboard_v1."
+          },
+          "artifactType": {
+            "type": "string",
+            "description": "Must be dashboard_app."
+          },
+          "branchName": {
+            "type": "string"
+          },
+          "outputApp": {
+            "type": "string"
+          },
+          "acceptanceCriteriaJson": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "permissionsJson": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "allowedFilesJson": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "maxRepairAttempts": {
+            "type": "integer"
+          },
+          "sandboxOnly": {
+            "type": "boolean"
+          },
+          "codexModel": {
+            "type": "string"
+          },
+          "auditSummary": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  ]
+}

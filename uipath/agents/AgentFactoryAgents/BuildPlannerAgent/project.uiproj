@@ -1,0 +1,6 @@
+{
+  "ProjectType": "Agent",
+  "Name": "BuildPlannerAgent",
+  "Description": "Converts an approved spec and governance decision into a constrained BuildManifest.",
+  "MainFile": null
+}

@@ -1,0 +1,115 @@
+{
+  "$schema": "https://cloud.uipath.com/draft/2024-12/entry-point",
+  "$id": "entry-points.json",
+  "entryPoints": [
+    {
+      "filePath": "/content/agent.json",
+      "uniqueId": "e61f4768-64e8-4769-831a-4dcea8d44908",
+      "type": "agent",
+      "input": {
+        "type": "object",
+        "properties": {
+          "requestId": {
+            "type": "string",
+            "description": "AutomationRequest.request_id correlation key."
+          },
+          "platformContextJson": {
+            "type": "string",
+            "description": "JSON string containing verified UiPath organization, tenant, folder, folder key, and folder id."
+          },
+          "automationRequestJson": {
+            "type": "string",
+            "description": "AutomationRequest plus intake details as a JSON string."
+          },
+          "clarificationAnswersJson": {
+            "type": "string",
+            "description": "Clarification answers as a JSON string. Use [] when none exist."
+          }
+        },
+        "required": [
+          "requestId",
+          "platformContextJson",
+          "automationRequestJson",
+          "clarificationAnswersJson"
+        ]
+      },
+      "output": {
+        "type": "object",
+        "properties": {
+          "requestId": {
+            "type": "string",
+            "description": "Same correlation id as input.requestId."
+          },
+          "objective": {
+            "type": "string",
+            "description": "At least 12 characters. Customer360 only."
+          },
+          "templateId": {
+            "type": "string",
+            "description": "Must be customer360_dashboard_v1."
+          },
+          "outputType": {
+            "type": "string",
+            "description": "Must be dashboard_app."
+          },
+          "dataSourcesJson": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Approved source systems only."
+          },
+          "metricsJson": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Customer360 metrics to include."
+          },
+          "filtersJson": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Dashboard filters required by the request."
+          },
+          "acceptanceCriteriaJson": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Build/test acceptance criteria."
+          },
+          "governanceNotesJson": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Audit-friendly policy notes without secrets."
+          },
+          "clarificationQuestionsJson": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "question": {
+                  "type": "string"
+                },
+                "required": {
+                  "type": "boolean"
+                },
+                "answerType": {
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Questions only when required inputs are missing."
+          }
+        }
+      }
+    }
+  ]
+}

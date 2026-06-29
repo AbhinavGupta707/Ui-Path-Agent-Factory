@@ -1,0 +1,6 @@
+{
+  "ProjectType": "Agent",
+  "Name": "GovernanceAgent",
+  "Description": "Evaluates Customer360 risk, required permissions, blockers, and approval routing.",
+  "MainFile": null
+}

@@ -1,0 +1,6 @@
+{
+  "ProjectType": "Agent",
+  "Name": "RequirementsAgent",
+  "Description": "Converts intake and clarification answers into a bounded Customer360 StructuredSpec projection.",
+  "MainFile": null
+}

@@ -1,0 +1,11 @@
+{
+  "name": "AgentFactory_PostStatusUpdate",
+  "type": "Api",
+  "main": "Workflow.json",
+  "platformMode": "uipath-ready",
+  "runMode": "no-auth-local-http",
+  "folderName": "AgentFactoryDemo",
+  "folderKey": "cba41e19-47cc-4a0a-bf73-de88b60a61be",
+  "folderId": 7986306,
+  "description": "No-auth local HTTP workflow that mirrors worker status into the Factory API build status endpoint."
+}

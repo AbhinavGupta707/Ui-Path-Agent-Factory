@@ -1,0 +1,151 @@
+{
+  "version": "1.1.0",
+  "settings": {
+    "model": "gpt-4o-2024-11-20",
+    "maxTokens": 16384,
+    "temperature": 0,
+    "engine": "basic-v2",
+    "maxIterations": 8,
+    "mode": "standard"
+  },
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "requestId": {
+        "type": "string",
+        "description": "AutomationRequest.request_id correlation key."
+      },
+      "platformContextJson": {
+        "type": "string",
+        "description": "JSON string containing verified UiPath organization, tenant, folder, folder key, and folder id."
+      },
+      "automationRequestJson": {
+        "type": "string",
+        "description": "AutomationRequest as a JSON string."
+      },
+      "structuredSpecJson": {
+        "type": "string",
+        "description": "StructuredSpec as a JSON string."
+      },
+      "approvedConstraintsJson": {
+        "type": "string",
+        "description": "Approved constraints and policy answers as a JSON string."
+      }
+    },
+    "required": [
+      "requestId",
+      "platformContextJson",
+      "automationRequestJson",
+      "structuredSpecJson",
+      "approvedConstraintsJson"
+    ]
+  },
+  "outputSchema": {
+    "type": "object",
+    "properties": {
+      "requestId": {
+        "type": "string"
+      },
+      "riskTier": {
+        "type": "string",
+        "description": "low, medium, or high."
+      },
+      "piiDetected": {
+        "type": "boolean"
+      },
+      "requiresHumanApproval": {
+        "type": "boolean"
+      },
+      "requiredPermissionsJson": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      },
+      "blockersJson": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      },
+      "requiredApprovalsJson": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      },
+      "policySummary": {
+        "type": "string"
+      },
+      "auditSummary": {
+        "type": "string"
+      }
+    }
+  },
+  "metadata": {
+    "storageVersion": "50.0.0",
+    "isConversational": false,
+    "showProjectCreationExperience": false,
+    "targetRuntime": "pythonAgent"
+  },
+  "type": "lowCode",
+  "messages": [
+    {
+      "role": "system",
+      "content": "You are the Governance Agent for the Governed Agentic Automation Factory.\nReturn only a JSON object matching the configured output schema. Do not use markdown.\nClassify risk for the Customer360 dashboard only. Combining CRM/customer/product usage data is at least medium risk.\nSet requiresHumanApproval true when PII, CRM/customer data, release approval, or policy uncertainty is present.\nRequired permissions must be no broader than read:crm_accounts, read:product_usage, read:synthetic_customer360_data, and write:sandbox_artifact.\nBlock production deployment, raw PII exposure, secret access, destructive file changes, and unavailable connector assumptions.\nDo not invent live UiPath assets, connection ids, or credentials.",
+      "contentTokens": [
+        {
+          "type": "simpleText",
+          "rawString": "You are the Governance Agent for the Governed Agentic Automation Factory.\nReturn only a JSON object matching the configured output schema. Do not use markdown.\nClassify risk for the Customer360 dashboard only. Combining CRM/customer/product usage data is at least medium risk.\nSet requiresHumanApproval true when PII, CRM/customer data, release approval, or policy uncertainty is present.\nRequired permissions must be no broader than read:crm_accounts, read:product_usage, read:synthetic_customer360_data, and write:sandbox_artifact.\nBlock production deployment, raw PII exposure, secret access, destructive file changes, and unavailable connector assumptions.\nDo not invent live UiPath assets, connection ids, or credentials."
+        }
+      ]
+    },
+    {
+      "role": "user",
+      "content": "requestId: {{input.requestId}}\nplatformContextJson: {{input.platformContextJson}}\nautomationRequestJson: {{input.automationRequestJson}}\nstructuredSpecJson: {{input.structuredSpecJson}}\napprovedConstraintsJson: {{input.approvedConstraintsJson}}",
+      "contentTokens": [
+        {
+          "type": "simpleText",
+          "rawString": "requestId: "
+        },
+        {
+          "type": "variable",
+          "rawString": "input.requestId"
+        },
+        {
+          "type": "simpleText",
+          "rawString": "\nplatformContextJson: "
+        },
+        {
+          "type": "variable",
+          "rawString": "input.platformContextJson"
+        },
+        {
+          "type": "simpleText",
+          "rawString": "\nautomationRequestJson: "
+        },
+        {
+          "type": "variable",
+          "rawString": "input.automationRequestJson"
+        },
+        {
+          "type": "simpleText",
+          "rawString": "\nstructuredSpecJson: "
+        },
+        {
+          "type": "variable",
+          "rawString": "input.structuredSpecJson"
+        },
+        {
+          "type": "simpleText",
+          "rawString": "\napprovedConstraintsJson: "
+        },
+        {
+          "type": "variable",
+          "rawString": "input.approvedConstraintsJson"
+        }
+      ]
+    }
+  ],
+  "projectId": "2ff976b4-476a-435d-9115-de499871555f"
+}

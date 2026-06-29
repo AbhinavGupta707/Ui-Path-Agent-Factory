@@ -1,0 +1,11 @@
+{
+  "name": "AgentFactory_RecordTestResult",
+  "type": "Api",
+  "main": "Workflow.json",
+  "platformMode": "uipath-ready",
+  "runMode": "no-auth-local-http",
+  "folderName": "AgentFactoryDemo",
+  "folderKey": "cba41e19-47cc-4a0a-bf73-de88b60a61be",
+  "folderId": 7986306,
+  "description": "No-auth local HTTP workflow that records test gate results as a Factory API build status update."
+}

@@ -1,0 +1,6 @@
+{
+  "ProjectType": "Agent",
+  "Name": "TestSummaryAgent",
+  "Description": "Summarizes build-worker and quality evidence for release approval routing.",
+  "MainFile": null
+}

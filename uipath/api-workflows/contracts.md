@@ -1,15 +1,18 @@
 # API Workflow Contracts
 
-Status: planned contracts, not live-created API Workflows.
+Status: `uipath-ready` validated JSON assets. These workflows are import-ready
+and use UiPath HTTP connector local/no-auth calls only. No live API Workflow was
+created or run.
 
 ## Workflows
 
-| Name | Purpose |
-|---|---|
-| `AgentFactory_StartBuildWorker` | Trigger the build worker from a `BuildManifest` |
-| `AgentFactory_PostStatusUpdate` | Persist status callbacks into Factory API/Data Service |
-| `AgentFactory_StartDeployment` | Deploy the approved sandbox artifact |
-| `AgentFactory_SyncDataServiceRecord` | Upsert local lifecycle state into Data Service |
+| Name | File | Purpose | Validation |
+|---|---|---|---|
+| `AgentFactory_StartBuildWorker` | `AgentFactory_StartBuildWorker/Workflow.json` | Trigger the Build Worker from a Customer360 manifest | Valid |
+| `AgentFactory_FetchBuildStatus` | `AgentFactory_FetchBuildStatus/Workflow.json` | Poll a Build Worker run | Valid |
+| `AgentFactory_PostStatusUpdate` | `AgentFactory_PostStatusUpdate/Workflow.json` | Patch Factory API build status | Valid |
+| `AgentFactory_RecordTestResult` | `AgentFactory_RecordTestResult/Workflow.json` | Convert test-gate decisions into Factory API build status | Valid |
+| `AgentFactory_StartDeployment` | `AgentFactory_StartDeployment/Workflow.json` | Start approved sandbox deployment when a deploy endpoint exists | Valid/import-ready |
 
 ## Common Required Fields
 
@@ -17,150 +20,65 @@ Status: planned contracts, not live-created API Workflows.
 {
   "operationId": "unique-idempotency-key",
   "requestId": "req_123",
-  "platformMode": "uipath-live",
+  "platformMode": "uipath-ready",
   "folderKey": "cba41e19-47cc-4a0a-bf73-de88b60a61be",
   "folderId": 7986306
 }
 ```
 
-Retries must reuse the same `operationId`.
+Retries must reuse the same `operationId`. Use `uipath-live` only after a real
+UiPath Automation Cloud workflow execution.
 
-## Start Build Worker
+## Local Endpoint Mapping
 
-Planned endpoint: `POST /build`
+| Workflow | Method | Target | Notes |
+|---|---|---|---|
+| `AgentFactory_StartBuildWorker` | `POST` | `{buildWorkerBaseUrl}/build` | Defaults to `http://localhost:8790` |
+| `AgentFactory_FetchBuildStatus` | `GET` | `{buildWorkerBaseUrl}/build/{buildRunId}` | Defaults to `http://localhost:8790` |
+| `AgentFactory_PostStatusUpdate` | `PATCH` | `{factoryApiBaseUrl}/api/builds/{buildRunId}/status` | Defaults to `http://localhost:8787` |
+| `AgentFactory_RecordTestResult` | `PATCH` | `{factoryApiBaseUrl}/api/builds/{buildRunId}/status` | Maps test decisions to build statuses |
+| `AgentFactory_StartDeployment` | `POST` | `{deploymentServiceBaseUrl}/deploy` | Defaults to `http://localhost:8791`; endpoint pending |
 
-Input:
+## Run Mode
+
+- Validation is autonomous and was completed with `uip api-workflow validate`.
+- Runtime execution was not performed because `uip api-workflow run` can make
+  HTTP calls with side effects.
+- The checked-in workflows are designed for `--no-auth` local HTTP once the
+  target local service is running.
+- With-auth runs require explicit approval.
+- No Integration Service connection IDs are present or required for these HTTP
+  workflows.
+
+## Validation Commands
+
+```bash
+uip api-workflow validate uipath/api-workflows/AgentFactory_StartBuildWorker/Workflow.json --output json
+uip api-workflow validate uipath/api-workflows/AgentFactory_FetchBuildStatus/Workflow.json --output json
+uip api-workflow validate uipath/api-workflows/AgentFactory_PostStatusUpdate/Workflow.json --output json
+uip api-workflow validate uipath/api-workflows/AgentFactory_RecordTestResult/Workflow.json --output json
+uip api-workflow validate uipath/api-workflows/AgentFactory_StartDeployment/Workflow.json --output json
+```
+
+Each command returned:
 
 ```json
 {
-  "operationId": "build_req_123_001",
-  "requestId": "req_123",
-  "platformMode": "uipath-live",
-  "folderKey": "cba41e19-47cc-4a0a-bf73-de88b60a61be",
-  "folderId": 7986306,
-  "manifest": {
-    "requestId": "req_123",
-    "template": "customer360-dashboard",
-    "branchName": "factory/req-123",
-    "outputApp": "apps/customer360-template",
-    "acceptanceCriteria": ["Dashboard builds", "Risk accounts are visible"],
-    "permissions": ["read:crm_accounts", "read:product_usage"],
-    "codexModel": "gpt-5.5"
+  "Result": "Success",
+  "Code": "ApiwfValidate",
+  "Data": {
+    "Status": "Valid"
   }
 }
 ```
 
-Output:
+## Setup Needed Before Live Use
 
-```json
-{
-  "buildRunId": "build_req_123_001",
-  "requestId": "req_123",
-  "status": "queued"
-}
-```
-
-## Post Status Update
-
-Planned endpoint: `POST /api/uipath/status`
-
-Input:
-
-```json
-{
-  "operationId": "status_req_123_001",
-  "requestId": "req_123",
-  "platformMode": "uipath-live",
-  "eventType": "build_status_updated",
-  "status": "building",
-  "buildRun": {
-    "buildRunId": "build_req_123_001",
-    "status": "running",
-    "logsUrl": "https://example.invalid/build-log"
-  },
-  "audit": {
-    "actor": "build-worker",
-    "summary": "Codex build status updated."
-  }
-}
-```
-
-Output:
-
-```json
-{
-  "requestId": "req_123",
-  "accepted": true,
-  "updatedStatus": "building"
-}
-```
-
-## Start Deployment
-
-Planned endpoint: `POST /deploy`
-
-Input:
-
-```json
-{
-  "operationId": "deploy_req_123_001",
-  "requestId": "req_123",
-  "platformMode": "uipath-live",
-  "folderKey": "cba41e19-47cc-4a0a-bf73-de88b60a61be",
-  "folderId": 7986306,
-  "buildRunId": "build_req_123_001",
-  "environment": "sandbox",
-  "releaseApproval": {
-    "approvalId": "appr_req_123_release_001",
-    "decidedBy": "release-approver"
-  }
-}
-```
-
-Output:
-
-```json
-{
-  "deploymentId": "deploy_req_123_001",
-  "requestId": "req_123",
-  "status": "deployed",
-  "deploymentUrl": "https://example.invalid/customer360"
-}
-```
-
-## Sync Data Service Record
-
-Input:
-
-```json
-{
-  "operationId": "sync_req_123_automation_request_001",
-  "requestId": "req_123",
-  "entityName": "AutomationRequest",
-  "upsertKey": "requestId",
-  "record": {
-    "requestId": "req_123",
-    "status": "clarifying",
-    "platformMode": "uipath-ready"
-  }
-}
-```
-
-Output:
-
-```json
-{
-  "requestId": "req_123",
-  "entityName": "AutomationRequest",
-  "upserted": true,
-  "recordId": "planned-data-service-record-id"
-}
-```
-
-## Checkpoint 4 Notes
-
-- The Checkpoint 1 build worker currently exposes scaffold behavior only.
-- Add the planned endpoints before wiring live API Workflows.
-- Store endpoint URLs and credentials in Orchestrator assets or Integration
-  Service connections.
-- Every workflow invocation should append an `AuditEvent`.
+- Publish/import the workflow files into a UiPath API Workflow project or
+  solution through the official UiPath flow.
+- Configure target service base URLs as environment-specific values, preferably
+  Orchestrator assets.
+- Start the local Build Worker for build trigger/polling flows.
+- Start the local Factory API for status/test-result flows.
+- Implement or provide a deployment service before running
+  `AgentFactory_StartDeployment`.

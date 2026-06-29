@@ -7,7 +7,7 @@ Worker IDs are filled in by the orchestrator after thread creation.
 | Lane | Thread | Pending ID | Worktree | Status | Notes |
 |---|---|---|---|---|---|
 | Maestro And Data Service | pending | pending | pending | preparing | Owns Data Service schema and Maestro BPMN/process assets |
-| Agents And API Workflow | pending | pending | pending | preparing | Owns Agent Builder contracts and API Workflow assets |
+| Agents And API Workflow | pending | pending | pending | implemented locally | Added validated low-code agent solution and no-auth/local API Workflow JSON assets; no live upload/run |
 | Apps And Action Center | pending | pending | pending | preparing | Owns UiPath Apps companion and Action Center approval contracts |
 | Test Cloud And Quality Gates | pending | pending | pending | preparing | Owns Test Manager/Test Cloud quality-gate assets |
 
@@ -17,6 +17,9 @@ Worker IDs are filled in by the orchestrator after thread creation.
 - Pre-launch local baseline `npm run smoke` passed.
 - Pre-launch UiPath readiness probes succeeded for auth, folder, installed tool surface, Data Service, Maestro, Agents, Action Center, API Workflow, Coded Apps, and Test Manager discovery.
 - Integration Service has no configured connections. API Workflow work must avoid fake connection IDs and must not use vendor connector placeholders without explicit approval.
+- Agents/API Workflow lane re-ran discovery: auth, folder, agent list, API Workflow validate help, HTTP activity discovery, and Integration Service connection list all matched the launch assumptions. No live agent solutions or Integration Service connections were found.
+- Agents/API Workflow lane created `uipath-ready` local low-code agent projects for Requirements, Clarification, Governance, Build Planner, and Test Summary. All five validated with `uip agent validate`.
+- Agents/API Workflow lane created validated no-auth/local HTTP API Workflow JSON assets for StartBuildWorker, FetchBuildStatus, PostStatusUpdate, RecordTestResult, and StartDeployment. `StartDeployment` is import-ready but runtime-blocked until a deploy service endpoint exists.
 - Data Service has no native entities yet. Entity creation must follow the schema proposal approval rule before live mutation.
 - Test Manager has no projects yet. Test Cloud lane should create/import if permitted, otherwise keep the fallback clearly labeled `Test Cloud-ready`.
 
