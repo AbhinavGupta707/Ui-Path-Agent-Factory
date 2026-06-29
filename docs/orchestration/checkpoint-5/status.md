@@ -9,7 +9,7 @@ Worker IDs are filled in by the orchestrator after thread creation.
 | Deployment And Runtime | pending app worktree relaunch | n/a | pending | preparing | Previous CLI scratch worktree `/private/tmp/agent-factory-cp5/deployment-runtime` is superseded and is not a merge candidate |
 | Demo UX Polish | pending app worktree relaunch | n/a | pending | preparing | Previous CLI scratch worktree `/private/tmp/agent-factory-cp5/demo-ux-polish` is superseded and is not a merge candidate |
 | Submission Package | pending app worktree relaunch | n/a | pending | preparing | Previous CLI scratch worktree `/private/tmp/agent-factory-cp5/submission-package` is superseded and is not a merge candidate |
-| Final QA And E2E | pending app worktree relaunch | n/a | pending | preparing | Previous CLI scratch worktree `/private/tmp/agent-factory-cp5/final-qa-e2e` is superseded and is not a merge candidate |
+| Final QA And E2E | app-managed worker | n/a | `/Users/abhinavgupta/.codex/worktrees/5956/Agent Factory` | handoff ready | Added local demo reset/smoke/privacy scan layer; browser visual automation blocked by missing IAB/Chrome backend |
 
 ## Integration Log
 
@@ -31,6 +31,12 @@ Worker IDs are filled in by the orchestrator after thread creation.
   - `gh --version` returned `2.89.0`.
   - `vercel --version` returned `54.9.1`.
   - `git remote -v` points to `AbhinavGupta707/Ui-Path-Agent-Factory.git`.
+- Final QA And E2E app-managed lane added:
+  - `npm run demo:reset` for deterministic Customer360 rehearsal state under the OS temp directory.
+  - `npm run demo:scan` / `demo:scan:strict` for privacy/security copy and source checks.
+  - `npm run smoke:demo` for reset, scan, Factory API lifecycle tests, build-worker smoke, Factory Console checks, and Customer360 smoke.
+  - `docs/qa-checklist.md` and `docs/final-readiness.md` for browser checklist, command evidence, scan results, and residual risks.
+- Final QA local browser-use attempt found the Node REPL browser tool callable, but the in-app browser backend was not discoverable. Chrome-specific control was not exposed. Local UI route/source-marker smoke passed against localhost instead.
 
 ## Launch Baseline
 
@@ -57,6 +63,18 @@ Worker IDs are filled in by the orchestrator after thread creation.
 - Pre-launch `git remote -v` passed.
 - Worktree preparation passed for all four Checkpoint 5 lanes.
 - Initial CLI worker execution launched after explicit user approval, then was superseded by app-managed relaunch preparation.
+- Final QA lane `npm ci` passed with 105 packages installed and 0 reported vulnerabilities.
+- Final QA lane `npm run lint` passed; root lint now runs the privacy/security scan plus no-op workspace lint.
+- Final QA lane `npm run typecheck` passed after root typecheck was ordered to build shared package outputs first.
+- Final QA lane `npm test` passed: 5 test files and 67 tests.
+- Final QA lane `npm run build` passed.
+- Final QA lane `npm run smoke` passed.
+- Final QA lane `npm run smoke:demo` passed. The privacy/security scan produced 0 errors and 1 warning for root README baseline copy owned by Submission Package.
+- Final QA lane `git diff --check` passed.
+- Final QA lane localhost smoke passed for:
+  - Factory API `http://127.0.0.1:8787/health` with HTTP 200 and `syntheticDataOnly: true`.
+  - Factory Console `http://127.0.0.1:5173/` with HTTP 200 and expected source markers.
+  - Customer360 dashboard `http://127.0.0.1:5174/` with HTTP 200 and expected source markers.
 
 ## Manual Smoke Target
 
@@ -65,4 +83,4 @@ Worker IDs are filled in by the orchestrator after thread creation.
 - Run `npm run smoke:demo`.
 - Demonstrate sandbox `/deploy` path or documented preview deployment.
 - Rehearse canonical request-to-deployment story.
-- Confirm README/demo script/Devpost copy match the actual working state.
+- Confirm README/demo script/Devpost copy match the actual working state; Final QA scan currently warns on root README stale baseline copy until Submission Package lands.
