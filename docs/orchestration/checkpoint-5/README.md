@@ -13,7 +13,7 @@ The checkpoint should prefer real preview/sandbox deployment where credentials a
 ## Baseline
 
 - Integration branch: `main`
-- Launch base commit: `9786622`
+- Launch base commit: recorded by the orchestrator when worker sessions are created.
 - Checkpoints 1-4 are merged, pushed, and verified.
 - Local baseline `npm run smoke` passed before launch.
 - UiPath context: `galacticus / DefaultTenant / AgentFactoryDemo`.

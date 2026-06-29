@@ -14,7 +14,7 @@ Worker IDs are filled in by the orchestrator after thread creation.
 ## Integration Log
 
 - Created Checkpoint 5 orchestration docs and worker prompts from `main` after Checkpoint 4 completion.
-- Launch base commit: `9786622`.
+- Launch base commit: pending worker launch.
 - Pre-launch `npm run smoke` passed across workspace builds and tests.
 - Pre-launch CLI probes confirmed:
   - `uip login status --output json` passed for `galacticus / DefaultTenant`.
@@ -27,7 +27,7 @@ Worker IDs are filled in by the orchestrator after thread creation.
 | Item | Value |
 |---|---|
 | Branch | `main` |
-| Base commit | `9786622` |
+| Base commit | pending worker launch |
 | Launch time UTC | pending worker launch |
 | UiPath CLI | `1.195.1` |
 | GitHub CLI | `2.89.0` |

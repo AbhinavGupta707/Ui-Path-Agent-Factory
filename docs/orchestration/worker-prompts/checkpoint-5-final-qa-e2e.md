@@ -8,7 +8,7 @@ Work in your isolated worktree. Read and follow:
 - governed_agentic_automation_factory_final_build_spec.md
 - governed_agentic_automation_factory_implementation_plan.md
 
-Base state: `main` at commit `9786622`.
+Base state: latest `main` at worker launch; the orchestrator records the exact base in `docs/orchestration/checkpoint-5/status.md`.
 
 ## Goal
 

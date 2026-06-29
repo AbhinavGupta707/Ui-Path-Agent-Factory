@@ -9,7 +9,7 @@ Work in your isolated worktree. Read and follow:
 - docs/customer360-template.md
 - docs/uipath-setup.md
 
-Base state: `main` at commit `9786622`.
+Base state: latest `main` at worker launch; the orchestrator records the exact base in `docs/orchestration/checkpoint-5/status.md`.
 
 ## Goal
 
