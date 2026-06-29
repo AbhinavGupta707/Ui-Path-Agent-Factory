@@ -28,10 +28,9 @@ Started: 2026-06-29.
 
 ## Open Risks
 
-- Models can produce reasoning-heavy output, so strict JSON schema validation and repair are required.
+- Build worker live Codex execution remains disabled until `BUILD_WORKER_CODEX_ENABLED=true` is set and a fresh approval is given for spawning Codex from the worker service.
 - UiPath live mutation remains approval-gated.
 - The reference images are currently untracked in `Ui References/`; worker prompts describe the desired style rather than requiring image access in isolated worktrees.
-- Rerun `npm run smoke:demo` and a manual browser pass on the integrated branch before recording final footage.
 
 ## Integration QA Notes
 
@@ -39,3 +38,16 @@ Started: 2026-06-29.
 - Required lane checks passed: `npm run demo:scan` and `git diff --check`.
 - Optional final integration check also passed in this worktree: `npm run smoke:demo`.
 - No live UiPath mutation, provider paid call, or provider value capture is part of this lane.
+
+## Final Integration Notes
+
+- Patched Factory API agent runtime to retry the configured fallback model profile when the primary model returns invalid or schema-mismatched JSON, then normalize common provider object-list and ordinal fields into the strict shared contracts.
+- Safe local live lifecycle passed against the running Factory API with Fireworks and LangSmith enabled: intake classification (`gpt-oss-120b`), requirements spec (`deepseek-v4-pro`), governance (`deepseek-v4-pro`), and build plan (`kimi-k2p6`) all recorded `mode: live`, redaction on, raw prompts/responses not stored, and no warnings.
+- Premium UI pass completed for the Factory Console product flow and the generated Customer360 sandbox dashboard. Current screenshot evidence:
+  - `/tmp/agent-factory-main-new-request.png`
+  - `/tmp/agent-factory-main-build-plan.png`
+  - `/tmp/agent-factory-main-live-run.png`
+  - `/tmp/agent-factory-main-output-preview.png`
+  - `/tmp/agent-factory-main-customer360-dark.png`
+- Final local verification passed on 2026-06-29: `npm run lint`, `npm run typecheck`, `npm test`, `npm run build`, `npm run smoke`, `npm run smoke:demo`, and `git diff --check`.
+- Read-only UiPath checks passed earlier in the integrated branch: logged-in tenant status, `AgentFactoryDemo` folder lookup, AFQG project/test set/test cases, and API Workflow validation for `AgentFactory_StartDeployment`. Live Test Cloud execution and UiPath deployment remain intentionally approval-gated.

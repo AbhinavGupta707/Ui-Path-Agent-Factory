@@ -17,7 +17,7 @@ import {
   type IntakeClassificationOutput,
   type RequirementsSpecGenerationOutput
 } from "@agent-factory/shared-contracts";
-import { FireworksChatClient, type ChatCompletionClient, type ChatCompletionResult } from "./fireworksClient.js";
+import { FireworksChatClient, type ChatCompletionClient } from "./fireworksClient.js";
 import {
   generateBuildManifest,
   generateGovernanceAssessment,
@@ -31,38 +31,45 @@ import {
 } from "./providerConfig.js";
 import type { FactoryRequestRecord } from "./store.js";
 
+function normalizedStringListSchema(...preferredKeys: string[]) {
+  return z.preprocess(
+    (value) => normalizeStringList(value, preferredKeys),
+    z.array(z.string().min(1)).default([])
+  ) as z.ZodType<string[]>;
+}
+
 const classificationPayloadSchema = z.object({
   complexity: z.enum(["low", "medium", "high"]),
-  confidence: z.number().min(0).max(1),
-  pii_likelihood: z.enum(["none", "possible", "likely"]),
-  missing_information: z.array(z.string().min(1)).default([]),
-  inferred_source_systems: z.array(z.string().min(1)).default([]),
-  inferred_metrics: z.array(z.string().min(1)).default([]),
+  confidence: z.preprocess(coerceConfidence, z.number().min(0).max(1)),
+  pii_likelihood: z.preprocess(coercePiiLikelihood, z.enum(["none", "possible", "likely"])),
+  missing_information: normalizedStringListSchema("missing_information", "question", "description", "text"),
+  inferred_source_systems: normalizedStringListSchema("name", "source", "system", "data_source"),
+  inferred_metrics: normalizedStringListSchema("metric", "name", "kpi", "description"),
   summary: z.string().min(1)
 });
 
 const requirementsPayloadSchema = z.object({
   business_goal: z.string().min(12),
-  data_sources_json: z.array(z.string().min(1)).default([]),
-  metrics_json: z.array(z.string().min(1)).default([]),
-  filters_json: z.array(z.string().min(1)).default([]),
-  constraints_json: z.array(z.string().min(1)).default([]),
-  assumptions: z.array(z.string().min(1)).default([])
+  data_sources_json: normalizedStringListSchema("name", "source", "system", "data_source"),
+  metrics_json: normalizedStringListSchema("metric", "name", "kpi", "definition"),
+  filters_json: normalizedStringListSchema("filter", "name", "field", "dimension"),
+  constraints_json: normalizedStringListSchema("constraint", "policy", "rule", "description"),
+  assumptions: normalizedStringListSchema("assumption", "description", "text")
 });
 
 const governancePayloadSchema = z.object({
   risk_tier: z.enum(["low", "medium", "high"]),
   pii_detected: z.boolean(),
   pii_policy: z.string().min(1),
-  forbidden_actions_json: z.array(z.string().min(1)).default([]),
-  required_approvals_json: z.array(z.string().min(1)).default([]),
-  policy_decisions_json: z.array(z.string().min(1)).default([]),
-  policy_violations_json: z.array(z.string().min(1)).default([])
+  forbidden_actions_json: normalizedStringListSchema("action", "forbidden_action", "description", "rule"),
+  required_approvals_json: normalizedStringListSchema("approval", "role", "approver", "description"),
+  policy_decisions_json: normalizedStringListSchema("decision", "policy", "description"),
+  policy_violations_json: normalizedStringListSchema("violation", "policy", "description")
 });
 
 const buildPlanPayloadSchema = z.object({
-  worker_instructions: z.array(z.string().min(1)).default([]),
-  acceptance_criteria: z.array(z.string().min(1)).default([])
+  worker_instructions: normalizedStringListSchema("instruction", "details", "action", "description"),
+  acceptance_criteria: normalizedStringListSchema("criterion", "criteria", "description", "expected")
 });
 
 export interface AgentRuntimeOptions {
@@ -337,41 +344,55 @@ export class AgentRuntime {
       };
     }
 
-    try {
-      const started = Date.now();
-      const result = await this.client.complete({
-        profile: input.profile,
-        messages: [
-          {
-            role: "system",
-            content:
-              "You are an Agent Factory runtime step. Return strict JSON only. Never include secrets, emails, phone numbers, or raw customer PII."
-          },
-          { role: "user", content: input.prompt }
-        ]
-      });
-      const payload = input.schema.parse(JSON.parse(result.content));
+    const profiles: AgentModelProfile[] = input.profile === "fallback" ? [input.profile] : [input.profile, "fallback"];
+    const warnings: string[] = [];
 
-      return {
-        payload,
-        trace: this.completeTrace(
-          {
-            ...trace,
-            mode: "live",
-            model_id: result.model,
-            usage: result.usage
-          },
-          Date.now() - started
-        )
-      };
-    } catch (error) {
-      return {
-        trace: {
-          ...trace,
-          mode: "degraded-provider-error",
-          warnings: [`Live provider failed validation or request handling; deterministic fallback output was used.`]
-        }
-      };
+    for (const profile of profiles) {
+      const attemptTrace = this.createTrace(input.stepId, profile, input.now);
+      const started = Date.now();
+      try {
+        const result = await this.client.complete({
+          profile,
+          maxTokens: maxTokensForStep(input.stepId),
+          messages: [
+            {
+              role: "system",
+              content:
+                "You are an Agent Factory runtime step. Return strict JSON only. Never include secrets, emails, phone numbers, or raw customer PII."
+            },
+            { role: "user", content: input.prompt }
+          ]
+        });
+        const payload = input.schema.parse(parseProviderJson(result.content));
+
+        return {
+          payload,
+          trace: this.completeTrace(
+            {
+              ...attemptTrace,
+              mode: "live",
+              model_id: result.model,
+              usage: result.usage,
+              warnings
+            },
+            Date.now() - started
+          )
+        };
+      } catch (error) {
+        warnings.push(
+          profile === input.profile
+            ? "Primary model profile failed validation or request handling; fallback model profile was retried."
+            : "Fallback model profile failed validation or request handling; deterministic fallback output was used."
+        );
+      }
+    }
+
+    return {
+      trace: {
+        ...trace,
+        mode: "degraded-provider-error",
+        warnings
+      }
     }
   }
 
@@ -437,6 +458,146 @@ function withRequestId(trace: AgentStepTraceEnvelope, requestId: string): AgentS
     ...trace,
     request_id: requestId
   };
+}
+
+function normalizeStringList(value: unknown, preferredKeys: string[]): string[] {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  return value
+    .map((item) => normalizeStringListItem(item, preferredKeys))
+    .filter((item): item is string => Boolean(item));
+}
+
+function normalizeStringListItem(item: unknown, preferredKeys: string[]): string | undefined {
+  if (typeof item === "string") {
+    return trimToValue(item);
+  }
+
+  if (typeof item === "number" || typeof item === "boolean") {
+    return String(item);
+  }
+
+  if (!item || typeof item !== "object" || Array.isArray(item)) {
+    return undefined;
+  }
+
+  const record = item as Record<string, unknown>;
+  const pairedAction = pairStringFields(record, "action", "details") ?? pairStringFields(record, "step", "details");
+  if (pairedAction) {
+    return pairedAction;
+  }
+
+  for (const key of preferredKeys) {
+    const value = record[key];
+    if (typeof value === "string") {
+      const trimmed = trimToValue(value);
+      if (trimmed) {
+        return trimmed;
+      }
+    }
+  }
+
+  const fallbackKey = ["name", "metric", "filter", "constraint", "criterion", "description", "text"].find(
+    (key) => typeof record[key] === "string" && trimToValue(record[key])
+  );
+
+  return fallbackKey ? trimToValue(record[fallbackKey]) : undefined;
+}
+
+function pairStringFields(record: Record<string, unknown>, firstKey: string, secondKey: string): string | undefined {
+  const first = record[firstKey];
+  const second = record[secondKey];
+  const firstText = typeof first === "string" || typeof first === "number" ? String(first).trim() : undefined;
+  const secondText = typeof second === "string" || typeof second === "number" ? String(second).trim() : undefined;
+
+  if (firstText && secondText) {
+    return `${firstText}: ${secondText}`;
+  }
+
+  return secondText ?? firstText;
+}
+
+function trimToValue(value: unknown): string | undefined {
+  return typeof value === "string" && value.trim().length > 0 ? value.trim() : undefined;
+}
+
+function coerceConfidence(value: unknown): unknown {
+  if (typeof value === "number") {
+    return value;
+  }
+
+  if (typeof value !== "string") {
+    return value;
+  }
+
+  const normalized = value.trim().toLowerCase();
+  const numeric = Number(normalized);
+  if (Number.isFinite(numeric)) {
+    return numeric > 1 ? numeric / 100 : numeric;
+  }
+
+  const ordinal: Record<string, number> = {
+    none: 0,
+    low: 0.35,
+    medium: 0.65,
+    moderate: 0.65,
+    high: 0.85,
+    likely: 0.85,
+    certain: 0.95
+  };
+
+  return ordinal[normalized] ?? value;
+}
+
+function coercePiiLikelihood(value: unknown): unknown {
+  if (typeof value !== "string") {
+    return value;
+  }
+
+  const normalized = value.trim().toLowerCase();
+  if (["none", "no", "false", "minimal"].includes(normalized)) {
+    return "none";
+  }
+  if (["possible", "medium", "moderate", "unknown", "low"].includes(normalized)) {
+    return "possible";
+  }
+  if (["likely", "yes", "true", "high"].includes(normalized)) {
+    return "likely";
+  }
+
+  return value;
+}
+
+function parseProviderJson(content: string): unknown {
+  try {
+    return JSON.parse(content);
+  } catch {}
+
+  const fenced = /```(?:json)?\s*([\s\S]*?)```/i.exec(content);
+  if (fenced?.[1]) {
+    return JSON.parse(fenced[1].trim());
+  }
+
+  const firstBrace = content.indexOf("{");
+  const lastBrace = content.lastIndexOf("}");
+  if (firstBrace >= 0 && lastBrace > firstBrace) {
+    return JSON.parse(content.slice(firstBrace, lastBrace + 1));
+  }
+
+  throw new Error("provider_json_parse_failed");
+}
+
+function maxTokensForStep(stepId: AgentStepId): number {
+  const budgetByStep: Record<AgentStepId, number> = {
+    intake_classification: 1600,
+    requirements_spec_generation: 4096,
+    governance_assessment: 4096,
+    build_plan: 4096
+  };
+
+  return budgetByStep[stepId];
 }
 
 function deterministicClassification(

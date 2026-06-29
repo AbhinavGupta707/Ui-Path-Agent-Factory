@@ -84,8 +84,8 @@ console.log("\nPress Ctrl+C to stop all services.\n");
 
 const children = services.map(startService);
 
-process.on("SIGINT", stopAll);
-process.on("SIGTERM", stopAll);
+process.on("SIGINT", () => stopAll(0));
+process.on("SIGTERM", () => stopAll(0));
 process.on("exit", () => {
   for (const child of children) {
     if (!child.killed) {
@@ -123,11 +123,12 @@ function stopAll(code = 0) {
     return;
   }
   stopping = true;
+  const exitCode = typeof code === "number" ? code : 0;
   console.log("\nStopping Agent Factory live local stack...");
   for (const child of children) {
     child.kill("SIGTERM");
   }
-  setTimeout(() => process.exit(code), 400);
+  setTimeout(() => process.exit(exitCode), 400);
 }
 
 function prefix(label, chunk) {

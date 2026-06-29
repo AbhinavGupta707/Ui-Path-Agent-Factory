@@ -360,48 +360,80 @@ export function App() {
   };
 
   return (
-    <main className="dashboard-shell">
-      <Header
-        mode={mode}
-        refreshState={refreshState}
-        lastRefresh={lastRefresh}
-        onModeChange={setMode}
-        onRefresh={handleRefresh}
-      />
+    <main className="customer360-app">
+      <DashboardSidebar />
+      <section className="dashboard-shell">
+        <Header
+          mode={mode}
+          refreshState={refreshState}
+          lastRefresh={lastRefresh}
+          onModeChange={setMode}
+          onRefresh={handleRefresh}
+        />
 
-      {refreshState === "loading" ? <LoadingState /> : null}
+        {refreshState === "loading" ? <LoadingState /> : null}
 
-      <StatusRail datasetId={model.datasetId} freshness={model.freshness} mode={mode} warnings={model.warnings} />
-      <EvidenceRail items={evidenceMetrics} />
+        <StatusRail datasetId={model.datasetId} freshness={model.freshness} mode={mode} warnings={model.warnings} />
+        <EvidenceRail items={evidenceMetrics} />
 
-      {isDegraded ? (
-        <section className="alert-band" aria-label="Degraded data notice">
-          <strong>Degraded metric path</strong>
-          <span>Return records and purchase events are unavailable, so the metric layer is rendering validated partial-feed warnings.</span>
-        </section>
-      ) : null}
-
-      {isEmpty ? (
-        <EmptyDashboard onReset={() => setMode("ready")} />
-      ) : (
-        <>
-          <KpiStrip kpis={model.kpis} />
-
-          <section className="dashboard-grid dashboard-grid-primary">
-            <RevenuePanel points={model.revenueTrend} totalRevenue={model.totalRevenue} />
-            <SegmentPanel segments={model.segments} totalRevenue={model.totalRevenue} />
+        {isDegraded ? (
+          <section className="alert-band" aria-label="Degraded data notice">
+            <strong>Degraded metric path</strong>
+            <span>Return records and purchase events are unavailable, so the metric layer is rendering validated partial-feed warnings.</span>
           </section>
+        ) : null}
 
-          <section className="dashboard-grid dashboard-grid-secondary">
-            <RetentionPanel cohorts={model.retention} />
-            <FunnelPanel funnel={model.funnel} />
-            <CategoryPanel categories={model.categories} />
-          </section>
+        {isEmpty ? (
+          <EmptyDashboard onReset={() => setMode("ready")} />
+        ) : (
+          <>
+            <KpiStrip kpis={model.kpis} />
 
-          <RiskTable risks={model.risks} />
-        </>
-      )}
+            <section className="dashboard-grid dashboard-grid-primary">
+              <RevenuePanel points={model.revenueTrend} totalRevenue={model.totalRevenue} />
+              <SegmentPanel segments={model.segments} totalRevenue={model.totalRevenue} />
+            </section>
+
+            <section className="dashboard-grid dashboard-grid-secondary">
+              <RetentionPanel cohorts={model.retention} />
+              <FunnelPanel funnel={model.funnel} />
+              <CategoryPanel categories={model.categories} />
+            </section>
+
+            <RiskTable risks={model.risks} />
+          </>
+        )}
+      </section>
     </main>
+  );
+}
+
+function DashboardSidebar() {
+  const navItems = ["Overview", "Segments", "Revenue", "Retention", "Risk", "Evidence"];
+
+  return (
+    <aside className="dashboard-sidebar" aria-label="Customer360 navigation">
+      <div className="sidebar-brand">
+        <span className="brand-mark">AF</span>
+        <div>
+          <strong>Agent Factory</strong>
+          <small>Generated sandbox app</small>
+        </div>
+      </div>
+      <nav className="sidebar-nav" aria-label="Dashboard sections">
+        {navItems.map((item, index) => (
+          <a className={index === 0 ? "nav-item nav-item-active" : "nav-item"} href={`#${item.toLowerCase()}`} key={item}>
+            <span>{item.slice(0, 1)}</span>
+            {item}
+          </a>
+        ))}
+      </nav>
+      <div className="sidebar-status">
+        <span>Preview sandbox</span>
+        <strong>Privacy-safe</strong>
+        <small>Aggregated metrics only. Raw identifiers are suppressed before rendering.</small>
+      </div>
+    </aside>
   );
 }
 

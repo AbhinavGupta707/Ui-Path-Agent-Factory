@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest";
 import { createAgentRuntime } from "../src/agentRuntime.js";
 import type { ChatCompletionClient } from "../src/fireworksClient.js";
+import {
+  generateClarificationQuestions,
+  generateGovernanceAssessment,
+  generateStructuredSpec
+} from "../src/lifecycle.js";
 import { loadAgentProviderConfig } from "../src/providerConfig.js";
 import { redactPayload } from "../src/redaction.js";
 import { createInMemoryFactoryStore } from "../src/store.js";
@@ -80,6 +85,219 @@ describe("agent runtime provider wiring", () => {
     expect(output.trace.redaction.raw_prompt_stored).toBe(false);
     expect(output.trace.redaction.raw_response_stored).toBe(false);
     expect(output.confidence).toBe(0.91);
+  });
+
+  it("retries the fallback model profile when the primary profile cannot produce schema-valid JSON", async () => {
+    const store = createInMemoryFactoryStore({ now: () => "2026-06-28T10:00:00.000Z" });
+    const record = await store.createRequest(intakeBody);
+    const attemptedProfiles: string[] = [];
+    const requestedTokenBudgets: Array<number | undefined> = [];
+    const client: ChatCompletionClient = {
+      async complete(request) {
+        attemptedProfiles.push(request.profile);
+        requestedTokenBudgets.push(request.maxTokens);
+        if (request.profile === "fast") {
+          return {
+            model: "accounts/fireworks/models/gpt-oss-120b",
+            content: JSON.stringify({ type: "object" })
+          };
+        }
+
+        return {
+          model: "accounts/fireworks/models/glm-5p2",
+          content: JSON.stringify({
+            complexity: "medium",
+            confidence: 0.88,
+            pii_likelihood: "possible",
+            missing_information: [],
+            inferred_source_systems: ["synthetic_customers_csv"],
+            inferred_metrics: ["revenue"],
+            summary: "Fallback model repaired the live classification output."
+          }),
+          usage: {
+            prompt_tokens: 30,
+            completion_tokens: 35,
+            total_tokens: 65
+          }
+        };
+      }
+    };
+    const runtime = createAgentRuntime({
+      config: loadAgentProviderConfig({
+        FIREWORKS_API_KEY: "fw_unit_test_key_not_real",
+        AGENT_MODEL_FAST: "accounts/fireworks/models/gpt-oss-120b",
+        AGENT_MODEL_FALLBACK: "accounts/fireworks/models/glm-5p2"
+      }),
+      client
+    });
+
+    const output = await runtime.classifyIntake(record, store.now());
+
+    expect(attemptedProfiles).toEqual(["fast", "fallback"]);
+    expect(requestedTokenBudgets).toEqual([1600, 1600]);
+    expect(output.trace.mode).toBe("live");
+    expect(output.trace.profile).toBe("fallback");
+    expect(output.trace.model_id).toBe("accounts/fireworks/models/glm-5p2");
+    expect(output.trace.warnings).toContain(
+      "Primary model profile failed validation or request handling; fallback model profile was retried."
+    );
+    expect(output.confidence).toBe(0.88);
+  });
+
+  it("normalizes common provider classification shapes into the runtime contract", async () => {
+    const store = createInMemoryFactoryStore({ now: () => "2026-06-28T10:00:00.000Z" });
+    const record = await store.createRequest(intakeBody);
+    const client: ChatCompletionClient = {
+      async complete() {
+        return {
+          model: "accounts/fireworks/models/glm-5p2",
+          content: JSON.stringify({
+            complexity: "high",
+            confidence: "high",
+            pii_likelihood: "low",
+            missing_information: [{ description: "Data refresh cadence" }],
+            inferred_source_systems: [{ name: "Salesforce CRM" }],
+            inferred_metrics: [{ metric: "revenue" }],
+            summary: "Provider classification used ordinal and object-shaped fields."
+          })
+        };
+      }
+    };
+    const runtime = createAgentRuntime({
+      config: loadAgentProviderConfig({
+        FIREWORKS_API_KEY: "fw_unit_test_key_not_real"
+      }),
+      client
+    });
+
+    const output = await runtime.classifyIntake(record, store.now());
+
+    expect(output.trace.mode).toBe("live");
+    expect(output.confidence).toBe(0.85);
+    expect(output.pii_likelihood).toBe("possible");
+    expect(output.missing_information).toEqual(["Data refresh cadence"]);
+    expect(output.inferred_source_systems).toEqual(["Salesforce CRM"]);
+    expect(output.inferred_metrics).toEqual(["revenue"]);
+  });
+
+  it("normalizes object-shaped requirements lists from provider output", async () => {
+    const store = createInMemoryFactoryStore({ now: () => "2026-06-28T10:00:00.000Z" });
+    const initialRecord = await store.createRequest(intakeBody);
+    const questions = generateClarificationQuestions(initialRecord);
+    await store.saveClarificationQuestions(initialRecord.request.request_id, questions);
+    const record = await store.saveClarificationAnswers(
+      initialRecord.request.request_id,
+      questions.map((question) => ({
+        question_id: question.id,
+        answer: question.default,
+        answered_by: "Avery Morgan",
+        answered_at: store.now()
+      }))
+    );
+    const client: ChatCompletionClient = {
+      async complete() {
+        return {
+          model: "accounts/fireworks/models/glm-5p2",
+          content: JSON.stringify({
+            business_goal: "Deliver a governed Customer360 dashboard for revenue operations leaders.",
+            data_sources_json: [{ name: "Salesforce CRM" }],
+            metrics_json: [{ metric: "average order value" }],
+            filters_json: [{ filter: "segment" }],
+            constraints_json: [{ constraint: "sandbox deployment only" }],
+            assumptions: [{ assumption: "Synthetic-ready data is available." }]
+          })
+        };
+      }
+    };
+    const runtime = createAgentRuntime({
+      config: loadAgentProviderConfig({
+        FIREWORKS_API_KEY: "fw_unit_test_key_not_real"
+      }),
+      client
+    });
+
+    const output = await runtime.generateRequirementsSpec(record, store.now());
+
+    expect(output.trace.mode).toBe("live");
+    expect(output.spec.data_sources_json).toEqual(["Salesforce CRM"]);
+    expect(output.spec.metrics_json).toEqual(["average order value"]);
+    expect(output.spec.filters_json).toEqual(["segment"]);
+    expect(output.spec.constraints_json).toContain("sandbox deployment only");
+    expect(output.assumptions).toEqual(["Synthetic-ready data is available."]);
+  });
+
+  it("normalizes object-shaped build plan instructions from provider output", async () => {
+    const store = createInMemoryFactoryStore({ now: () => "2026-06-28T10:00:00.000Z" });
+    const initialRecord = await store.createRequest(intakeBody);
+    const spec = generateStructuredSpec(initialRecord, store.now());
+    const specRecord = await store.saveStructuredSpec(initialRecord.request.request_id, spec);
+    const governance = generateGovernanceAssessment(specRecord, spec, store.now());
+    const record = await store.saveGovernanceAssessment(
+      specRecord.request.request_id,
+      governance.assessment,
+      governance.approvalTasks
+    );
+    const client: ChatCompletionClient = {
+      async complete() {
+        return {
+          model: "accounts/fireworks/models/glm-5p2",
+          content: JSON.stringify({
+            worker_instructions: [
+              {
+                action: "apply_pii_masking",
+                details: "Mask names, emails, and phone numbers before rendering."
+              }
+            ],
+            acceptance_criteria: [{ criterion: "Dashboard remains sandbox-only." }]
+          })
+        };
+      }
+    };
+    const runtime = createAgentRuntime({
+      config: loadAgentProviderConfig({
+        FIREWORKS_API_KEY: "fw_unit_test_key_not_real"
+      }),
+      client
+    });
+
+    const output = await runtime.generateBuildPlan(record, store.now());
+
+    expect(output.trace.mode).toBe("live");
+    expect(output.worker_instructions[0]).toBe(
+      "apply_pii_masking: Mask names, emails, and phone numbers before rendering."
+    );
+    expect(output.acceptance_criteria).toEqual(["Dashboard remains sandbox-only."]);
+  });
+
+  it("keeps degraded-provider-error mode when both primary and fallback model profiles fail", async () => {
+    const store = createInMemoryFactoryStore({ now: () => "2026-06-28T10:00:00.000Z" });
+    const record = await store.createRequest(intakeBody);
+    const attemptedProfiles: string[] = [];
+    const client: ChatCompletionClient = {
+      async complete(request) {
+        attemptedProfiles.push(request.profile);
+        return {
+          model: `model-for-${request.profile}`,
+          content: JSON.stringify({ type: "object" })
+        };
+      }
+    };
+    const runtime = createAgentRuntime({
+      config: loadAgentProviderConfig({
+        FIREWORKS_API_KEY: "fw_unit_test_key_not_real"
+      }),
+      client
+    });
+
+    const output = await runtime.classifyIntake(record, store.now());
+
+    expect(attemptedProfiles).toEqual(["fast", "fallback"]);
+    expect(output.trace.mode).toBe("degraded-provider-error");
+    expect(output.trace.warnings).toEqual([
+      "Primary model profile failed validation or request handling; fallback model profile was retried.",
+      "Fallback model profile failed validation or request handling; deterministic fallback output was used."
+    ]);
+    expect(output.confidence).toBe(0.78);
   });
 
   it("redacts PII and secrets before audit or trace payload storage", () => {
