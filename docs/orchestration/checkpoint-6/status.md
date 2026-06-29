@@ -13,7 +13,7 @@ Started: 2026-06-29.
 | Agent Runtime And Provider Wiring | `local:7db51020-7d77-404e-8b62-1ab9a15066a0` | `019f1326-800b-7e52-83fe-f98dbedb5739` | `/Users/abhinavgupta/.codex/worktrees/0448/Agent Factory` | active | Server-side Fireworks/LangSmith runtime and lifecycle integration. |
 | Codex Build Worker Orchestration | `local:b3219824-2e66-4b38-a08c-aa5836dc3182` | `019f1326-8037-7a71-a3d9-b54e52f726e8` | `/Users/abhinavgupta/.codex/worktrees/1363/Agent Factory` | active | Codex/Git runner wiring and build evidence. |
 | Premium Product UI | `local:5d7d8231-ef53-431b-b14c-154ad52e7af9` | `019f1326-801c-7ec0-82b3-3fcacb584c96` | `/Users/abhinavgupta/.codex/worktrees/eb9a/Agent Factory` | active | Reference-led Factory Console redesign. |
-| Integration QA And Live Runbook | `local:045b9f0e-ad87-465c-bf37-7ac5b0776b2f` | `019f1326-83e5-7743-bf00-a6e9d014f11b` | `/Users/abhinavgupta/.codex/worktrees/20ba/Agent Factory` | active | Cross-lane QA, docs, browser verification. |
+| Integration QA And Live Runbook | `local:045b9f0e-ad87-465c-bf37-7ac5b0776b2f` | `019f1326-83e5-7743-bf00-a6e9d014f11b` | `/Users/abhinavgupta/.codex/worktrees/20ba/Agent Factory` | complete; awaiting merge | Worktree commit `808bd02`; `npm run demo:scan`, `git diff --check`, and `npm run smoke:demo` passed. Merge after runtime, build worker, and UI lanes. |
 
 ## Setup Facts
 
