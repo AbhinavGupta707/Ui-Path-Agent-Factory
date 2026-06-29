@@ -31,17 +31,26 @@ import {
   XCircle,
   type LucideIcon
 } from "lucide-react";
-import { defaultUiPathContext, type IntakeRequest } from "@agent-factory/shared-contracts";
+import { defaultUiPathContext, type BuildRun, type IntakeRequest } from "@agent-factory/shared-contracts";
 import {
+  approveScope,
   checkFactoryApi,
+  createBuildManifest,
+  generateClarificationQuestions,
+  generateGovernanceAssessment,
+  generateStructuredSpec,
   getLifecycleSnapshot,
+  queueBuildRun,
+  recordSandboxDeployment,
+  submitClarificationAnswers,
   submitIntakeToFactoryApi,
+  updateBuildRunStatus,
+  type DeploymentResult,
   type FactoryApiStatus,
   type LifecycleSnapshot
 } from "./factoryClient";
 import {
   auditEvents,
-  buildArtifacts,
   buildLogEvents,
   buildManifest,
   buildRunEvidence,
@@ -62,11 +71,13 @@ import {
   sourceSystems,
   structuredSpec,
   testManagerCatalog,
+  type ClarificationQuestion,
   type ConsoleAuditEvent
 } from "./seedData";
 
 type ProductView = "new-request" | "build-plan" | "live-run" | "output-preview";
 type SubmitState = "idle" | "loading" | "success" | "error";
+type LifecycleBusyState = "idle" | "clarifying" | "planning" | "approving" | "deploying";
 type ApprovalState = "pending" | "approved" | "changes";
 type ReleaseApprovalState = "pending" | "approved";
 type PillTone = "neutral" | "success" | "warning" | "danger" | "info";
@@ -86,15 +97,6 @@ const productViews: Array<{ id: ProductView; label: string; icon: LucideIcon; he
   { id: "output-preview", label: "Output Preview", icon: LayoutDashboard, helper: "Inspect result" }
 ];
 
-const runStages = [
-  { id: "intake", label: "Request", status: "done", product: "Factory API" },
-  { id: "governance", label: "Govern", status: "done", product: "UiPath Agents" },
-  { id: "build", label: "Build", status: "active", product: "Codex worker" },
-  { id: "quality", label: "Quality", status: "ready", product: "Test Manager" },
-  { id: "release", label: "Release", status: "waiting", product: "Action Center" },
-  { id: "preview", label: "Preview", status: "ready", product: "Sandbox" }
-] as const;
-
 const outputKpis = [
   { label: "Revenue", value: "$4.82M", delta: "+12.4%", tone: "success" },
   { label: "Repeat rate", value: "38.6%", delta: "+4.1%", tone: "success" },
@@ -111,14 +113,17 @@ export function App() {
   const [selectedSources, setSelectedSources] = useState(() => new Set(seedIntake.sourceSystems));
   const [selectedMetrics, setSelectedMetrics] = useState(() => new Set(metricOptions.map((metric) => metric.id)));
   const [selectedPolicy, setSelectedPolicy] = useState<(typeof piiPolicies)[number]>(piiPolicies[0]);
-  const [answers, setAnswers] = useState(() =>
-    Object.fromEntries(clarificationQuestions.map((question) => [question.id, question.defaultAnswer]))
-  );
+  const [activeQuestions, setActiveQuestions] = useState<ClarificationQuestion[]>([]);
+  const [answers, setAnswers] = useState<Record<string, string>>({});
   const [submitState, setSubmitState] = useState<SubmitState>("idle");
+  const [lifecycleBusy, setLifecycleBusy] = useState<LifecycleBusyState>("idle");
+  const [lifecycleIssue, setLifecycleIssue] = useState<string | null>(null);
   const [approvalState, setApprovalState] = useState<ApprovalState>("pending");
   const [releaseApprovalState, setReleaseApprovalState] = useState<ReleaseApprovalState>("pending");
   const [auditLog, setAuditLog] = useState<ConsoleAuditEvent[]>(auditEvents);
   const [evidenceOpen, setEvidenceOpen] = useState(false);
+  const [buildRun, setBuildRun] = useState<BuildRun | null>(null);
+  const [deploymentResult, setDeploymentResult] = useState<DeploymentResult | null>(null);
 
   useEffect(() => {
     let mounted = true;
@@ -158,6 +163,32 @@ export function App() {
     };
   }, [apiStatus.apiBaseUrl, apiStatus.mode, request.id]);
 
+  useEffect(() => {
+    const detail = snapshot?.detail;
+
+    if (!detail) {
+      return;
+    }
+
+    if (detail.clarificationQuestions.length > 0) {
+      const nextQuestions = detail.clarificationQuestions.map((question) => ({
+        id: question.id,
+        question: question.question,
+        product: question.source,
+        defaultAnswer: question.default
+      }));
+      setActiveQuestions(nextQuestions);
+      setAnswers((current) => ({
+        ...Object.fromEntries(nextQuestions.map((question) => [question.id, question.defaultAnswer])),
+        ...current
+      }));
+    }
+
+    if (detail.buildRuns.length > 0) {
+      setBuildRun(detail.buildRuns.at(-1) ?? null);
+    }
+  }, [snapshot]);
+
   const currentIntake = useMemo<IntakeRequest>(
     () => ({
       ...intake,
@@ -183,9 +214,13 @@ export function App() {
 
   const selectedReadyCount = selectedSourceRecords.filter((source) => source.status !== "needs_mapping").length;
   const answeredCount = Object.values(answers).filter((answer) => answer.trim().length > 0).length;
+  const hasSubmittedRequest = submitState === "success" || request.id !== seedRequest.id;
+  const allQuestionsAnswered = activeQuestions.length > 0 && answeredCount >= activeQuestions.length;
   const canSubmit = intake.title.length >= 4 && intake.requesterEmail.includes("@") && intake.businessGoal.length >= 12;
   const apiTone: PillTone = apiStatus.mode === "online" ? "success" : apiStatus.mode === "checking" ? "info" : "warning";
-  const lifecycleMode = snapshot ? "Live API snapshot" : apiStatus.mode === "online" ? "API connected" : "Local seed state";
+  const lifecycleMode = snapshot ? "Live API snapshot" : apiStatus.mode === "online" ? "API connected" : "Offline rehearsal";
+  const currentBuildRun = buildRun ?? snapshot?.detail?.buildRuns.at(-1) ?? null;
+  const deploymentUrl = deploymentResult?.deploymentUrl ?? deploymentEvidence.url;
 
   const specPreview = useMemo(
     () => ({
@@ -226,6 +261,8 @@ export function App() {
       return;
     }
 
+    setLifecycleIssue(null);
+    setLifecycleBusy("clarifying");
     setSubmitState("loading");
     const apiRequest = await submitIntakeToFactoryApi(currentIntake);
     const nextRequest = apiRequest ?? createLocalRequest(currentIntake);
@@ -243,8 +280,119 @@ export function App() {
         current.length + 1
       )
     ]);
+
+    if (apiRequest && apiStatus.mode === "online") {
+      const clarification = await generateClarificationQuestions(nextRequest.id, apiStatus.apiBaseUrl);
+
+      if (clarification.ok && clarification.data) {
+        const generatedQuestions = clarification.data.questions;
+        const nextQuestions = mapApiQuestionsToConsole(generatedQuestions);
+        setActiveQuestions(nextQuestions);
+        setAnswers(
+          Object.fromEntries(nextQuestions.map((question) => [question.id, question.defaultAnswer]))
+        );
+        setAuditLog((current) => [
+          ...current,
+          createConsoleAudit(
+            `Clarification Agent returned ${generatedQuestions.length} questions after intake submit.`,
+            current.length + 1
+          )
+        ]);
+      } else {
+        setActiveQuestions([]);
+        setAnswers({});
+        setLifecycleIssue(
+          "Request was created, but the clarification endpoint is unavailable. Live mode is blocked until /clarify succeeds."
+        );
+      }
+    } else {
+      setActiveQuestions(clarificationQuestions);
+      setAnswers(Object.fromEntries(clarificationQuestions.map((question) => [question.id, question.defaultAnswer])));
+      setLifecycleIssue(
+        "Factory API is unavailable, so questions are shown in explicit offline rehearsal mode instead of live lifecycle mode."
+      );
+    }
+
     setSubmitState("success");
+    setLifecycleBusy("idle");
+  }
+
+  async function generatePlanFromAnswers() {
+    if (!allQuestionsAnswered) {
+      setSubmitState("error");
+      return;
+    }
+
+    setLifecycleIssue(null);
+    setLifecycleBusy("planning");
+
+    if (apiStatus.mode === "online") {
+      const clarificationAnswers = activeQuestions.map((question) => ({
+        question_id: question.id,
+        answer: answers[question.id] ?? question.defaultAnswer,
+        answered_by: intake.requesterEmail
+      }));
+      const answerResult = await submitClarificationAnswers(request.id, clarificationAnswers, apiStatus.apiBaseUrl);
+      const specResult = answerResult.ok
+        ? await generateStructuredSpec(request.id, apiStatus.apiBaseUrl)
+        : ({ ok: false, action: "spec", message: answerResult.message } as const);
+      const governanceResult = specResult.ok
+        ? await generateGovernanceAssessment(request.id, apiStatus.apiBaseUrl)
+        : ({ ok: false, action: "governance", message: specResult.message } as const);
+
+      if (!answerResult.ok || !specResult.ok || !governanceResult.ok) {
+        setLifecycleIssue(
+          "The request has answers, but the live spec/governance lifecycle did not complete. Check Factory API configuration before approving scope."
+        );
+        setLifecycleBusy("idle");
+        return;
+      }
+
+      setSnapshot(await getLifecycleSnapshot(request.id, apiStatus.apiBaseUrl));
+      setAuditLog((current) => [
+        ...current,
+        createConsoleAudit("Answers, spec, and governance were generated through lifecycle endpoints.", current.length + 1)
+      ]);
+    } else {
+      setAuditLog((current) => [
+        ...current,
+        createConsoleAudit("Offline rehearsal advanced to plan review with deterministic seed plan.", current.length + 1)
+      ]);
+    }
+
+    setLifecycleBusy("idle");
     setProductView("build-plan", setView);
+  }
+
+  async function refreshClarificationQuestions() {
+    setLifecycleIssue(null);
+    setLifecycleBusy("clarifying");
+
+    if (apiStatus.mode === "online") {
+      const clarification = await generateClarificationQuestions(request.id, apiStatus.apiBaseUrl);
+
+      if (clarification.ok && clarification.data) {
+        const nextQuestions = mapApiQuestionsToConsole(clarification.data.questions);
+        setActiveQuestions(nextQuestions);
+        setAnswers((current) => ({
+          ...Object.fromEntries(nextQuestions.map((question) => [question.id, current[question.id] ?? question.defaultAnswer]))
+        }));
+        setAuditLog((current) => [
+          ...current,
+          createConsoleAudit(`Refreshed ${nextQuestions.length} clarification questions.`, current.length + 1)
+        ]);
+      } else {
+        setLifecycleIssue("Clarification refresh failed. Live mode remains blocked until /clarify succeeds.");
+      }
+    } else {
+      setActiveQuestions(clarificationQuestions);
+      setAnswers((current) => ({
+        ...Object.fromEntries(clarificationQuestions.map((question) => [question.id, current[question.id] ?? question.defaultAnswer]))
+      }));
+      setLifecycleIssue("Offline rehearsal questions refreshed from deterministic seed state.");
+    }
+
+    setLifecycleBusy("idle");
   }
 
   function updateIntakeField(field: "title" | "requesterEmail" | "businessGoal" | "targetAudience" | "dueDate") {
@@ -284,12 +432,44 @@ export function App() {
     });
   }
 
-  function approvePlan() {
+  async function approvePlan() {
+    setLifecycleIssue(null);
+    setLifecycleBusy("approving");
+
+    if (apiStatus.mode === "online") {
+      const approvalResult = await approveScope(
+        request.id,
+        "Scope, data policy, and sandbox-only build approved from Factory Console.",
+        apiStatus.apiBaseUrl
+      );
+      const manifestResult = approvalResult.ok
+        ? await createBuildManifest(request.id, apiStatus.apiBaseUrl)
+        : ({ ok: false, action: "manifest", message: approvalResult.message } as const);
+      const buildResult =
+        manifestResult.ok && manifestResult.data
+          ? await queueBuildRun(request.id, manifestResult.data.manifest_id, apiStatus.apiBaseUrl)
+          : ({ ok: false, action: "queue-build", message: manifestResult.message } as const);
+
+      if (!approvalResult.ok || !manifestResult.ok || !buildResult.ok) {
+        setLifecycleIssue(
+          "Scope approval did not complete the live manifest/build queue chain. The run is blocked until those endpoints succeed."
+        );
+        setLifecycleBusy("idle");
+        return;
+      }
+
+      if (buildResult.data) {
+        setBuildRun(buildResult.data);
+      }
+      setSnapshot(await getLifecycleSnapshot(request.id, apiStatus.apiBaseUrl));
+    }
+
     setApprovalState("approved");
     setAuditLog((current) => [
       ...current,
-      createConsoleAudit("Scope approved in the console; build run is ready to start.", current.length + 1)
+      createConsoleAudit("Scope approved; manifest and build queue handoff are ready for the run view.", current.length + 1)
     ]);
+    setLifecycleBusy("idle");
     setProductView("live-run", setView);
   }
 
@@ -301,13 +481,57 @@ export function App() {
     ]);
   }
 
+  async function approveRelease() {
+    setLifecycleIssue(null);
+    setLifecycleBusy("deploying");
+
+    if (apiStatus.mode === "online" && currentBuildRun) {
+      const readyResult = await updateBuildRunStatus(
+        currentBuildRun.build_run_id,
+        "awaiting_release_approval",
+        apiStatus.apiBaseUrl
+      );
+      const deployResult = readyResult.ok
+        ? await recordSandboxDeployment(request.id, currentBuildRun.build_run_id, deploymentEvidence.url, apiStatus.apiBaseUrl)
+        : ({ ok: false, action: "deploy", message: readyResult.message } as const);
+
+      if (!readyResult.ok || !deployResult.ok || !deployResult.data) {
+        setLifecycleIssue(
+          "Release approval was not recorded because build status or deployment evidence endpoint is unavailable."
+        );
+        setLifecycleBusy("idle");
+        return;
+      }
+
+      setBuildRun(readyResult.data ?? currentBuildRun);
+      setDeploymentResult(deployResult.data);
+      setSnapshot(await getLifecycleSnapshot(request.id, apiStatus.apiBaseUrl));
+    } else if (apiStatus.mode === "online" && !currentBuildRun) {
+      setLifecycleIssue("No live build run is available yet. Approve the plan and queue the build before deployment.");
+      setLifecycleBusy("idle");
+      return;
+    }
+
+    setReleaseApprovalState("approved");
+    setAuditLog((current) => [
+      ...current,
+      createConsoleAudit("Release approved; sandbox deployment evidence URL is attached to the run.", current.length + 1)
+    ]);
+    setLifecycleBusy("idle");
+  }
+
   const viewContent = {
     "new-request": (
       <RequestIntakeView
+        activeQuestions={activeQuestions}
         answers={answers}
         answeredCount={answeredCount}
+        allQuestionsAnswered={allQuestionsAnswered}
         canSubmit={canSubmit}
+        hasSubmittedRequest={hasSubmittedRequest}
         intake={intake}
+        lifecycleBusy={lifecycleBusy}
+        lifecycleIssue={lifecycleIssue}
         lifecycleMode={lifecycleMode}
         onAnswerChange={(questionId, answer) =>
           setAnswers((current) => ({
@@ -315,6 +539,8 @@ export function App() {
             [questionId]: answer
           }))
         }
+        onContinue={generatePlanFromAnswers}
+        onRefreshQuestions={refreshClarificationQuestions}
         onSubmit={submitIntake}
         onToggleMetric={toggleMetric}
         onToggleSource={toggleSource}
@@ -332,6 +558,8 @@ export function App() {
     "build-plan": (
       <BuildPlanView
         approvalState={approvalState}
+        lifecycleBusy={lifecycleBusy}
+        lifecycleIssue={lifecycleIssue}
         manifestPreview={manifestPreview}
         onApprove={approvePlan}
         onRequestChanges={requestPlanChanges}
@@ -346,8 +574,11 @@ export function App() {
       <LiveRunView
         approvalState={approvalState}
         auditLog={auditLog}
+        buildRun={currentBuildRun}
+        deploymentUrl={deploymentUrl}
+        lifecycleIssue={lifecycleIssue}
         onOpenEvidence={() => setEvidenceOpen(true)}
-        onReleaseApprove={() => setReleaseApprovalState("approved")}
+        onReleaseApprove={approveRelease}
         onViewPreview={() => setProductView("output-preview", setView)}
         releaseApprovalState={releaseApprovalState}
         snapshot={snapshot}
@@ -355,6 +586,7 @@ export function App() {
     ),
     "output-preview": (
       <OutputPreviewView
+        deploymentUrl={deploymentUrl}
         onOpenEvidence={() => setEvidenceOpen(true)}
         onViewRun={() => setProductView("live-run", setView)}
         releaseApprovalState={releaseApprovalState}
@@ -476,12 +708,19 @@ export function App() {
 }
 
 function RequestIntakeView({
+  activeQuestions,
   answers,
   answeredCount,
+  allQuestionsAnswered,
   canSubmit,
+  hasSubmittedRequest,
   intake,
+  lifecycleBusy,
+  lifecycleIssue,
   lifecycleMode,
   onAnswerChange,
+  onContinue,
+  onRefreshQuestions,
   onSubmit,
   onToggleMetric,
   onToggleSource,
@@ -495,12 +734,19 @@ function RequestIntakeView({
   setSelectedPolicy,
   submitState
 }: {
+  activeQuestions: ClarificationQuestion[];
   answers: Record<string, string>;
   answeredCount: number;
+  allQuestionsAnswered: boolean;
   canSubmit: boolean;
+  hasSubmittedRequest: boolean;
   intake: IntakeRequest;
+  lifecycleBusy: LifecycleBusyState;
+  lifecycleIssue: string | null;
   lifecycleMode: string;
   onAnswerChange: (questionId: string, answer: string) => void;
+  onContinue: () => void;
+  onRefreshQuestions: () => void;
   onSubmit: () => void;
   onToggleMetric: (metricId: string) => void;
   onToggleSource: (sourceId: string) => void;
@@ -516,6 +762,8 @@ function RequestIntakeView({
   setSelectedPolicy: (policy: (typeof piiPolicies)[number]) => void;
   submitState: SubmitState;
 }) {
+  const questionCount = activeQuestions.length;
+
   return (
     <div className="request-layout">
       <section className="primary-panel request-card">
@@ -531,10 +779,11 @@ function RequestIntakeView({
             <Sparkles size={18} aria-hidden="true" />
           </div>
           <div>
-            <strong>I will turn this into a governed build plan.</strong>
+            <strong>{hasSubmittedRequest ? "A few details will shape the governed plan." : "Start with the business outcome."}</strong>
             <p>
-              Describe the business outcome, choose approved sources, and answer the few questions needed before
-              the build worker receives a manifest.
+              {hasSubmittedRequest
+                ? "Clarification questions are generated after intake so the build manifest only includes approved scope."
+                : "Describe the dashboard or automation you need. Agent Factory will create the request first, then ask only for missing facts."}
             </p>
           </div>
         </div>
@@ -562,31 +811,88 @@ function RequestIntakeView({
           </label>
         </div>
 
-        <div className="question-strip">
-          {clarificationQuestions.map((question) => (
-            <label className="question-row" key={question.id}>
-              <span>
-                <strong>{question.question}</strong>
-                <small>{question.product}</small>
-              </span>
-              <textarea
-                rows={2}
-                value={answers[question.id] ?? ""}
-                onChange={(event) => onAnswerChange(question.id, event.target.value)}
-              />
-            </label>
-          ))}
-        </div>
+        {hasSubmittedRequest ? (
+          <div className="question-strip" data-empty={questionCount === 0}>
+            <div className="question-strip-header">
+              <div>
+                <strong>Clarifying questions</strong>
+                <small>{questionCount > 0 ? "Generated after submit" : "Waiting for lifecycle response"}</small>
+              </div>
+              <Pill tone={allQuestionsAnswered ? "success" : "warning"}>
+                {answeredCount}/{questionCount || 1} answered
+              </Pill>
+            </div>
+
+            {lifecycleIssue ? (
+              <StatusBanner tone="warning" icon={AlertTriangle} title="Lifecycle attention needed">
+                {lifecycleIssue}
+              </StatusBanner>
+            ) : null}
+
+            {questionCount > 0 ? (
+              activeQuestions.map((question, index) => (
+                <label className="question-row" key={question.id}>
+                  <span>
+                    <em>{index + 1}</em>
+                    <strong>{question.question}</strong>
+                    <small>{question.product}</small>
+                  </span>
+                  <textarea
+                    rows={2}
+                    value={answers[question.id] ?? ""}
+                    onChange={(event) => onAnswerChange(question.id, event.target.value)}
+                  />
+                </label>
+              ))
+            ) : (
+              <div className="empty-state">
+                <Loader2 className={lifecycleBusy === "clarifying" ? "spin-icon" : undefined} size={18} aria-hidden="true" />
+                <span>Submit succeeded, but no clarification questions are available yet.</span>
+              </div>
+            )}
+          </div>
+        ) : null}
 
         <div className="panel-actions">
-          <button className="primary-action" disabled={submitState === "loading"} type="button" onClick={onSubmit}>
-            {submitState === "loading" ? (
-              <Loader2 className="spin-icon" size={17} aria-hidden="true" />
-            ) : (
-              <Send size={17} aria-hidden="true" />
-            )}
-            {submitState === "loading" ? "Submitting" : "Generate build plan"}
-          </button>
+          {!hasSubmittedRequest ? (
+            <button className="primary-action" disabled={submitState === "loading"} type="button" onClick={onSubmit}>
+              {submitState === "loading" ? (
+                <Loader2 className="spin-icon" size={17} aria-hidden="true" />
+              ) : (
+                <Send size={17} aria-hidden="true" />
+              )}
+              {submitState === "loading" ? "Submitting request" : "Submit request"}
+            </button>
+          ) : (
+            <button
+              className="primary-action"
+              disabled={!allQuestionsAnswered || lifecycleBusy === "planning"}
+              type="button"
+              onClick={onContinue}
+            >
+              {lifecycleBusy === "planning" ? (
+                <Loader2 className="spin-icon" size={17} aria-hidden="true" />
+              ) : (
+                <ShieldCheck size={17} aria-hidden="true" />
+              )}
+              {lifecycleBusy === "planning" ? "Generating plan" : "Generate build plan"}
+            </button>
+          )}
+          {hasSubmittedRequest ? (
+            <button
+              className="secondary-action"
+              type="button"
+              onClick={onRefreshQuestions}
+              disabled={lifecycleBusy === "clarifying"}
+            >
+              {lifecycleBusy === "clarifying" ? (
+                <Loader2 className="spin-icon" size={17} aria-hidden="true" />
+              ) : (
+                <RefreshCw size={17} aria-hidden="true" />
+              )}
+              Refresh questions
+            </button>
+          ) : null}
         </div>
       </section>
 
@@ -609,9 +915,9 @@ function RequestIntakeView({
         <SummaryCard
           icon={MessageSquareText}
           label="Questions"
-          value={`${answeredCount}/${clarificationQuestions.length}`}
-          detail="Answered for planning"
-          tone={answeredCount === clarificationQuestions.length ? "success" : "warning"}
+          value={hasSubmittedRequest ? `${answeredCount}/${questionCount || 1}` : "After submit"}
+          detail={hasSubmittedRequest ? "Answered for planning" : "Generated by lifecycle"}
+          tone={allQuestionsAnswered ? "success" : "warning"}
         />
 
         <section className="rail-panel">
@@ -665,6 +971,8 @@ function RequestIntakeView({
 
 function BuildPlanView({
   approvalState,
+  lifecycleBusy,
+  lifecycleIssue,
   manifestPreview,
   onApprove,
   onRequestChanges,
@@ -675,6 +983,8 @@ function BuildPlanView({
   specPreview
 }: {
   approvalState: ApprovalState;
+  lifecycleBusy: LifecycleBusyState;
+  lifecycleIssue: string | null;
   manifestPreview: typeof manifestDocument;
   onApprove: () => void;
   onRequestChanges: () => void;
@@ -747,15 +1057,30 @@ function BuildPlanView({
         </div>
 
         <div className="panel-actions">
-          <button className="primary-action" type="button" onClick={approvalState === "approved" ? onViewRun : onApprove}>
-            <UserCheck size={17} aria-hidden="true" />
-            {approvalState === "approved" ? "Open live run" : "Approve plan"}
+          <button
+            className="primary-action"
+            disabled={lifecycleBusy === "approving"}
+            type="button"
+            onClick={approvalState === "approved" ? onViewRun : onApprove}
+          >
+            {lifecycleBusy === "approving" ? (
+              <Loader2 className="spin-icon" size={17} aria-hidden="true" />
+            ) : (
+              <UserCheck size={17} aria-hidden="true" />
+            )}
+            {approvalState === "approved" ? "Open live run" : lifecycleBusy === "approving" ? "Approving scope" : "Approve plan"}
           </button>
           <button className="secondary-action" type="button" onClick={onRequestChanges}>
             <MessageSquareText size={17} aria-hidden="true" />
             Request changes
           </button>
         </div>
+
+        {lifecycleIssue ? (
+          <StatusBanner tone="warning" icon={AlertTriangle} title="Lifecycle attention needed">
+            {lifecycleIssue}
+          </StatusBanner>
+        ) : null}
       </section>
 
       <aside className="summary-rail">
@@ -782,6 +1107,9 @@ function BuildPlanView({
 function LiveRunView({
   approvalState,
   auditLog,
+  buildRun,
+  deploymentUrl,
+  lifecycleIssue,
   onOpenEvidence,
   onReleaseApprove,
   onViewPreview,
@@ -790,6 +1118,9 @@ function LiveRunView({
 }: {
   approvalState: ApprovalState;
   auditLog: ConsoleAuditEvent[];
+  buildRun: BuildRun | null;
+  deploymentUrl: string;
+  lifecycleIssue: string | null;
   onOpenEvidence: () => void;
   onReleaseApprove: () => void;
   onViewPreview: () => void;
@@ -798,6 +1129,25 @@ function LiveRunView({
 }) {
   const progress = releaseApprovalState === "approved" ? 86 : approvalState === "approved" ? 68 : 42;
   const currentStage = releaseApprovalState === "approved" ? "Sandbox preview is ready" : "Waiting on release approval";
+  const timeline = snapshot?.timeline ?? [];
+  const activityEvents =
+    timeline.length > 0
+      ? timeline.slice(-7).map((event) => ({
+          id: event.id,
+          time: formatAuditTime(event.timestamp),
+          source: event.actor,
+          level: event.action.includes("failed") || event.action.includes("blocked") ? "warning" : "info",
+          message: event.summary
+        }))
+      : buildLogEvents;
+  const stageItems = [
+    { id: "maestro", label: "Maestro", status: "done", product: "BPMN spine" },
+    { id: "clarify", label: "Clarify", status: "done", product: "UiPath Agents" },
+    { id: "action", label: "Human Gate", status: approvalState === "approved" ? "done" : "active", product: "Action Center" },
+    { id: "workflow", label: "API Handoff", status: buildRun ? "done" : "ready", product: "API Workflow" },
+    { id: "codex", label: "Build", status: buildRun ? "active" : "waiting", product: "Codex worker" },
+    { id: "deploy", label: "Preview", status: releaseApprovalState === "approved" ? "done" : "waiting", product: "Sandbox" }
+  ] as const;
 
   return (
     <div className="run-layout">
@@ -814,11 +1164,11 @@ function LiveRunView({
             <span style={{ width: `${progress}%` }} />
           </div>
           <strong>{progress}% complete</strong>
-          <small>{buildRunEvidence.buildRunId}</small>
+          <small>{buildRun?.build_run_id ?? buildRunEvidence.buildRunId}</small>
         </div>
 
         <div className="stage-rail">
-          {runStages.map((stage) => (
+          {stageItems.map((stage) => (
             <div className="stage-item" data-status={stage.status} key={stage.id}>
               <span>{stage.status === "done" ? <Check size={14} aria-hidden="true" /> : <Circle size={14} aria-hidden="true" />}</span>
               <strong>{stage.label}</strong>
@@ -840,11 +1190,21 @@ function LiveRunView({
               </p>
             </div>
           </div>
-          <button className="primary-action" type="button" onClick={releaseApprovalState === "approved" ? onViewPreview : onReleaseApprove}>
+          <button
+            className="primary-action"
+            type="button"
+            onClick={releaseApprovalState === "approved" ? onViewPreview : onReleaseApprove}
+          >
             {releaseApprovalState === "approved" ? <ExternalLink size={17} aria-hidden="true" /> : <CheckCircle2 size={17} aria-hidden="true" />}
             {releaseApprovalState === "approved" ? "Open preview" : "Approve release"}
           </button>
         </section>
+
+        {lifecycleIssue ? (
+          <StatusBanner tone="warning" icon={AlertTriangle} title="Lifecycle attention needed">
+            {lifecycleIssue}
+          </StatusBanner>
+        ) : null}
 
         <section className="log-panel">
           <div className="section-heading">
@@ -855,7 +1215,7 @@ function LiveRunView({
             </button>
           </div>
           <div className="log-stream">
-            {buildLogEvents.map((event) => (
+            {activityEvents.map((event) => (
               <div className="log-row" data-level={event.level} key={event.id}>
                 <span>{event.time}</span>
                 <strong>{event.source}</strong>
@@ -887,7 +1247,7 @@ function LiveRunView({
           icon={Rocket}
           label="Preview"
           value={releaseApprovalState === "approved" ? "Ready" : "Pending approval"}
-          detail={deploymentEvidence.environment}
+          detail={releaseApprovalState === "approved" ? deploymentUrl : deploymentEvidence.environment}
           tone={releaseApprovalState === "approved" ? "success" : "warning"}
         />
         <section className="rail-panel">
@@ -910,11 +1270,13 @@ function LiveRunView({
 }
 
 function OutputPreviewView({
+  deploymentUrl,
   onOpenEvidence,
   onViewRun,
   releaseApprovalState,
   selectedMetricRecords
 }: {
+  deploymentUrl: string;
   onOpenEvidence: () => void;
   onViewRun: () => void;
   releaseApprovalState: ReleaseApprovalState;
@@ -1008,7 +1370,7 @@ function OutputPreviewView({
         <section className="rail-panel">
           <h2>Preview actions</h2>
           <div className="action-stack">
-            <a className="primary-link" href={deploymentEvidence.url} target="_blank" rel="noreferrer">
+            <a className="primary-link" href={deploymentUrl} target="_blank" rel="noreferrer">
               <ExternalLink size={16} aria-hidden="true" />
               Open sandbox preview
             </a>
@@ -1239,6 +1601,17 @@ function approvalCopy(state: ApprovalState) {
   }
 
   return "Awaiting approval";
+}
+
+function mapApiQuestionsToConsole(
+  questions: Array<{ id: string; question: string; default: string; source: string }>
+): ClarificationQuestion[] {
+  return questions.map((question) => ({
+    id: question.id,
+    question: question.question,
+    product: question.source,
+    defaultAnswer: question.default
+  }));
 }
 
 function getViewSubtitle(view: ProductView) {
