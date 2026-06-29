@@ -1,5 +1,6 @@
 import type { BuildManifest } from "@agent-factory/shared-contracts";
 
+export * from "./codex/index.js";
 export * from "./manifest.js";
 export * from "./runtime.js";
 export * from "./server.js";
