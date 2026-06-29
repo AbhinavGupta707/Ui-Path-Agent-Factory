@@ -1,10 +1,11 @@
 # API Workflow Contract
 
-This document defines the Checkpoint 4 UiPath API Workflow lane. The JSON
-assets are `uipath-ready`, validated locally with `uip api-workflow validate`,
-and intentionally use no-auth/local HTTP through the UiPath HTTP connector
-(`uipath-uipath-http`, `connectionId: "ImplicitConnection"`). No workflow was
-run with auth and no live Automation Cloud API Workflow asset was created.
+This document defines the UiPath API Workflow contract through Checkpoint 5. The
+JSON assets are `uipath-ready`, validated locally with
+`uip api-workflow validate`, and intentionally use no-auth/local HTTP through
+the UiPath HTTP connector. The connector is `uipath-uipath-http` with
+`connectionId` set to `ImplicitConnection`. No workflow was run with auth and no
+live Automation Cloud API Workflow asset was created.
 
 ## Verified Context
 
@@ -24,7 +25,7 @@ run with auth and no live Automation Cloud API Workflow asset was created.
 | `AgentFactory_FetchBuildStatus` | Poll Build Worker status by build run id | `uipath/api-workflows/AgentFactory_FetchBuildStatus/Workflow.json` | No-auth/local when worker runs on `http://localhost:8790` |
 | `AgentFactory_PostStatusUpdate` | Mirror build/deploy status into Factory API | `uipath/api-workflows/AgentFactory_PostStatusUpdate/Workflow.json` | No-auth/local when Factory API runs on `http://localhost:8787` |
 | `AgentFactory_RecordTestResult` | Map test-gate decisions to Factory API build status | `uipath/api-workflows/AgentFactory_RecordTestResult/Workflow.json` | No-auth/local when Factory API runs on `http://localhost:8787` |
-| `AgentFactory_StartDeployment` | Start approved sandbox deployment | `uipath/api-workflows/AgentFactory_StartDeployment/Workflow.json` | Import-ready; local `/deploy` endpoint is not implemented yet |
+| `AgentFactory_StartDeployment` | Start approved sandbox deployment | `uipath/api-workflows/AgentFactory_StartDeployment/Workflow.json` | No-auth/local when Factory API runs on `http://localhost:8787` |
 
 `AgentFactory_SyncDataServiceRecord` remains a future Data Service mirror
 workflow. This lane did not create it because Data Service schema and live entity
@@ -196,8 +197,11 @@ Request body built from workflow inputs:
   "buildRunId": "BUILD-req_123-001",
   "environment": "sandbox",
   "pullRequestUrl": "https://example.invalid/pr/123",
+  "deploymentUrl": "http://localhost:5174",
+  "deploymentProvider": "local-sandbox",
   "releaseApproval": {
     "approvalId": "appr_req_123_release_001",
+    "status": "approved",
     "decidedBy": "release-approver"
   }
 }
@@ -206,9 +210,32 @@ Request body built from workflow inputs:
 Current runtime status:
 
 - The workflow validates structurally and is ready for import.
-- The local repo does not currently expose `POST /deploy`.
-- After a real deployment service exists, `AgentFactory_PostStatusUpdate` should
-  mirror `deploying`, `deployed`, or `blocked` into Factory API/Data Service.
+- Factory API exposes `POST /deploy` locally on `http://localhost:8787`.
+- The endpoint requires `operationId` or `x-agent-factory-operation-id`, rejects
+  production deployment, and records idempotent sandbox deployment evidence.
+- The endpoint returns request id, build run id, environment, deployment status,
+  deployment URL when known, rollback notes, and platform mode.
+- Factory API mirrors successful sandbox deployment to `BuildRun.status =
+  "deployed"` and `AutomationRequest.status = "deployed"`.
+- `platformMode` remains `uipath-ready` unless a workflow is actually executed
+  in UiPath Automation Cloud.
+
+Expected endpoint response:
+
+```json
+{
+  "deploymentId": "DEP-REQ-2026-001-001",
+  "operationId": "deploy_req_123_001",
+  "requestId": "req_123",
+  "buildRunId": "BUILD-req_123-001",
+  "environment": "sandbox",
+  "deploymentStatus": "deployed",
+  "deploymentUrl": "http://localhost:5174",
+  "rollbackNotes": "Sandbox-only deployment; rollback by stopping the local app or redeploying the previous preview. Production is disabled.",
+  "platformMode": "uipath-ready",
+  "idempotentReplay": false
+}
+```
 
 ## Validation
 

@@ -18,6 +18,74 @@ const intakeBody = {
   owner_email: "revops@example.com"
 };
 
+async function createDeployableBuild(handle: ReturnType<typeof createTestHandler>) {
+  const created = await handle({
+    method: "POST",
+    pathname: "/api/requests",
+    body: intakeBody
+  });
+  const requestId = (created.body as { request_id: string }).request_id;
+
+  const clarified = await handle({
+    method: "POST",
+    pathname: `/api/requests/${requestId}/clarify`
+  });
+  const clarificationBody = clarified.body as { questions: Array<{ id: string; default: string }> };
+
+  await handle({
+    method: "POST",
+    pathname: `/api/requests/${requestId}/answers`,
+    body: {
+      answers: clarificationBody.questions.map((question) => ({
+        question_id: question.id,
+        answer: question.default,
+        answered_by: "Avery Morgan"
+      }))
+    }
+  });
+  await handle({
+    method: "POST",
+    pathname: `/api/requests/${requestId}/spec`
+  });
+  await handle({
+    method: "POST",
+    pathname: `/api/requests/${requestId}/govern`
+  });
+  await handle({
+    method: "POST",
+    pathname: `/api/requests/${requestId}/approve-scope`,
+    body: { comments: "Approved for sandbox build." }
+  });
+  const manifest = await handle({
+    method: "POST",
+    pathname: `/api/requests/${requestId}/manifest`
+  });
+  const manifestId = (manifest.body as { data: { manifest_id: string } }).data.manifest_id;
+  const queued = await handle({
+    method: "POST",
+    pathname: "/api/builds",
+    body: {
+      request_id: requestId,
+      manifest_id: manifestId,
+      mode: "sandbox"
+    }
+  });
+  const buildRunId = (queued.body as { data: { build_run_id: string } }).data.build_run_id;
+
+  await handle({
+    method: "PATCH",
+    pathname: `/api/builds/${buildRunId}/status`,
+    body: {
+      status: "awaiting_release_approval",
+      worker_id: "local-worker-1",
+      pr_url: "https://example.invalid/pr/123",
+      generated_files_json: ["apps/customer360-template/src/App.tsx"]
+    }
+  });
+
+  return { requestId, buildRunId };
+}
+
 describe("factory api", () => {
   it("responds to health checks", async () => {
     const handle = createTestHandler();
@@ -159,5 +227,94 @@ describe("factory api", () => {
 
     expect(response.statusCode).toBe(409);
     expect((response.body as { error: string }).error).toBe("approval_required");
+  });
+
+  it("records sandbox deployment evidence and replays idempotent operation ids", async () => {
+    const handle = createTestHandler();
+    const { requestId, buildRunId } = await createDeployableBuild(handle);
+    const deployPayload = {
+      requestId,
+      platformMode: "uipath-ready",
+      buildRunId,
+      environment: "sandbox",
+      pullRequestUrl: "https://example.invalid/pr/123",
+      deploymentUrl: "",
+      rollbackNotes: "",
+      releaseApproval: {
+        approvalId: "appr_req_123_release_001",
+        status: "approved",
+        decidedBy: "release-approver"
+      }
+    };
+
+    const deployed = await handle({
+      method: "POST",
+      pathname: "/deploy",
+      headers: {
+        "x-agent-factory-operation-id": "deploy_req_123_001"
+      },
+      body: deployPayload
+    });
+    const deployedBody = deployed.body as {
+      deploymentId: string;
+      deploymentStatus: string;
+      deploymentUrl: string;
+      platformMode: string;
+      idempotentReplay: boolean;
+    };
+
+    expect(deployed.statusCode).toBe(201);
+    expect(deployedBody.deploymentStatus).toBe("deployed");
+    expect(deployedBody.deploymentUrl).toBe("http://localhost:5174");
+    expect(deployedBody.platformMode).toBe("uipath-ready");
+    expect(deployedBody.idempotentReplay).toBe(false);
+
+    const replay = await handle({
+      method: "POST",
+      pathname: "/deploy",
+      headers: {
+        "x-agent-factory-operation-id": "deploy_req_123_001"
+      },
+      body: deployPayload
+    });
+    const replayBody = replay.body as { deploymentId: string; idempotentReplay: boolean };
+
+    expect(replay.statusCode).toBe(200);
+    expect(replayBody.deploymentId).toBe(deployedBody.deploymentId);
+    expect(replayBody.idempotentReplay).toBe(true);
+
+    const buildStatus = await handle({
+      method: "GET",
+      pathname: `/api/builds/${buildRunId}`
+    });
+    expect((buildStatus.body as { data: { status: string } }).data.status).toBe("deployed");
+
+    const timeline = await handle({
+      method: "GET",
+      pathname: `/api/requests/${requestId}/timeline`
+    });
+    const actions = (timeline.body as { data: Array<{ action: string }> }).data.map((event) => event.action);
+    expect(actions).toContain("sandbox_deployment_recorded");
+  });
+
+  it("keeps production deployment disabled", async () => {
+    const handle = createTestHandler();
+
+    const response = await handle({
+      method: "POST",
+      pathname: "/deploy",
+      body: {
+        operationId: "deploy_prod_001",
+        requestId: "REQ-2026-001",
+        buildRunId: "BUILD-REQ-2026-001-001",
+        environment: "production",
+        releaseApproval: {
+          status: "approved"
+        }
+      }
+    });
+
+    expect(response.statusCode).toBe(403);
+    expect((response.body as { error: string }).error).toBe("production_deploy_disabled");
   });
 });

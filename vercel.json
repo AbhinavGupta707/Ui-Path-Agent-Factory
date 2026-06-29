@@ -1,0 +1,8 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "version": 2,
+  "framework": "vite",
+  "installCommand": "npm install",
+  "buildCommand": "npm --workspace @agent-factory/customer360-template run build",
+  "outputDirectory": "apps/customer360-template/dist"
+}

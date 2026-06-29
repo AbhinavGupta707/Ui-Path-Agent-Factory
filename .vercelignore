@@ -1,0 +1,10 @@
+.env
+.env.*
+!.env.example
+.vercel
+.uipath/.skills
+.agents/skills
+coverage
+node_modules
+*.log
+.DS_Store

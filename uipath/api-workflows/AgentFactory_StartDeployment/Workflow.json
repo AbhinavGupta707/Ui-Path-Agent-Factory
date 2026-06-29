@@ -5,7 +5,7 @@
     "version": "0.0.1",
     "namespace": "agent-factory",
     "metadata": {
-      "description": "Import-ready no-auth HTTP workflow for an approved sandbox deployment service. The local repo does not expose /deploy yet.",
+      "description": "Import-ready no-auth HTTP workflow for the Factory API sandbox /deploy endpoint.",
       "variables": {
         "schema": {
           "format": "json",
@@ -47,8 +47,8 @@
           },
           "deploymentServiceBaseUrl": {
             "type": "string",
-            "default": "http://localhost:8791",
-            "description": "Base URL for the future deployment service."
+            "default": "http://localhost:8787",
+            "description": "Base URL for the Factory API sandbox deployment endpoint."
           },
           "buildRunId": {
             "type": "string"
@@ -61,10 +61,25 @@
             "type": "string",
             "default": ""
           },
+          "deploymentUrl": {
+            "type": "string",
+            "default": "",
+            "description": "Optional hosted preview or local sandbox dashboard URL. The Factory API falls back to http://localhost:5174."
+          },
+          "deploymentProvider": {
+            "type": "string",
+            "default": "local-sandbox",
+            "description": "local-sandbox or vercel-preview."
+          },
+          "rollbackNotes": {
+            "type": "string",
+            "default": "",
+            "description": "Optional rollback guidance to include in deployment evidence."
+          },
           "releaseApproval": {
             "type": "object",
             "additionalProperties": true,
-            "description": "Release approval task outcome from Action Center."
+            "description": "Approved release approval task outcome from Action Center."
           }
         },
         "required": [
@@ -101,6 +116,24 @@
           "body": {
             "type": "object",
             "additionalProperties": true
+          },
+          "buildRunId": {
+            "type": "string"
+          },
+          "environment": {
+            "type": "string"
+          },
+          "deploymentStatus": {
+            "type": "string"
+          },
+          "deploymentUrl": {
+            "type": "string"
+          },
+          "rollbackNotes": {
+            "type": "string"
+          },
+          "platformMode": {
+            "type": "string"
           }
         },
         "title": "Outputs"
@@ -132,7 +165,7 @@
             "DeploymentPayload": {
               "run": {
                 "script": {
-                  "code": "return {\n  operationId: $workflow.input.operationId,\n  requestId: $workflow.input.requestId,\n  platformMode: $workflow.input.platformMode ?? 'uipath-ready',\n  folderKey: $workflow.input.folderKey ?? 'cba41e19-47cc-4a0a-bf73-de88b60a61be',\n  folderId: $workflow.input.folderId ?? 7986306,\n  buildRunId: $workflow.input.buildRunId,\n  environment: $workflow.input.environment ?? 'sandbox',\n  pullRequestUrl: $workflow.input.pullRequestUrl,\n  releaseApproval: $workflow.input.releaseApproval\n};",
+                  "code": "return {\n  operationId: $workflow.input.operationId,\n  requestId: $workflow.input.requestId,\n  platformMode: $workflow.input.platformMode ?? 'uipath-ready',\n  folderKey: $workflow.input.folderKey ?? 'cba41e19-47cc-4a0a-bf73-de88b60a61be',\n  folderId: $workflow.input.folderId ?? 7986306,\n  buildRunId: $workflow.input.buildRunId,\n  environment: $workflow.input.environment ?? 'sandbox',\n  pullRequestUrl: $workflow.input.pullRequestUrl,\n  deploymentUrl: $workflow.input.deploymentUrl,\n  deploymentProvider: $workflow.input.deploymentProvider ?? 'local-sandbox',\n  rollbackNotes: $workflow.input.rollbackNotes,\n  releaseApproval: $workflow.input.releaseApproval\n};",
                   "language": "javascript",
                   "arguments": "${{ \"$context\": $context, \"$workflow\": $workflow, \"$input\": $input }}"
                 }
@@ -182,7 +215,7 @@
           },
           {
             "Response_1": {
-              "response": "${{ workflow: 'AgentFactory_StartDeployment', requestId: $workflow.input.requestId, operationId: $workflow.input.operationId, statusCode: $context.outputs.http_request_1.statusCode, ok: $context.outputs.http_request_1.ok, body: $context.outputs.http_request_1.content, buildRunId: $workflow.input.buildRunId, environment: $workflow.input.environment }}",
+              "response": "${{ workflow: 'AgentFactory_StartDeployment', requestId: $workflow.input.requestId, operationId: $workflow.input.operationId, statusCode: $context.outputs.http_request_1.statusCode, ok: $context.outputs.http_request_1.ok, body: $context.outputs.http_request_1.content, buildRunId: $workflow.input.buildRunId, environment: $workflow.input.environment ?? 'sandbox', deploymentStatus: $context.outputs.http_request_1.content?.deploymentStatus ?? $context.outputs.http_request_1.content?.status, deploymentUrl: $context.outputs.http_request_1.content?.deploymentUrl, rollbackNotes: $context.outputs.http_request_1.content?.rollbackNotes, platformMode: $context.outputs.http_request_1.content?.platformMode ?? $workflow.input.platformMode }}",
               "markJobAsFailed": false,
               "then": "end",
               "export": {
