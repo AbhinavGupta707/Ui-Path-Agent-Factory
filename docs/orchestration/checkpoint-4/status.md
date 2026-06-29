@@ -32,6 +32,7 @@
 - Apps And Action Center discovery confirmed Action Center task list was empty and `codedapp` is installed, while `codedapp list` is not an installed subcommand.
 - Test Cloud And Quality Gates completed local commit `63d6168`; orchestrator verified `git diff --check` and JSON parsing before merging it fourth.
 - Test Cloud lane created Test Manager project `Agent Factory Quality Gates` (`AFQG`, id `2760d770-7e82-0000-66f7-0b49d3053e3f`), set the project default folder to `AgentFactoryDemo`, created test set `Customer360 Release Gate` (`AFQG:1`, id `66cdd3ea-c873-0200-58fb-0b49d305588a`), and added seven gate test cases. No live executions were run.
+- All four Checkpoint 4 lanes are merged into `main` through `85336db`. Final read-only UiPath probes, `npm run smoke`, and `git diff --check` passed after the merges.
 
 ## Launch Baseline
 
@@ -91,6 +92,18 @@
 - Test Cloud lane read-only discovery passed for `uip --version`, `uip login status --output json`, `uip tm testcases --help --output json`, `uip tm project list --limit 5 --output json`, and `uip or folders get AgentFactoryDemo --output json`.
 - Test Cloud lane asset verification passed for `uip tm testcases list --project-key AFQG --output json`, `uip tm testsets list --project-key AFQG --output json`, and `uip tm testsets list-testcases --project-key AFQG --test-set-key AFQG:1 --output json`.
 - Test Cloud worker also ran local evidence: metrics tests, Customer360 build/tests, build-worker tests, JSON parsing, markdown fence sanity, `git diff --check`, and `npm run smoke`.
+- Final Checkpoint 4 verification passed:
+  - `uip --version`
+  - `uip login status --output json`
+  - `uip tools list --output json`
+  - `uip or folders get AgentFactoryDemo --output json`
+  - `uip df entities list --native-only --output json`
+  - `uip maestro bpmn process list --folder-key cba41e19-47cc-4a0a-bf73-de88b60a61be --output json`
+  - `uip agent list --output json`
+  - `uip tasks list --folder-id 7986306 --limit 5 --output json`
+  - `uip tm project list --limit 5 --output json`
+  - `npm run smoke`
+  - `git diff --check`
 
 ## Manual Smoke Target
 
