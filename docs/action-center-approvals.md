@@ -1,7 +1,13 @@
 # Action Center Approval Mapping
 
-This is the planned Action Center mapping for Checkpoint 4. No Action Center
-tasks have been created yet in `AgentFactoryDemo`.
+Status: `uipath-ready`, proposal-only. No live Action Center tasks have been
+created or completed in `AgentFactoryDemo`.
+
+The import-ready source of truth for this lane is:
+
+- `uipath/action-center/approval-contracts.json`
+- `uipath/action-center/approval-contracts.schema.json`
+- `uipath/action-center/validate-approval-contracts.mjs`
 
 ## Verified Context
 
@@ -12,147 +18,145 @@ tasks have been created yet in `AgentFactoryDemo`.
 | Folder | `AgentFactoryDemo` |
 | Folder key | `cba41e19-47cc-4a0a-bf73-de88b60a61be` |
 | Folder id | `7986306` |
+| Last safe discovery | `2026-06-29T00:40:00Z` |
+
+## Discovery Evidence
+
+Read-only probes passed:
+
+```bash
+uip login status --output json
+uip or folders get AgentFactoryDemo --output json
+uip tasks list --folder-id 7986306 --limit 5 --output json
+uip tasks --help --output json
+uip tasks complete --help --output json
+```
+
+Results:
+
+- Login is active for `galacticus / DefaultTenant`.
+- `AgentFactoryDemo` resolved to folder id `7986306` and key
+  `cba41e19-47cc-4a0a-bf73-de88b60a61be`.
+- `uip tasks list --folder-id 7986306 --limit 5 --output json` returned an
+  empty `Data` array.
+- The installed `tasks` CLI supports `list`, `get`, `assign`, `reassign`,
+  `unassign`, `complete`, and `users`; it does not expose a task creation
+  command in this environment.
 
 ## Approval Types
 
-| Approval type | Planned task title | Created by | Used when |
+| Approval type | Task title | Status before create | Primary route |
 |---|---|---|---|
-| `scope` | `Agent Factory Scope Approval` | Maestro after Governance Agent | Request has medium/high risk, sensitive permissions, blockers needing review, or human approval required |
-| `release` | `Agent Factory Release Approval` | Maestro after quality gates pass | Generated dashboard is ready to deploy or publish |
+| `scope` | `Agent Factory Scope Approval` | `awaiting_scope_approval` | Maestro creates a FormTask or AppTask after the Governance Agent completes |
+| `release` | `Agent Factory Release Approval` | `awaiting_release_approval` | Maestro creates a FormTask or AppTask after quality gates pass or a waiver is requested |
+
+The scope approval is also the data-access approval. Its reviewer fields include
+source systems, requested permissions, constraints, governance summary, risk
+level, and blockers.
 
 ## Decision Outcomes
 
-Use these outcomes for both approval types:
+Use these outcomes for both approvals. The Action Center form should expose
+`approved`, `rejected`, and `changes_requested`; Maestro may also set
+`cancelled` or `expired` from process owner cancellation or timer escalation.
 
-| Outcome | Meaning | State transition |
+| Outcome | Scope transition | Release transition |
 |---|---|---|
-| `approved` | Approver accepts the proposal | Scope: `approved_for_build`; release: deploy then `deployed` |
-| `rejected` | Approver stops the request | `blocked` with rejection details |
-| `changes_requested` | Approver asks for revised scope, build, or tests | Scope: `clarifying`; release: `approved_for_build` or `building` depending on required change |
-| `cancelled` | Task was cancelled by process owner | `cancelled` unless manually re-opened |
-| `expired` | SLA elapsed without decision | `blocked` or escalation route in Maestro |
+| `approved` | `awaiting_scope_approval` -> `approved_for_build` | `awaiting_release_approval` -> `deploying`, then `deployed` after deployment completes |
+| `rejected` | `awaiting_scope_approval` -> `blocked` | `awaiting_release_approval` -> `blocked` |
+| `changes_requested` | `awaiting_scope_approval` -> `clarifying` | `awaiting_release_approval` -> `approved_for_build` |
+| `cancelled` | `awaiting_scope_approval` -> `cancelled` | `awaiting_release_approval` -> `cancelled` |
+| `expired` | `awaiting_scope_approval` -> `blocked` after escalation | `awaiting_release_approval` -> `blocked` after escalation |
 
-## Scope Approval Payload
+## Required Decision Payloads
 
-Create this task after `GovernanceAssessment` is complete and before
-`BuildManifest` is finalized.
+Scope/Data approval completion must write:
 
 ```json
 {
   "approvalId": "appr_req_123_scope_001",
   "approvalType": "scope",
   "requestId": "req_123",
-  "title": "Agent Factory Scope Approval",
-  "request": {
-    "title": "Build customer health dashboard",
-    "requesterEmail": "owner@example.com",
-    "businessGoal": "Give customer success leaders a renewal-risk cockpit.",
-    "targetAudience": "Customer success leaders",
-    "sourceSystems": ["CRM", "Product analytics"],
-    "constraints": ["No personal contact fields in generated app"]
-  },
-  "structuredSpec": {
-    "objective": "Build a Customer360 dashboard for renewal-risk review.",
-    "requiredCapabilities": ["risk scoring", "account summary", "refresh timestamp"],
-    "dataSources": ["CRM", "Product analytics"],
-    "acceptanceCriteria": ["Dashboard builds", "Risk accounts are visible"]
-  },
-  "governance": {
-    "riskLevel": "medium",
-    "requiresHumanApproval": true,
-    "requiredPermissions": ["read:crm_accounts", "read:product_usage"],
-    "blockers": []
-  },
-  "decisionOptions": ["approved", "rejected", "changes_requested"]
+  "decision": "approved",
+  "decisionNotes": "Scope and data access are approved for sandbox build.",
+  "approvedPermissions": ["read:crm_accounts", "read:product_usage"],
+  "dataHandlingNotes": "Keep contact fields excluded from generated outputs.",
+  "decidedBy": "Action Center approver",
+  "decidedAt": "2026-06-29T00:00:00.000Z",
+  "actionCenterTaskId": "task_123"
 }
 ```
 
-Required form fields for the approver:
-
-| Field | Type | Required |
-|---|---|---|
-| `decision` | Choice | Yes |
-| `decisionNotes` | Long text | Required for `rejected` or `changes_requested` |
-| `approvedPermissions` | Multi-select or text | Required for `approved` |
-| `dataHandlingNotes` | Long text | Optional |
-
-On completion:
-
-1. Update `ApprovalTask.status`.
-2. Write `ApprovalTask.decisionJson`.
-3. Write `AuditEvent.action = "scope_approval_decided"`.
-4. Update `AutomationRequest.status`.
-
-## Release Approval Payload
-
-Create this task after build completion and quality gates have passed or have an
-explicit waiver request.
+Release approval completion must write:
 
 ```json
 {
   "approvalId": "appr_req_123_release_001",
   "approvalType": "release",
   "requestId": "req_123",
-  "title": "Agent Factory Release Approval",
-  "build": {
-    "buildRunId": "build_req_123_001",
-    "branchName": "factory/req-123",
-    "outputApp": "apps/customer360-template",
-    "logsUrl": "https://example.invalid/build-log",
-    "pullRequestUrl": "https://github.com/AbhinavGupta707/Ui-Path-Agent-Factory/pull/123"
-  },
-  "qualityGate": {
-    "testRunId": "test_req_123_001",
-    "smokeResult": "passed",
-    "securityReviewResult": "passed",
-    "accessibilityResult": "passed",
-    "qualityGateDecision": "passed"
-  },
-  "deployment": {
-    "environment": "sandbox",
-    "target": "Vercel or sandbox web host",
-    "rollbackNotes": "Disable deployment alias and retain PR for audit."
-  },
-  "decisionOptions": ["approved", "rejected", "changes_requested"]
+  "buildRunId": "build_req_123_001",
+  "decision": "approved",
+  "decisionNotes": "Quality gates passed and sandbox release is approved.",
+  "approvedDeploymentTarget": "sandbox",
+  "waiverReason": "",
+  "decidedBy": "Action Center approver",
+  "decidedAt": "2026-06-29T00:00:00.000Z",
+  "actionCenterTaskId": "task_456"
 }
 ```
 
-Required form fields for the approver:
+`decisionNotes` is required for rejection, requested changes, or any waiver.
+`approvedPermissions` is required for approved scope decisions.
+`approvedDeploymentTarget` is required for approved release decisions.
 
-| Field | Type | Required |
-|---|---|---|
-| `decision` | Choice | Yes |
-| `decisionNotes` | Long text | Required for `rejected`, `changes_requested`, or any waiver |
-| `approvedDeploymentTarget` | Text | Required for `approved` |
-| `waiverReason` | Long text | Required if any gate is waived |
+## Data Service Mirror
 
-On completion:
+On task creation:
 
-1. Update `ApprovalTask.status`.
-2. Write `AuditEvent.action = "release_approval_decided"`.
-3. If approved, call `AgentFactory_StartDeployment`.
-4. If rejected, set `AutomationRequest.status = "blocked"` with rejection details.
-5. If changes are requested, route back to build planning or build execution.
+- Create `ApprovalTask` with `status = "pending"`, `payloadJson`, `requestedBy`
+  set to `maestro`, and `actionCenterTaskId` when the live task id is known.
+- Set `AutomationRequest.currentApprovalId`.
+- Set `AutomationRequest.status` to `awaiting_scope_approval` or
+  `awaiting_release_approval`.
+- Append `AuditEvent.action = "scope_approval_requested"` or
+  `AuditEvent.action = "release_approval_requested"`.
 
-## SLA And Escalation
+On task completion:
 
-| Approval | Initial SLA | Escalation |
-|---|---|---|
-| Scope approval | 4 business hours for demo | Notify process owner or route to manual review |
-| Release approval | 2 business hours for demo | Notify release owner and keep deployment blocked |
+- Update `ApprovalTask.status`, `decisionJson`, `decidedBy`, and `decidedAt`.
+- Update `AutomationRequest.status` using the outcome table above.
+- Append `AuditEvent.action = "scope_approval_decided"` or
+  `AuditEvent.action = "release_approval_decided"`.
+- If release is approved, Maestro calls `AgentFactory_StartDeployment`; only set
+  `deployed` after the deployment URL and audit event are recorded.
 
-For the hackathon demo, the approver can be a configured demo user or group.
-Do not hard-code personal email addresses in source-controlled assets.
+## Live Setup Path
 
-## Audit Requirements
+Task creation should be wired through the Maestro process or an Orchestrator
+workflow/activity that creates FormTask or AppTask records from
+`uipath/action-center/approval-contracts.json`.
 
-Each task creation and completion must write an `AuditEvent`:
+Safe inspection commands:
 
-- `scope_approval_requested`
-- `scope_approval_decided`
-- `release_approval_requested`
-- `release_approval_decided`
+```bash
+uip tasks list --folder-id 7986306 --limit 5 --output json
+uip tasks get <task-id> --task-type FormTask --folder-id 7986306 --output json
+```
 
-The audit payload should include task id, approval id, decision, decision notes,
-approver display name, and timestamp. Do not include credentials or private
-tokens.
+Commands that require explicit approval before use:
+
+```bash
+uip tasks complete <task-id> --type FormTask --folder-id 7986306 --action Approve --data '{"decision":"approved"}' --output json
+```
+
+The CLI can complete existing tasks, so completion is treated as a live business
+decision and must not be run as part of unattended setup.
+
+## Integration Notes
+
+- Maestro owns state transitions and timer escalation.
+- Data Service mirrors task payloads and decisions through `ApprovalTask`.
+- API Workflow `AgentFactory_StartDeployment` is called only after release
+  approval.
+- Factory Console remains the polished primary UI; UiPath Apps may display task
+  references and deep links, but Action Center remains the decision surface.
