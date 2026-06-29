@@ -48,6 +48,7 @@ export const agentRuntimeModes = [
 
 export const agentStepIds = [
   "intake_classification",
+  "clarification_generation",
   "requirements_spec_generation",
   "governance_assessment",
   "build_plan"
@@ -124,6 +125,40 @@ export const ClarificationAnswerSchema = z.object({
 export const ClarificationAnswersRequestSchema = z.object({
   answers: z.array(ClarificationAnswerSchema).min(1)
 });
+
+export const CodexBuildEvidenceSchema = z.object({
+  build_run_id: z.string().min(1),
+  status: z.string().min(1).optional(),
+  worker_id: z.string().min(1).optional(),
+  codex_session_id: z.string().min(1).optional(),
+  branch_name: z.string().min(1).optional(),
+  commit_sha: z.string().min(1).optional(),
+  pr_url: z.string().url().optional(),
+  generated_files_json: z.array(z.string()).default([]),
+  logs_uri: z.string().min(1).optional()
+});
+
+export const LifecycleGraphTransitionSchema = z.object({
+  from: z.string().min(1).optional(),
+  to: z.string().min(1),
+  reason: z.string().min(1).optional(),
+  at: z.string().datetime()
+});
+
+export const LifecycleMetadataSchema = z.object({
+  graph_run_id: z.string().min(1).optional(),
+  graph_node_id: z.string().min(1).optional(),
+  graph_transition: LifecycleGraphTransitionSchema.optional(),
+  maestro_run_id: z.string().min(1).optional(),
+  maestro_process_key: z.string().min(1).optional(),
+  api_workflow_execution_ids: z.array(z.string().min(1)).default([]),
+  human_approval_task_ids: z.array(z.string().min(1)).default([]),
+  data_service_record_ids: z.array(z.string().min(1)).default([]),
+  codex_build_evidence: z.array(CodexBuildEvidenceSchema).default([]),
+  updated_at: z.string().datetime().optional()
+});
+
+export const LifecycleMetadataPatchSchema = LifecycleMetadataSchema.partial();
 
 export const StructuredSpecSchema = z.object({
   spec_id: z.string().min(1),
@@ -279,6 +314,19 @@ export const IntakeClassificationOutputSchema = z.object({
   trace: AgentStepTraceEnvelopeSchema
 });
 
+export const ClarificationGenerationOutputSchema = z.object({
+  output_id: z.string().min(1),
+  request_id: z.string().min(1),
+  questions: z.array(ClarificationQuestionSchema).min(1),
+  missing_fields: z.array(z.string().min(1)),
+  basis: z.object({
+    selected_sources: z.array(z.string().min(1)),
+    requested_metrics: z.array(z.string().min(1)),
+    constraints: z.array(z.string().min(1))
+  }),
+  trace: AgentStepTraceEnvelopeSchema
+});
+
 export const RequirementsSpecGenerationOutputSchema = z.object({
   output_id: z.string().min(1),
   request_id: z.string().min(1),
@@ -340,6 +388,7 @@ export const AutomationRequestDetailSchema = z.object({
   approvalTasks: z.array(ApprovalTaskSchema),
   buildManifest: FactoryBuildManifestSchema.optional(),
   buildRuns: z.array(BuildRunSchema),
+  lifecycleMetadata: LifecycleMetadataSchema.optional(),
   auditEvents: z.array(AuditEventSchema)
 });
 
@@ -360,6 +409,10 @@ export type CreateAutomationRequest = z.infer<typeof CreateAutomationRequestSche
 export type IntakeRequest = z.infer<typeof IntakeRequestSchema>;
 export type ClarificationQuestion = z.infer<typeof ClarificationQuestionSchema>;
 export type ClarificationAnswer = z.infer<typeof ClarificationAnswerSchema>;
+export type CodexBuildEvidence = z.infer<typeof CodexBuildEvidenceSchema>;
+export type LifecycleGraphTransition = z.infer<typeof LifecycleGraphTransitionSchema>;
+export type LifecycleMetadata = z.infer<typeof LifecycleMetadataSchema>;
+export type LifecycleMetadataPatch = z.infer<typeof LifecycleMetadataPatchSchema>;
 export type StructuredSpec = z.infer<typeof StructuredSpecSchema>;
 export type GovernanceAssessment = z.infer<typeof GovernanceAssessmentSchema>;
 export type ApprovalTask = z.infer<typeof ApprovalTaskSchema>;
@@ -373,6 +426,7 @@ export type AgentStepId = z.infer<typeof AgentStepIdSchema>;
 export type AgentTokenUsage = z.infer<typeof AgentTokenUsageSchema>;
 export type AgentStepTraceEnvelope = z.infer<typeof AgentStepTraceEnvelopeSchema>;
 export type IntakeClassificationOutput = z.infer<typeof IntakeClassificationOutputSchema>;
+export type ClarificationGenerationOutput = z.infer<typeof ClarificationGenerationOutputSchema>;
 export type RequirementsSpecGenerationOutput = z.infer<typeof RequirementsSpecGenerationOutputSchema>;
 export type GovernanceAgentOutput = z.infer<typeof GovernanceAgentOutputSchema>;
 export type BuildPlanAgentOutput = z.infer<typeof BuildPlanAgentOutputSchema>;

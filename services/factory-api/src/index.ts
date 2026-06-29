@@ -5,19 +5,25 @@ import {
   ClarificationAnswersRequestSchema,
   CreateAutomationRequestSchema,
   IntakeRequestSchema,
+  LifecycleMetadataPatchSchema,
   PlatformModeSchema,
   createAuditEvent,
   type AuditEvent,
   type AgentStepTraceEnvelope,
-  type BuildRun
+  type BuildRun,
+  type LifecycleMetadata
 } from "@agent-factory/shared-contracts";
 import { createAgentRuntime, type AgentRuntime } from "./agentRuntime.js";
 import {
   approveScopeTask,
   createQueuedBuildRun,
-  generateClarificationQuestions,
   mapLegacyIntakeToCreateRequest
 } from "./lifecycle.js";
+import {
+  createGraphRunMetadata,
+  transitionGraphMetadata,
+  type LifecycleGraphNode
+} from "./lifecycleGraph.js";
 import { redactPayload } from "./redaction.js";
 import {
   createInMemoryFactoryStore,
@@ -175,6 +181,10 @@ async function routeFactoryRequest(
   if (method === "POST" && input.pathname === "/api/requests") {
     const requestInput = CreateAutomationRequestSchema.parse(input.body ?? {});
     const record = await store.createRequest(requestInput);
+    await store.mergeLifecycleMetadata(
+      record.request.request_id,
+      createGraphRunMetadata(record.request.request_id, store.now())
+    );
     await audit(store, record.request.request_id, {
       actor_type: "factory-api",
       actor_name: "Factory API",
@@ -186,6 +196,12 @@ async function routeFactoryRequest(
       }
     });
     const classification = await runtime.classifyIntake(record, store.now());
+    await moveGraph(
+      store,
+      record.request.request_id,
+      "intake_classification",
+      "Intake classification completed after request creation."
+    );
     await audit(store, record.request.request_id, {
       actor_type: "uipath-agent",
       actor_name: agentActorName("Intake Classifier", classification.trace),
@@ -216,6 +232,10 @@ async function routeFactoryRequest(
   if (method === "POST" && input.pathname === "/api/intake") {
     const legacyIntake = IntakeRequestSchema.parse(input.body ?? {});
     const record = await store.createRequest(mapLegacyIntakeToCreateRequest(legacyIntake));
+    await store.mergeLifecycleMetadata(
+      record.request.request_id,
+      createGraphRunMetadata(record.request.request_id, store.now())
+    );
     await audit(store, record.request.request_id, {
       actor_type: "factory-api",
       actor_name: "Factory API",
@@ -227,6 +247,12 @@ async function routeFactoryRequest(
       }
     });
     const classification = await runtime.classifyIntake(record, store.now());
+    await moveGraph(
+      store,
+      record.request.request_id,
+      "intake_classification",
+      "Intake classification completed after legacy request creation."
+    );
     await audit(store, record.request.request_id, {
       actor_type: "uipath-agent",
       actor_name: agentActorName("Intake Classifier", classification.trace),
@@ -295,14 +321,23 @@ async function routeRequestResource(
 
   if (method === "POST" && action === "clarify") {
     const record = await requireRecord(store, requestId);
-    const questions = generateClarificationQuestions(record);
+    const output = await runtime.generateClarificationQuestions(record, store.now());
+    const questions = output.questions;
     await store.saveClarificationQuestions(requestId, questions);
+    await moveGraph(store, requestId, "clarification_generation", "Clarification questions generated.");
     await audit(store, requestId, {
       actor_type: "uipath-agent",
-      actor_name: "Clarification Agent (local)",
+      actor_name: agentActorName("Clarification Agent", output.trace),
       action: "clarification_questions_generated",
-      summary: `Generated ${questions.length} deterministic clarification questions.`,
-      payload_json: { question_ids: questions.map((question) => question.id), platformMode }
+      summary: `Generated ${questions.length} clarification questions using ${output.trace.mode}.`,
+      payload_json: {
+        output_id: output.output_id,
+        question_ids: questions.map((question) => question.id),
+        missing_fields: output.missing_fields,
+        basis: output.basis,
+        trace: summarizeTrace(output.trace),
+        platformMode
+      }
     });
 
     return {
@@ -311,6 +346,11 @@ async function routeRequestResource(
         request_id: requestId,
         spec_id: `SPEC-${requestId}`,
         questions,
+        metadata: {
+          missing_fields: output.missing_fields,
+          basis: output.basis,
+          trace: summarizeTrace(output.trace)
+        },
         status: record.request.status,
         platformMode
       }
@@ -325,6 +365,7 @@ async function routeRequestResource(
       answered_at: answer.answered_at ?? store.now()
     }));
     const record = await store.saveClarificationAnswers(requestId, answers);
+    await moveGraph(store, requestId, "clarification_answers", "Clarification answers recorded.");
     await audit(store, requestId, {
       actor_type: "user",
       actor_name: "Business User",
@@ -349,6 +390,7 @@ async function routeRequestResource(
     const output = await runtime.generateRequirementsSpec(record, store.now());
     const spec = output.spec;
     await store.saveStructuredSpec(requestId, spec);
+    await moveGraph(store, requestId, "requirements_spec_generation", "Requirements spec generated.");
     await audit(store, requestId, {
       actor_type: "uipath-agent",
       actor_name: agentActorName("Requirements Agent", output.trace),
@@ -385,6 +427,7 @@ async function routeRequestResource(
 
     await store.saveStructuredSpec(requestId, spec);
     if (!hadSpec) {
+      await moveGraph(store, requestId, "requirements_spec_generation", "Requirements spec generated as governance input.");
       await audit(store, requestId, {
         actor_type: "uipath-agent",
         actor_name: specOutput ? agentActorName("Requirements Agent", specOutput.trace) : "Requirements Agent",
@@ -410,6 +453,11 @@ async function routeRequestResource(
     const { assessment } = governanceOutput;
     const approvalTasks = governanceOutput.approval_tasks;
     await store.saveGovernanceAssessment(requestId, assessment, approvalTasks);
+    await store.mergeLifecycleMetadata(requestId, {
+      human_approval_task_ids: approvalTasks.map((task) => task.task_id),
+      updated_at: store.now()
+    });
+    await moveGraph(store, requestId, "governance_assessment", "Governance assessment generated.");
     await audit(store, requestId, {
       actor_type: "uipath-agent",
       actor_name: agentActorName("Governance Agent", governanceOutput.trace),
@@ -454,6 +502,11 @@ async function routeRequestResource(
     const approvalBody = ScopeApprovalRequestSchema.parse(body ?? {});
     const task = approveScopeTask(record, store.now(), approvalBody.comments);
     await store.saveApprovalTask(requestId, task);
+    await store.mergeLifecycleMetadata(requestId, {
+      human_approval_task_ids: [task.task_id],
+      updated_at: store.now()
+    });
+    await moveGraph(store, requestId, "scope_approval", "Scope approval completed.");
     await audit(store, requestId, {
       actor_type: "action-center",
       actor_name: "Action Center (local)",
@@ -494,6 +547,7 @@ async function routeRequestResource(
     const buildPlan = await runtime.generateBuildPlan(record, store.now());
     const manifest = buildPlan.manifest;
     await store.saveBuildManifest(requestId, manifest);
+    await moveGraph(store, requestId, "build_plan", "Build plan and manifest generated.");
     await audit(store, requestId, {
       actor_type: "uipath-agent",
       actor_name: agentActorName("Build Planner Agent", buildPlan.trace),
@@ -522,6 +576,31 @@ async function routeRequestResource(
       statusCode: 200,
       body: {
         data: manifest,
+        status: updatedRecord.request.status,
+        platformMode
+      }
+    };
+  }
+
+  if (method === "POST" && action === "lifecycle-metadata") {
+    await requireRecord(store, requestId);
+    const metadataPatch = LifecycleMetadataPatchSchema.parse(body ?? {});
+    const updatedRecord = await store.mergeLifecycleMetadata(requestId, {
+      ...metadataPatch,
+      updated_at: store.now()
+    });
+    await audit(store, requestId, {
+      actor_type: "uipath-maestro",
+      actor_name: "UiPath Orchestration",
+      action: "lifecycle_metadata_attached",
+      summary: "Attached UiPath/Codex lifecycle evidence identifiers.",
+      payload_json: summarizeLifecycleMetadataPatch(metadataPatch)
+    });
+
+    return {
+      statusCode: 200,
+      body: {
+        data: updatedRecord.lifecycleMetadata,
         status: updatedRecord.request.status,
         platformMode
       }
@@ -557,6 +636,19 @@ async function createBuild(store: FactoryStore, body: unknown): Promise<FactoryR
 
   const buildRun = createQueuedBuildRun(record, store.now());
   await store.createBuildRun(buildRun);
+  await store.mergeLifecycleMetadata(createBody.request_id, {
+    codex_build_evidence: [
+      {
+        build_run_id: buildRun.build_run_id,
+        status: buildRun.status,
+        branch_name: buildRun.branch_name,
+        generated_files_json: buildRun.generated_files_json,
+        logs_uri: buildRun.logs_uri
+      }
+    ],
+    updated_at: store.now()
+  });
+  await moveGraph(store, createBody.request_id, "build_queue", "Build worker queued from approved manifest.");
   await audit(store, createBody.request_id, {
     actor_type: "codex-worker",
     actor_name: "Build Worker (local queue)",
@@ -702,6 +794,7 @@ async function createDeployment(
       platformMode: deployment.platformMode
     }
   });
+  await moveGraph(store, deploymentBody.requestId, "deployment", `Sandbox deployment recorded for ${deployment.build_run_id}.`);
   await transitionStatus(
     store,
     deploymentBody.requestId,
@@ -757,6 +850,23 @@ async function routeBuildResource(
         : existingRun.completed_at
     };
     await store.updateBuildRun(buildRunId, patch);
+    await store.mergeLifecycleMetadata(existingRun.request_id, {
+      codex_build_evidence: [
+        {
+          build_run_id: buildRunId,
+          status: updateBody.status,
+          worker_id: updateBody.worker_id,
+          codex_session_id: updateBody.codex_session_id,
+          branch_name: updateBody.branch_name,
+          commit_sha: updateBody.commit_sha,
+          pr_url: updateBody.pr_url,
+          generated_files_json: updateBody.generated_files_json ?? [],
+          logs_uri: updateBody.logs_uri
+        }
+      ],
+      updated_at: store.now()
+    });
+    await moveGraph(store, existingRun.request_id, "build_worker", `Build worker reported ${updateBody.status}.`);
     await audit(store, existingRun.request_id, {
       actor_type: "codex-worker",
       actor_name: updateBody.worker_id ?? "Build Worker (local)",
@@ -819,6 +929,29 @@ async function transitionStatus(
     }
   });
   return updatedRecord;
+}
+
+async function moveGraph(
+  store: FactoryStore,
+  requestId: string,
+  to: LifecycleGraphNode,
+  reason: string
+): Promise<LifecycleMetadata> {
+  const record = await requireRecord(store, requestId);
+  const metadata = transitionGraphMetadata({
+    requestId,
+    current: record.lifecycleMetadata,
+    to,
+    reason,
+    now: store.now()
+  });
+  const updatedRecord = await store.mergeLifecycleMetadata(requestId, metadata);
+
+  if (!updatedRecord.lifecycleMetadata) {
+    throw new ApiError(500, "graph_transition_failed", "Lifecycle graph metadata was not stored.");
+  }
+
+  return updatedRecord.lifecycleMetadata;
 }
 
 async function findBuildRun(store: FactoryStore, buildRunId: string): Promise<BuildRun | undefined> {
@@ -884,6 +1017,30 @@ function summarizeTrace(trace: AgentStepTraceEnvelope): Record<string, unknown> 
     redaction: trace.redaction,
     usage: trace.usage,
     warnings: trace.warnings
+  };
+}
+
+function summarizeLifecycleMetadataPatch(patch: Partial<LifecycleMetadata>): Record<string, unknown> {
+  return {
+    graph_run_id: patch.graph_run_id,
+    graph_node_id: patch.graph_node_id,
+    maestro_run_id: patch.maestro_run_id,
+    maestro_process_key: patch.maestro_process_key,
+    api_workflow_execution_ids: patch.api_workflow_execution_ids,
+    human_approval_task_ids: patch.human_approval_task_ids,
+    data_service_record_ids: patch.data_service_record_ids,
+    codex_build_evidence: patch.codex_build_evidence?.map((evidence) => ({
+      build_run_id: evidence.build_run_id,
+      status: evidence.status,
+      worker_id: evidence.worker_id,
+      codex_session_id: evidence.codex_session_id,
+      branch_name: evidence.branch_name,
+      commit_sha: evidence.commit_sha,
+      pr_url: evidence.pr_url,
+      generated_files_json: evidence.generated_files_json,
+      logs_uri: evidence.logs_uri
+    })),
+    platformMode
   };
 }
 

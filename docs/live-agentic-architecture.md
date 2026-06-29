@@ -158,6 +158,15 @@ Checkpoint 6 adds the typed Factory API provider boundary:
 - `AGENT_RUNTIME_MODE=deterministic` forces local fallback and marks traces `deterministic-fallback`.
 - Trace and audit payloads store redacted metadata only: raw prompts, raw responses, secrets, emails, and phone numbers are not stored.
 
+Checkpoint 7 starts the server-side graph/run shape:
+
+- `POST /api/requests` creates a `GRAPH-<request_id>` lifecycle run and records the first graph node after intake classification.
+- `POST /api/requests/:id/clarify` now calls the agent runtime after request creation. It returns `questions` plus `metadata.missing_fields`, `metadata.basis`, and a redacted `metadata.trace`.
+- Clarification uses Fireworks when configured. No-key, deterministic, and provider-error fallbacks reuse the same trace envelope and label each question source with the live/degraded mode.
+- Request details include `lifecycleMetadata` with graph node/run state and optional UiPath Maestro run IDs, API Workflow execution IDs, human approval task IDs, Data Service record IDs, and Codex build evidence.
+- `POST /api/requests/:id/lifecycle-metadata` lets the Maestro/API Workflow lanes attach those external evidence IDs without changing request status.
+- The local graph abstraction is deliberately small and server-side. It defines explicit lifecycle nodes and transitions so a future LangGraph swap can replace the helper without changing the HTTP contract.
+
 Environment used by the runtime:
 
 ```bash

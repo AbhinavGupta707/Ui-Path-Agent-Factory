@@ -244,6 +244,75 @@ describe("factory api", () => {
     expect(actions).toContain("build_manifest_generated");
     expect(actions).toContain("build_run_queued");
     expect(actions.filter((action) => action === "status_changed").length).toBeGreaterThanOrEqual(4);
+
+    const detail = await handle({
+      method: "GET",
+      pathname: `/api/requests/${requestId}`
+    });
+    const detailBody = detail.body as {
+      data: {
+        lifecycleMetadata: {
+          graph_run_id: string;
+          graph_node_id: string;
+          human_approval_task_ids: string[];
+          codex_build_evidence: Array<{ build_run_id: string; status: string }>;
+        };
+      };
+    };
+
+    expect(detailBody.data.lifecycleMetadata.graph_run_id).toBe(`GRAPH-${requestId}`);
+    expect(detailBody.data.lifecycleMetadata.graph_node_id).toBe("build_worker");
+    expect(detailBody.data.lifecycleMetadata.human_approval_task_ids).toContain(`TASK-${requestId}-SCOPE`);
+    expect(detailBody.data.lifecycleMetadata.codex_build_evidence.at(-1)).toMatchObject({
+      build_run_id: buildRunId,
+      status: "building"
+    });
+  });
+
+  it("attaches UiPath lifecycle evidence identifiers without changing request state", async () => {
+    const handle = createTestHandler();
+    const created = await handle({
+      method: "POST",
+      pathname: "/api/requests",
+      body: intakeBody
+    });
+    const requestId = (created.body as { request_id: string }).request_id;
+
+    const response = await handle({
+      method: "POST",
+      pathname: `/api/requests/${requestId}/lifecycle-metadata`,
+      body: {
+        maestro_run_id: "maestro_run_123",
+        api_workflow_execution_ids: ["apiwf_exec_456"],
+        human_approval_task_ids: ["action_task_789"],
+        codex_build_evidence: [
+          {
+            build_run_id: `BUILD-${requestId}-001`,
+            status: "blocked",
+            logs_uri: "local://builds/blocked"
+          }
+        ]
+      }
+    });
+    const body = response.body as {
+      status: string;
+      data: {
+        maestro_run_id: string;
+        api_workflow_execution_ids: string[];
+        human_approval_task_ids: string[];
+        codex_build_evidence: Array<{ build_run_id: string; status: string }>;
+      };
+    };
+
+    expect(response.statusCode).toBe(200);
+    expect(body.status).toBe("clarifying");
+    expect(body.data.maestro_run_id).toBe("maestro_run_123");
+    expect(body.data.api_workflow_execution_ids).toEqual(["apiwf_exec_456"]);
+    expect(body.data.human_approval_task_ids).toEqual(["action_task_789"]);
+    expect(body.data.codex_build_evidence[0]).toMatchObject({
+      build_run_id: `BUILD-${requestId}-001`,
+      status: "blocked"
+    });
   });
 
   it("rejects manifest creation before scope approval", async () => {
