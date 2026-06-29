@@ -1,10 +1,11 @@
-import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
+import { createServer, type IncomingHttpHeaders, type IncomingMessage, type ServerResponse } from "node:http";
 import { z } from "zod";
 import {
   BuildStatusUpdateSchema,
   ClarificationAnswersRequestSchema,
   CreateAutomationRequestSchema,
   IntakeRequestSchema,
+  PlatformModeSchema,
   createAuditEvent,
   type AuditEvent,
   type BuildRun
@@ -18,7 +19,12 @@ import {
   generateStructuredSpec,
   mapLegacyIntakeToCreateRequest
 } from "./lifecycle.js";
-import { createInMemoryFactoryStore, type FactoryRequestRecord, type FactoryStore } from "./store.js";
+import {
+  createInMemoryFactoryStore,
+  type DeploymentRecord,
+  type FactoryRequestRecord,
+  type FactoryStore
+} from "./store.js";
 
 const BuildCreateRequestSchema = z.object({
   request_id: z.string().min(1),
@@ -30,6 +36,32 @@ const ScopeApprovalRequestSchema = z.object({
   comments: z.string().optional()
 });
 
+const ReleaseApprovalSchema = z
+  .object({
+    approvalId: z.string().min(1).optional(),
+    status: z.enum(["pending", "approved", "changes_requested", "rejected"]).optional(),
+    outcome: z.string().min(1).optional(),
+    decision: z.string().min(1).optional(),
+    decidedBy: z.string().min(1).optional(),
+    decidedAt: z.string().datetime().optional()
+  })
+  .passthrough();
+
+const DeploymentRequestSchema = z.object({
+  operationId: z.string().min(1).optional(),
+  requestId: z.string().min(1),
+  platformMode: PlatformModeSchema.default("uipath-ready"),
+  folderKey: z.string().min(1).optional(),
+  folderId: z.union([z.string().min(1), z.number().int()]).optional(),
+  buildRunId: z.string().min(1),
+  environment: z.enum(["sandbox", "preview", "production"]).default("sandbox"),
+  pullRequestUrl: z.union([z.string().url(), z.literal("")]).optional(),
+  releaseApproval: ReleaseApprovalSchema,
+  deploymentUrl: z.union([z.string().url(), z.literal("")]).optional(),
+  deploymentProvider: z.enum(["local-sandbox", "vercel-preview"]).default("local-sandbox"),
+  rollbackNotes: z.union([z.string().min(1), z.literal("")]).optional()
+});
+
 const platformMode = "local-simulated";
 
 const defaultHandler = createFactoryRequestHandler();
@@ -37,6 +69,7 @@ const defaultHandler = createFactoryRequestHandler();
 export interface FactoryRequestInput {
   method: string;
   pathname: string;
+  headers?: Record<string, string | undefined>;
   body?: unknown;
 }
 
@@ -55,6 +88,7 @@ export function createFactoryApiServer(store: FactoryStore = createInMemoryFacto
       const result = await handler({
         method: request.method ?? "GET",
         pathname: url.pathname,
+        headers: normalizeHeaders(request.headers),
         body
       });
       writeJson(response, result.statusCode, result.body);
@@ -111,6 +145,10 @@ async function routeFactoryRequest(store: FactoryStore, input: FactoryRequestInp
         platformMode
       }
     };
+  }
+
+  if (method === "POST" && input.pathname === "/deploy") {
+    return createDeployment(store, input.body, input.headers);
   }
 
   if (method === "POST" && input.pathname === "/api/requests") {
@@ -456,6 +494,140 @@ async function createBuild(store: FactoryStore, body: unknown): Promise<FactoryR
   };
 }
 
+async function createDeployment(
+  store: FactoryStore,
+  body: unknown,
+  headers: Record<string, string | undefined> | undefined
+): Promise<FactoryResponseOutput> {
+  const deploymentBody = DeploymentRequestSchema.parse(body ?? {});
+  const headerOperationId = operationIdFromHeaders(headers);
+
+  if (deploymentBody.operationId && headerOperationId && deploymentBody.operationId !== headerOperationId) {
+    throw new ApiError(
+      400,
+      "operation_id_mismatch",
+      "operationId must match x-agent-factory-operation-id when both are provided."
+    );
+  }
+
+  const operationId = deploymentBody.operationId ?? headerOperationId;
+
+  if (!operationId) {
+    throw new ApiError(400, "operation_id_required", "Provide operationId or x-agent-factory-operation-id.");
+  }
+
+  const existingDeployment = await store.findDeploymentByOperationId(operationId);
+
+  if (existingDeployment) {
+    if (
+      existingDeployment.request_id !== deploymentBody.requestId ||
+      existingDeployment.build_run_id !== deploymentBody.buildRunId
+    ) {
+      throw new ApiError(409, "idempotency_conflict", "operationId already belongs to another deployment.");
+    }
+
+    return {
+      statusCode: 200,
+      body: deploymentResponse(existingDeployment, true)
+    };
+  }
+
+  if (deploymentBody.environment === "production") {
+    throw new ApiError(
+      403,
+      "production_deploy_disabled",
+      "Production deployment is disabled for this demo lane; use sandbox or preview."
+    );
+  }
+
+  if (!releaseApprovalAllowsDeploy(deploymentBody.releaseApproval)) {
+    throw new ApiError(403, "release_approval_required", "Release approval must be approved before deployment.");
+  }
+
+  const record = await requireRecord(store, deploymentBody.requestId);
+  const buildRun = record.buildRuns.find((run) => run.build_run_id === deploymentBody.buildRunId);
+
+  if (!buildRun) {
+    throw new ApiError(404, "build_not_found", `Build run not found: ${deploymentBody.buildRunId}`);
+  }
+
+  if (["build_failed", "tests_failed", "blocked", "cancelled"].includes(buildRun.status)) {
+    throw new ApiError(409, "deployment_blocked", `Build run ${buildRun.build_run_id} is ${buildRun.status}.`);
+  }
+
+  if (!["awaiting_release_approval", "deploying", "deployed"].includes(buildRun.status)) {
+    throw new ApiError(
+      409,
+      "quality_gate_required",
+      `Build run ${buildRun.build_run_id} must reach awaiting_release_approval before deployment.`
+    );
+  }
+
+  const pullRequestUrl =
+    deploymentBody.pullRequestUrl && deploymentBody.pullRequestUrl.length > 0 ? deploymentBody.pullRequestUrl : undefined;
+  const explicitDeploymentUrl =
+    deploymentBody.deploymentUrl && deploymentBody.deploymentUrl.length > 0 ? deploymentBody.deploymentUrl : undefined;
+  const rollbackNotes =
+    deploymentBody.rollbackNotes && deploymentBody.rollbackNotes.length > 0 ? deploymentBody.rollbackNotes : undefined;
+  const deploymentUrl = resolveDeploymentUrl(deploymentBody.deploymentProvider, explicitDeploymentUrl);
+  const now = store.now();
+  const deployment: DeploymentRecord = {
+    deployment_id: `DEP-${deploymentBody.requestId}-${String(record.deploymentRecords.length + 1).padStart(3, "0")}`,
+    operation_id: operationId,
+    request_id: deploymentBody.requestId,
+    build_run_id: deploymentBody.buildRunId,
+    environment: deploymentBody.environment,
+    status: "deployed",
+    app_url: deploymentUrl,
+    deployment_provider: deploymentBody.deploymentProvider,
+    rollback_ref: buildRun.commit_sha ?? buildRun.branch_name ?? buildRun.build_run_id,
+    rollback_notes:
+      rollbackNotes ??
+      "Sandbox-only deployment; rollback by stopping the local app or redeploying the previous preview. Production is disabled.",
+    pull_request_url: pullRequestUrl,
+    platformMode: deploymentBody.platformMode,
+    created_at: now,
+    completed_at: now
+  };
+
+  await store.createDeploymentRecord(deployment);
+  await store.updateBuildRun(deploymentBody.buildRunId, {
+    status: "deployed",
+    pr_url: pullRequestUrl ?? buildRun.pr_url,
+    logs_uri: `local://deployments/${deployment.deployment_id}`,
+    completed_at: now
+  });
+  await audit(store, deploymentBody.requestId, {
+    actor_type: "factory-api",
+    actor_name: "Deployment Service (local sandbox)",
+    action: "sandbox_deployment_recorded",
+    summary: `Recorded ${deployment.environment} deployment evidence for ${deployment.build_run_id}.`,
+    payload_json: {
+      deployment_id: deployment.deployment_id,
+      operation_id: operationId,
+      build_run_id: deployment.build_run_id,
+      environment: deployment.environment,
+      status: deployment.status,
+      deployment_url: deployment.app_url,
+      rollback_ref: deployment.rollback_ref,
+      platformMode: deployment.platformMode
+    }
+  });
+  await transitionStatus(
+    store,
+    deploymentBody.requestId,
+    "deployed",
+    "uipath-maestro",
+    "Maestro (local)",
+    `Sandbox deployment evidence recorded for ${deployment.build_run_id}.`
+  );
+
+  return {
+    statusCode: 201,
+    body: deploymentResponse(deployment, false)
+  };
+}
+
 async function routeBuildResource(
   store: FactoryStore,
   method: string,
@@ -600,6 +772,69 @@ async function audit(
   );
 }
 
+function releaseApprovalAllowsDeploy(approval: z.infer<typeof ReleaseApprovalSchema>): boolean {
+  const marker = (approval.status ?? approval.outcome ?? approval.decision ?? "").toLowerCase().replace(/[\s-]+/g, "_");
+
+  if (!marker) {
+    return true;
+  }
+
+  return ["approved", "approve_sandbox_deploy", "approved_for_sandbox", "sandbox_approved"].includes(marker);
+}
+
+function resolveDeploymentUrl(
+  provider: z.infer<typeof DeploymentRequestSchema>["deploymentProvider"],
+  explicitUrl: string | undefined
+): string {
+  if (provider === "vercel-preview" && !explicitUrl) {
+    throw new ApiError(400, "deployment_url_required", "Vercel preview deployments must provide deploymentUrl.");
+  }
+
+  return (
+    explicitUrl ??
+    process.env.CUSTOMER360_DEPLOYMENT_URL ??
+    process.env.CUSTOMER360_TEMPLATE_URL ??
+    "http://localhost:5174"
+  );
+}
+
+function deploymentResponse(deployment: DeploymentRecord, idempotentReplay: boolean): Record<string, unknown> {
+  return {
+    deployment_id: deployment.deployment_id,
+    deploymentId: deployment.deployment_id,
+    operationId: deployment.operation_id,
+    request_id: deployment.request_id,
+    requestId: deployment.request_id,
+    build_run_id: deployment.build_run_id,
+    buildRunId: deployment.build_run_id,
+    environment: deployment.environment,
+    status: deployment.status,
+    deploymentStatus: deployment.status,
+    deploymentUrl: deployment.app_url,
+    app_url: deployment.app_url,
+    deploymentProvider: deployment.deployment_provider,
+    pullRequestUrl: deployment.pull_request_url,
+    rollback_ref: deployment.rollback_ref,
+    rollbackNotes: deployment.rollback_notes,
+    rollback_notes: deployment.rollback_notes,
+    platformMode: deployment.platformMode,
+    idempotentReplay
+  };
+}
+
+function operationIdFromHeaders(headers: Record<string, string | undefined> | undefined): string | undefined {
+  return headers?.["x-agent-factory-operation-id"];
+}
+
+function normalizeHeaders(headers: IncomingHttpHeaders): Record<string, string | undefined> {
+  return Object.fromEntries(
+    Object.entries(headers).map(([name, value]) => [
+      name.toLowerCase(),
+      Array.isArray(value) ? value.join(",") : value
+    ])
+  );
+}
+
 async function readJson(request: IncomingMessage): Promise<unknown> {
   const chunks: Buffer[] = [];
 
@@ -616,7 +851,7 @@ function writeJson(response: ServerResponse, statusCode: number, body: unknown) 
     "content-type": "application/json; charset=utf-8",
     "access-control-allow-origin": "*",
     "access-control-allow-methods": "GET,POST,PATCH,OPTIONS",
-    "access-control-allow-headers": "content-type"
+    "access-control-allow-headers": "content-type,x-agent-factory-operation-id"
   });
   response.end(statusCode === 204 ? "" : JSON.stringify(body));
 }

@@ -10,8 +10,27 @@ import type {
   CreateAutomationRequest,
   FactoryBuildManifest,
   GovernanceAssessment,
+  PlatformMode,
   StructuredSpec
 } from "@agent-factory/shared-contracts";
+
+export interface DeploymentRecord {
+  deployment_id: string;
+  operation_id: string;
+  request_id: string;
+  build_run_id: string;
+  environment: "sandbox" | "preview";
+  status: "deployed";
+  app_url?: string;
+  deployment_provider: "local-sandbox" | "vercel-preview";
+  deployment_id_external?: string;
+  rollback_ref: string;
+  rollback_notes: string;
+  pull_request_url?: string;
+  platformMode: PlatformMode;
+  created_at: string;
+  completed_at: string;
+}
 
 export interface FactoryRequestRecord {
   request: AutomationRequest;
@@ -23,6 +42,7 @@ export interface FactoryRequestRecord {
   approvalTasks: ApprovalTask[];
   buildManifest?: FactoryBuildManifest;
   buildRuns: BuildRun[];
+  deploymentRecords: DeploymentRecord[];
 }
 
 export interface FactoryStore {
@@ -48,6 +68,8 @@ export interface FactoryStore {
   saveBuildManifest(requestId: string, manifest: FactoryBuildManifest): Promise<FactoryRequestRecord>;
   createBuildRun(run: BuildRun): Promise<FactoryRequestRecord>;
   updateBuildRun(buildRunId: string, patch: Partial<BuildRun>): Promise<FactoryRequestRecord>;
+  createDeploymentRecord(record: DeploymentRecord): Promise<FactoryRequestRecord>;
+  findDeploymentByOperationId(operationId: string): Promise<DeploymentRecord | undefined>;
   addAuditEvent(event: AuditEvent): Promise<AuditEvent>;
   listAuditEvents(requestId: string): Promise<AuditEvent[]>;
 }
@@ -93,8 +115,10 @@ class InMemoryFactoryStore implements FactoryStore {
       return undefined;
     }
 
+    const { deploymentRecords: _deploymentRecords, ...detail } = record;
+
     return {
-      ...record,
+      ...detail,
       auditEvents: await this.listAuditEvents(requestId)
     };
   }
@@ -126,7 +150,8 @@ class InMemoryFactoryStore implements FactoryStore {
       clarificationQuestions: [],
       clarificationAnswers: [],
       approvalTasks: [],
-      buildRuns: []
+      buildRuns: [],
+      deploymentRecords: []
     };
 
     this.records.set(requestId, record);
@@ -226,6 +251,25 @@ class InMemoryFactoryStore implements FactoryStore {
     }
 
     throw new Error(`Build run not found: ${buildRunId}`);
+  }
+
+  async createDeploymentRecord(deployment: DeploymentRecord): Promise<FactoryRequestRecord> {
+    const record = this.requireRecord(deployment.request_id);
+    record.deploymentRecords = [...record.deploymentRecords, deployment];
+    record.request.updated_at = this.now();
+    return record;
+  }
+
+  async findDeploymentByOperationId(operationId: string): Promise<DeploymentRecord | undefined> {
+    for (const record of this.records.values()) {
+      const deployment = record.deploymentRecords.find((candidate) => candidate.operation_id === operationId);
+
+      if (deployment) {
+        return deployment;
+      }
+    }
+
+    return undefined;
   }
 
   async addAuditEvent(event: AuditEvent): Promise<AuditEvent> {

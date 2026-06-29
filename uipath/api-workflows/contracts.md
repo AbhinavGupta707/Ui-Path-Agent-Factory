@@ -12,7 +12,7 @@ created or run.
 | `AgentFactory_FetchBuildStatus` | `AgentFactory_FetchBuildStatus/Workflow.json` | Poll a Build Worker run | Valid |
 | `AgentFactory_PostStatusUpdate` | `AgentFactory_PostStatusUpdate/Workflow.json` | Patch Factory API build status | Valid |
 | `AgentFactory_RecordTestResult` | `AgentFactory_RecordTestResult/Workflow.json` | Convert test-gate decisions into Factory API build status | Valid |
-| `AgentFactory_StartDeployment` | `AgentFactory_StartDeployment/Workflow.json` | Start approved sandbox deployment when a deploy endpoint exists | Valid/import-ready |
+| `AgentFactory_StartDeployment` | `AgentFactory_StartDeployment/Workflow.json` | Start approved sandbox deployment through Factory API `/deploy` | Valid/import-ready |
 
 ## Common Required Fields
 
@@ -37,7 +37,7 @@ UiPath Automation Cloud workflow execution.
 | `AgentFactory_FetchBuildStatus` | `GET` | `{buildWorkerBaseUrl}/build/{buildRunId}` | Defaults to `http://localhost:8790` |
 | `AgentFactory_PostStatusUpdate` | `PATCH` | `{factoryApiBaseUrl}/api/builds/{buildRunId}/status` | Defaults to `http://localhost:8787` |
 | `AgentFactory_RecordTestResult` | `PATCH` | `{factoryApiBaseUrl}/api/builds/{buildRunId}/status` | Maps test decisions to build statuses |
-| `AgentFactory_StartDeployment` | `POST` | `{deploymentServiceBaseUrl}/deploy` | Defaults to `http://localhost:8791`; endpoint pending |
+| `AgentFactory_StartDeployment` | `POST` | `{deploymentServiceBaseUrl}/deploy` | Defaults to `http://localhost:8787`; Factory API records sandbox deployment evidence |
 
 ## Run Mode
 
@@ -49,6 +49,28 @@ UiPath Automation Cloud workflow execution.
 - With-auth runs require explicit approval.
 - No Integration Service connection IDs are present or required for these HTTP
   workflows.
+
+## Deployment Evidence
+
+`AgentFactory_StartDeployment` calls `POST /deploy` after release approval. The
+Factory API endpoint requires `operationId` or `x-agent-factory-operation-id`,
+rejects `environment: "production"`, and returns deployment evidence:
+
+```json
+{
+  "requestId": "REQ-2026-001",
+  "buildRunId": "BUILD-REQ-2026-001-001",
+  "environment": "sandbox",
+  "deploymentStatus": "deployed",
+  "deploymentUrl": "http://localhost:5174",
+  "rollbackNotes": "Sandbox-only deployment; rollback by stopping the local app or redeploying the previous preview. Production is disabled.",
+  "platformMode": "uipath-ready"
+}
+```
+
+Retries with the same idempotency key return the same evidence with
+`idempotentReplay: true`. Use `uipath-ready` until the workflow is actually run
+in UiPath Automation Cloud.
 
 ## Validation Commands
 
@@ -79,6 +101,6 @@ Each command returned:
 - Configure target service base URLs as environment-specific values, preferably
   Orchestrator assets.
 - Start the local Build Worker for build trigger/polling flows.
-- Start the local Factory API for status/test-result flows.
-- Implement or provide a deployment service before running
-  `AgentFactory_StartDeployment`.
+- Start the local Factory API for status/test-result/deployment flows.
+- Start the local Customer360 dashboard or record a Vercel preview URL before
+  running `AgentFactory_StartDeployment`.
