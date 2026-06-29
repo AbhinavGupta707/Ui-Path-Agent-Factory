@@ -95,7 +95,7 @@ The factory addresses coding-agent sprawl inside enterprises. Teams can still mo
 - Maestro BPMN is validated/import-ready but not published or run.
 - Low-code agents and API Workflows validate locally but are not uploaded or run.
 - Action Center and UiPath Apps remain proposal-only contracts.
-- `AgentFactory_StartDeployment` expects a future `POST /deploy` endpoint.
+- `AgentFactory_StartDeployment` targets the implemented local `POST /deploy` sandbox endpoint for deployment evidence.
 - The default Build Worker runtime reports `blocked` until a live Codex/Git runner is injected.
 - The demo uses synthetic Customer360 data only.
 

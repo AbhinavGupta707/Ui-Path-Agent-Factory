@@ -16,7 +16,7 @@ The repository is the production implementation for the submission package, not 
 | Maestro | Validated, import-ready BPMN project; not published or run until approval. |
 | Agents/API Workflows | Validated/import-ready local assets; not uploaded, deployed, or run until approval. |
 | Action Center/UiPath Apps | Proposal-only contracts; task/app creation, completion, publish, or deploy requires approval. |
-| Deployment | Sandbox/local dashboard run is available. `AgentFactory_StartDeployment` expects `POST /deploy`; that endpoint is not implemented in this lane. |
+| Deployment | Sandbox/local dashboard run is available. `AgentFactory_StartDeployment` targets the local `POST /deploy` sandbox endpoint for deployment evidence. |
 
 ## Demo Story
 

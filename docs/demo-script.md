@@ -76,7 +76,7 @@ Show these in the UI, terminal, or docs:
 - Agents and API Workflows are validated/import-ready until upload/run is approved.
 - Action Center and UiPath Apps contracts are proposal-only until creation/deployment is approved.
 - Production deployment is not part of this demo.
-- The `AgentFactory_StartDeployment` workflow expects `POST /deploy`; this lane does not implement that endpoint.
+- The `AgentFactory_StartDeployment` workflow targets the implemented local `POST /deploy` sandbox endpoint for deployment evidence.
 
 ## Reset And Rehearsal
 
