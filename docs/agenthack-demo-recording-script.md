@@ -121,7 +121,8 @@ I am in a business and I am struggling to track customer analytics. I want a das
 - Approve release.
 - Open the Customer360 preview inside the console first.
 - Use `http://localhost:5184` only if you want a full-screen dashboard shot after the in-app preview opens.
-- Finish on the Evidence drawer or run evidence rail.
+- Finish on the Factory Console technical evidence panel if the `Evidence` button opens cleanly.
+- If the Evidence button is visually subtle or does not open in Safari, finish on `Live Run` for the lifecycle rail or on the Customer360 `Evidence` tab in the full-screen preview.
 
 ## Recording Script
 
@@ -219,10 +220,10 @@ The dashboard is the proof artifact. The actual product is the governed factory 
 
 ### 4:15-4:45 - Evidence Close
 
-Screen cue: finish on the Evidence drawer or live run evidence rail.
+Screen cue: preferred final frame is Factory Console `Output Preview` -> `Evidence`, showing `Technical evidence`, `Build manifest`, `Audit timeline`, and `Platform evidence`. If that panel does not open cleanly, use `Back to live run` to show the lifecycle/evidence rail, or switch to `http://localhost:5184` and click the left-nav `Evidence` tab.
 
 ```text
-To close, this evidence view is the important part. The dashboard proves we can produce an internal app; the evidence proves the enterprise can own it.
+To close, the evidence is the important part. The dashboard proves we can produce an internal app; the evidence proves the enterprise can own it.
 
 The manifest captures the approved scope and policy. The audit trail records the lifecycle. The platform evidence ties the work back to UiPath orchestration, human approvals, API handoffs, tests, and release control. And the worker contract shows that the coding agent is not acting freely; it is building inside a governed boundary.
 
