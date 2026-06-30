@@ -119,7 +119,8 @@ I am in a business and I am struggling to track customer analytics. I want a das
 - Show the Build Plan screen and governance/manifest details.
 - Approve the plan and show the Live Run.
 - Approve release.
-- Open the Customer360 preview.
+- Open the Customer360 preview inside the console first.
+- Use `http://localhost:5184` only if you want a full-screen dashboard shot after the in-app preview opens.
 - Finish on the Evidence drawer or run evidence rail.
 
 ## Recording Script
@@ -208,7 +209,7 @@ It needs evidence: test status, guardrails, deployment target, rollback notes, a
 
 ### 3:45-4:15 - Output Preview
 
-Screen cue: open the Customer360 preview.
+Screen cue: open the Customer360 preview from the console. If the embedded preview feels too small for the recording, then open the full-screen preview at `http://localhost:5184`.
 
 ```text
 The output is a working Customer360 dashboard, not a static screenshot. It uses synthetic data, masked identifiers, governed KPIs, segment filters, refresh states, degraded and empty states, and metric tests.
@@ -221,11 +222,13 @@ The dashboard is the proof artifact. The actual product is the governed factory 
 Screen cue: finish on the Evidence drawer or live run evidence rail.
 
 ```text
-This final view makes the submission scorable: manifest, audit timeline, platform evidence, API state, quality evidence, and the worker contract.
+To close, this evidence view is the important part. The dashboard proves we can produce an internal app; the evidence proves the enterprise can own it.
 
-Against the judging criteria, business impact is governed internal app delivery. Platform usage is UiPath orchestration across Maestro BPMN, agents, approvals, APIs, tests, and audit. Technical execution is manifest-first coding-agent control. Completeness is the end-to-end request-to-preview flow. Creativity is the product move: UiPath becomes the operating system for coding agents.
+The manifest captures the approved scope and policy. The audit trail records the lifecycle. The platform evidence ties the work back to UiPath orchestration, human approvals, API handoffs, tests, and release control. And the worker contract shows that the coding agent is not acting freely; it is building inside a governed boundary.
 
-The AI plans and builds. UiPath orchestrates and governs. Tests and audit carry the evidence. That is Agent Factory: a controlled path from business request to reviewed internal app.
+So Agent Factory is not trying to replace enterprise governance with AI. It gives coding agents an operating model enterprises can trust.
+
+The AI plans and builds. UiPath orchestrates, governs, and records the evidence. That is Agent Factory: a controlled path from business request to reviewed internal app.
 ```
 
 ## Shorter Emergency Close
