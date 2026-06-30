@@ -1,0 +1,137 @@
+{
+  "project": "Governed Agentic Automation Factory",
+  "hackathon": "UiPath AgentHack",
+  "track": "Track 2: UiPath Maestro BPMN",
+  "preparedDate": "2026-06-30",
+  "publicRepository": "https://github.com/AbhinavGupta707/Ui-Path-Agent-Factory",
+  "recommendedEnvironmentUrl": "https://cloud.uipath.com/galacticus/",
+  "tenantDeepLink": "https://cloud.uipath.com/galacticus/DefaultTenant/",
+  "labsStagingUrlStatus": {
+    "assignedUrlAvailable": false,
+    "note": "Separate UiPath Labs staging sandbox URL was not provisioned before the access-request window closed. This pack supplies Automation Cloud environment evidence instead of fabricating a staging URL."
+  },
+  "localProductUrls": {
+    "factoryConsole": "http://localhost:5183",
+    "customer360Preview": "http://localhost:5184",
+    "factoryApiHealth": "http://localhost:8887/health",
+    "buildWorkerHealth": "http://localhost:8890/health"
+  },
+  "environment": {
+    "baseUrl": "https://cloud.uipath.com",
+    "organizationLogicalName": "galacticus",
+    "organizationId": "1aa6cebf-ee8e-4fec-8520-b7971407d266",
+    "tenantName": "DefaultTenant",
+    "tenantId": "360e9052-0ec2-4b79-b879-e6c7f992c443",
+    "primaryFolderName": "AgentFactoryDemo",
+    "primaryFolderId": 7986306,
+    "primaryFolderKey": "cba41e19-47cc-4a0a-bf73-de88b60a61be",
+    "primaryFolderPath": "AgentFactoryDemo",
+    "primaryFolderType": "Standard",
+    "primaryFolderDescription": "Governed Agentic Automation Factory hackathon demo folder",
+    "isolatedSolutionFolderName": "AgentFactoryDemoLiveSpine 1",
+    "isolatedSolutionFolderId": 7989142,
+    "isolatedSolutionFolderKey": "d991e64c-d0ad-4ec6-9798-8783b166a073"
+  },
+  "uipathComponents": [
+    "Maestro BPMN",
+    "Agent Builder / UiPath Agents",
+    "Coded agents / coded runtime",
+    "UiPath for Coding Agents / Codex",
+    "Action Center contracts",
+    "API Workflows / Integration Service",
+    "Data Service schema",
+    "Orchestrator",
+    "Test Manager / Test Cloud",
+    "UiPath Apps contract"
+  ],
+  "agentType": {
+    "usesLowCodeAgents": true,
+    "usesCodedAgents": true,
+    "usesCodingAgent": true,
+    "summary": "Both low-code UiPath Agent Builder assets and coded/model-backed runtime agents are used. Codex is invoked through a manifest-constrained Build Worker contract."
+  },
+  "liveProof": {
+    "orchestratorFolder": {
+      "name": "AgentFactoryDemo",
+      "id": 7986306,
+      "key": "cba41e19-47cc-4a0a-bf73-de88b60a61be"
+    },
+    "maestroSolutionDeployment": {
+      "solutionPackage": "AgentFactoryMaestroSolutionBridgeSpine",
+      "version": "1.0.1",
+      "packageVersionKey": "53399a60-1edb-4d51-a054-29b17533932c",
+      "deploymentKey": "427de334-ba5e-4e95-bba1-d053abdad2f4",
+      "pipelineDeploymentId": "0558837f-54a8-4526-10b1-08ded6011ef2",
+      "activationStatus": "SuccessfulActivate",
+      "processName": "agent-factory-customer360-build",
+      "processKey": "AgentFactoryMaestroSolutionBridgeSpine.Agentic.customer360-build",
+      "packageProcessKey": "AgentFactoryMaestroSolutionBridgeSpine.Agentic.customer360-build:1.0.1",
+      "releaseKey": "70d07489-d32a-4f56-9f5e-5fadaf8b14e6",
+      "feedId": "e4c3d330-c071-4dc1-9bb9-9a18c65dfd83",
+      "folderName": "AgentFactoryDemoLiveSpine 1",
+      "folderId": 7989142,
+      "folderKey": "d991e64c-d0ad-4ec6-9798-8783b166a073"
+    },
+    "testManager": {
+      "projectName": "Agent Factory Quality Gates",
+      "projectKey": "AFQG",
+      "projectId": "2760d770-7e82-0000-66f7-0b49d3053e3f",
+      "testSetName": "Customer360 Release Gate",
+      "testSetKey": "AFQG:1",
+      "testSetId": "66cdd3ea-c873-0200-58fb-0b49d305588a",
+      "testCases": [
+        { "key": "AFQG:2", "name": "AF-QG-001 Workspace smoke passes" },
+        { "key": "AFQG:7", "name": "AF-QG-002 Metric correctness checks pass" },
+        { "key": "AFQG:3", "name": "AF-QG-003 PII masking guardrails pass" },
+        { "key": "AFQG:8", "name": "AF-QG-004 Generated dashboard builds" },
+        { "key": "AFQG:4", "name": "AF-QG-005 Worker manifest validation passes" },
+        { "key": "AFQG:6", "name": "AF-QG-006 Release approval evidence complete" },
+        { "key": "AFQG:5", "name": "AF-QG-007 Failed gate blocks deployment" }
+      ]
+    },
+    "localProductRun": {
+      "requestId": "REQ-2026-001",
+      "manifestId": "MAN-REQ-2026-001",
+      "buildRunId": "BUILD-REQ-2026-001-001",
+      "deploymentId": "DEP-REQ-2026-001-001",
+      "codexReadinessSessionId": "019f14f9-8e3b-7232-9d59-6ee2c428279f"
+    }
+  },
+  "readOnlyVerificationCommands": [
+    "uip login status --output json",
+    "uip login tenant list --output json",
+    "uip or folders get AgentFactoryDemo --output json",
+    "uip tm project list --limit 5 --output json",
+    "uip tm testsets list --project-key AFQG --output json",
+    "uip tm testcases list --project-key AFQG --output json",
+    "uip maestro bpmn process list --folder-key d991e64c-d0ad-4ec6-9798-8783b166a073 --output json",
+    "uip or processes list --folder-key d991e64c-d0ad-4ec6-9798-8783b166a073 --output json"
+  ],
+  "safety": {
+    "syntheticOnly": true,
+    "usesRealPhi": false,
+    "usesRealCustomerData": false,
+    "usesRealPayerSubmission": false,
+    "productionDeploymentClaimed": false,
+    "rawSecretsIncluded": false,
+    "claimBoundary": "No assigned Labs staging URL is claimed. No live Action Center task completion, Data Service writes, Test Cloud execution, or production deployment is claimed."
+  },
+  "zipContents": [
+    "Agent-Factory-UiPath-Environment-Evidence-Packet.pdf",
+    "uipath-environment-evidence-packet.md",
+    "uipath-environment-evidence-manifest.json",
+    "README.md",
+    "docs/setup.md",
+    "docs/component-map.md",
+    "docs/uipath-setup.md",
+    "docs/uipath-live-spine-activation.md",
+    "docs/hackathon-requirements-analysis.md",
+    "docs/devpost-submission.md",
+    "docs/submission-checklist.md",
+    "docs/orchestration/checkpoint-7/live-activation-evidence-2026-06-29.md",
+    "docs/orchestration/checkpoint-7/maestro-solution-activation-evidence-2026-06-29.md",
+    "docs/agenthack-demo-recording-script.md",
+    "AgentFactory_Submission_Deck.pptx",
+    "PACK_README.md"
+  ]
+}
