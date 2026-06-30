@@ -51,20 +51,39 @@ export class FireworksChatClient implements ChatCompletionClient {
     }
 
     const model = this.config.fireworks.models[request.profile];
-    const response = await fetch(`${this.config.fireworks.baseUrl.replace(/\/$/, "")}/chat/completions`, {
-      method: "POST",
-      headers: {
-        authorization: `Bearer ${apiKey}`,
-        "content-type": "application/json"
-      },
-      body: JSON.stringify({
-        model,
-        messages: request.messages,
-        temperature: request.temperature ?? 0.1,
-        max_tokens: request.maxTokens ?? 1400,
-        response_format: { type: "json_object" }
-      })
-    });
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), this.config.fireworks.timeoutMs);
+    let response: Response;
+
+    try {
+      response = await fetch(`${this.config.fireworks.baseUrl.replace(/\/$/, "")}/chat/completions`, {
+        method: "POST",
+        signal: controller.signal,
+        headers: {
+          authorization: `Bearer ${apiKey}`,
+          "content-type": "application/json"
+        },
+        body: JSON.stringify({
+          model,
+          messages: request.messages,
+          temperature: request.temperature ?? 0.1,
+          max_tokens: request.maxTokens ?? 1400,
+          response_format: { type: "json_object" }
+        })
+      });
+    } catch (error) {
+      if (controller.signal.aborted) {
+        throw new FireworksChatError(
+          "fireworks_request_timeout",
+          `Fireworks request timed out after ${this.config.fireworks.timeoutMs}ms.`
+        );
+      }
+
+      throw error;
+    } finally {
+      clearTimeout(timeout);
+    }
+
     const body = (await response.json().catch(() => ({}))) as OpenAiCompatibleResponse;
 
     if (!response.ok) {

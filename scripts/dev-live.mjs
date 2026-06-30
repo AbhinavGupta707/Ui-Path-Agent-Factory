@@ -2,10 +2,14 @@
 import { spawn, spawnSync } from "node:child_process";
 import { existsSync, readFileSync } from "node:fs";
 
-const env = {
-  ...process.env,
+const fileEnv = {
   ...readEnvFile(".env"),
   ...readEnvFile(".env.local")
+};
+
+const env = {
+  ...fileEnv,
+  ...process.env
 };
 
 const factoryApiPort = env.FACTORY_API_PORT || "8887";
@@ -15,12 +19,29 @@ const customerPort = portFromUrl(env.CUSTOMER360_TEMPLATE_URL) || "5184";
 
 env.FACTORY_API_PORT = factoryApiPort;
 env.BUILD_WORKER_PORT = buildWorkerPort;
-env.VITE_FACTORY_API_BASE_URL = env.VITE_FACTORY_API_BASE_URL || `http://localhost:${factoryApiPort}`;
 env.CUSTOMER360_TEMPLATE_URL = env.CUSTOMER360_TEMPLATE_URL || `http://localhost:${customerPort}`;
-env.CUSTOMER360_DEPLOYMENT_URL = env.CUSTOMER360_DEPLOYMENT_URL || env.CUSTOMER360_TEMPLATE_URL;
-env.VITE_CUSTOMER360_TEMPLATE_URL = env.VITE_CUSTOMER360_TEMPLATE_URL || env.CUSTOMER360_TEMPLATE_URL;
-env.VITE_CUSTOMER360_DEPLOYMENT_URL = env.VITE_CUSTOMER360_DEPLOYMENT_URL || env.CUSTOMER360_DEPLOYMENT_URL;
-env.DEPLOYMENT_SERVICE_BASE_URL = env.DEPLOYMENT_SERVICE_BASE_URL || `http://localhost:${factoryApiPort}`;
+env.VITE_FACTORY_API_BASE_URL =
+  process.env.VITE_FACTORY_API_BASE_URL ||
+  (process.env.FACTORY_API_PORT ? `http://localhost:${factoryApiPort}` : env.VITE_FACTORY_API_BASE_URL) ||
+  `http://localhost:${factoryApiPort}`;
+env.CUSTOMER360_DEPLOYMENT_URL =
+  process.env.CUSTOMER360_DEPLOYMENT_URL ||
+  (process.env.CUSTOMER360_TEMPLATE_URL ? env.CUSTOMER360_TEMPLATE_URL : env.CUSTOMER360_DEPLOYMENT_URL) ||
+  env.CUSTOMER360_TEMPLATE_URL;
+env.VITE_CUSTOMER360_TEMPLATE_URL =
+  process.env.VITE_CUSTOMER360_TEMPLATE_URL ||
+  (process.env.CUSTOMER360_TEMPLATE_URL ? env.CUSTOMER360_TEMPLATE_URL : env.VITE_CUSTOMER360_TEMPLATE_URL) ||
+  env.CUSTOMER360_TEMPLATE_URL;
+env.VITE_CUSTOMER360_DEPLOYMENT_URL =
+  process.env.VITE_CUSTOMER360_DEPLOYMENT_URL ||
+  (process.env.CUSTOMER360_DEPLOYMENT_URL || process.env.CUSTOMER360_TEMPLATE_URL
+    ? env.CUSTOMER360_DEPLOYMENT_URL
+    : env.VITE_CUSTOMER360_DEPLOYMENT_URL) ||
+  env.CUSTOMER360_DEPLOYMENT_URL;
+env.DEPLOYMENT_SERVICE_BASE_URL =
+  process.env.DEPLOYMENT_SERVICE_BASE_URL ||
+  (process.env.FACTORY_API_PORT ? `http://localhost:${factoryApiPort}` : env.DEPLOYMENT_SERVICE_BASE_URL) ||
+  `http://localhost:${factoryApiPort}`;
 
 const noBuild = process.argv.includes("--no-build");
 if (!noBuild) {

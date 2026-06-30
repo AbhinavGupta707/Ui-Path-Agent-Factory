@@ -8,6 +8,7 @@ export interface AgentProviderConfig {
     baseUrl: string;
     apiKey?: string;
     apiKeyPresent: boolean;
+    timeoutMs: number;
     models: Record<AgentModelProfile, string>;
   };
   langsmith: {
@@ -32,9 +33,9 @@ export interface AgentProviderReadiness {
 }
 
 const defaultModels: Record<AgentModelProfile, string> = {
-  fast: "accounts/fireworks/models/gpt-oss-120b",
-  reasoning: "accounts/fireworks/models/deepseek-v4-pro",
-  code: "accounts/fireworks/models/kimi-k2p6",
+  fast: "accounts/fireworks/models/glm-5p2",
+  reasoning: "accounts/fireworks/models/glm-5p2",
+  code: "accounts/fireworks/models/glm-5p2",
   fallback: "accounts/fireworks/models/glm-5p2"
 };
 
@@ -48,6 +49,7 @@ export function loadAgentProviderConfig(env: NodeJS.ProcessEnv = process.env): A
       apiKey: fireworksApiKey,
       apiKeyPresent: Boolean(fireworksApiKey),
       baseUrl: readOptional(env.FIREWORKS_BASE_URL) ?? "https://api.fireworks.ai/inference/v1",
+      timeoutMs: parsePositiveInteger(env.FIREWORKS_TIMEOUT_MS, 20_000),
       models: {
         fast: readOptional(env.AGENT_MODEL_FAST) ?? defaultModels.fast,
         reasoning: readOptional(env.AGENT_MODEL_REASONING) ?? defaultModels.reasoning,
@@ -95,6 +97,12 @@ function parseRuntimeMode(value: string | undefined): AgentRuntimeConfigMode {
 
 function parseBoolean(value: string | undefined): boolean {
   return ["1", "true", "yes", "on"].includes((value ?? "").toLowerCase());
+}
+
+function parsePositiveInteger(value: string | undefined, fallback: number): number {
+  const parsed = Number.parseInt(value ?? "", 10);
+
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
 }
 
 function readOptional(value: string | undefined): string | undefined {

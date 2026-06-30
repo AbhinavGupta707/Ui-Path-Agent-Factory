@@ -12,17 +12,26 @@ Implementation base: `4d761b6` (`Align checkpoint 7 with AgentHack Track 2`).
 | Product UI Live Flow | local:e5efcafb-3017-4af7-a2d0-90108cbeed79 | 019f1453-9a9f-7643-b050-964c3ddfaa41 | `/Users/abhinavgupta/.codex/worktrees/22c7/Agent Factory` | merged | Lane commit `75bfca5`; merged by `c0cdf52`. Reference-style UI wired to real lifecycle endpoints. |
 | Codex Worker Live Execution | local:9f8fac2d-85f9-4be4-b122-460231e785e5 | 019f1453-d10b-7522-a9e9-db97960792fc | `/Users/abhinavgupta/.codex/worktrees/5821/Agent Factory` | merged | Lane commit `7088401`; merged by `6f113d1`. Safe opt-in live Codex runner evidence and default blocked state. |
 | Maestro Cloud Orchestration | local:a69eff27-32a0-48d9-be8b-660b04533735 | 019f1454-0ac3-7712-9d06-04b2a0ce1042 | `/Users/abhinavgupta/.codex/worktrees/a8bf/Agent Factory` | merged | Lane commit `425e61d`; merged by `e6d25f5`. Track 2 Maestro BPMN path validates; final QA later solution-deployed patched version `1.0.1` in isolated folder `AgentFactoryDemoLiveSpine 1`. |
-| QA, Evidence, And Submission Runbook | local final QA lane | 019f0ff5-72fb-7390-b4d0-613600a3c2cf delegated lane | `/Users/abhinavgupta/.codex/worktrees/9694/Agent Factory` | complete | Refreshed runbook/truth tables/status docs, added trusted bridge hardening, performed approved isolated UiPath solution activation checks, and reran the full verification suite. |
+| QA, Evidence, And Submission Runbook | local final QA lane | 019f0ff5-72fb-7390-b4d0-613600a3c2cf delegated lane | `/Users/abhinavgupta/.codex/worktrees/9694/Agent Factory` | complete | Refreshed runbook/truth tables/status docs, added trusted bridge hardening, performed approved isolated UiPath solution activation checks, reran the full verification suite, and merged public `main` hardening updates for final submission. |
 
 ## Final Truth Table
 
 | Status | Evidence |
 |---|---|
-| Live | UiPath login context for `galacticus / DefaultTenant`; original Orchestrator folder `AgentFactoryDemo` id `7986306`; historical solution folder `AgentFactoryDemoLiveSpine` id `7989131`; current patched solution folder `AgentFactoryDemoLiveSpine 1` id `7989142`; solution-deployed Maestro process `AgentFactoryMaestroSolutionBridgeSpine.Agentic.customer360-build:1.0.1` with release `70d07489-d32a-4f56-9f5e-5fadaf8b14e6`; Test Manager project `AFQG` / `Agent Factory Quality Gates`; seven Test Manager test cases; live Codex CLI readiness/build through the Build Worker isolated workspace. |
-| Local runnable | Factory Console, Factory API lifecycle and token-aware live-evidence callback endpoint, Build Worker contract with optional trusted bridge token, API Workflow local runner handoff, Customer360 dashboard, sandbox `/deploy`, local tests, and demo smoke. |
+| Live | UiPath login context for `galacticus / DefaultTenant`; original Orchestrator folder `AgentFactoryDemo` id `7986306`; historical solution folder `AgentFactoryDemoLiveSpine` id `7989131`; current patched solution folder `AgentFactoryDemoLiveSpine 1` id `7989142`; solution-deployed Maestro process `AgentFactoryMaestroSolutionBridgeSpine.Agentic.customer360-build:1.0.1` with release `70d07489-d32a-4f56-9f5e-5fadaf8b14e6`; Test Manager project `AFQG` / `Agent Factory Quality Gates`; seven Test Manager test cases; Fireworks and LangSmith local configuration detected with no missing provider keys; live Codex CLI readiness/build through the Build Worker isolated workspace. |
+| Local runnable | Factory Console, Factory API lifecycle and token-aware live-evidence callback endpoint, Build Worker contract with optional trusted bridge token, API Workflow local runner handoff, Customer360 dashboard, sandbox `/deploy`, local tests, demo smoke, and a request-to-build-queued lifecycle smoke on alternate ports `8897/8898/5193/5194`. |
 | Import-ready/validated | Maestro BPMN source and solution pack/deploy commands; six API Workflow JSON assets including `AgentFactory_RecordUiPathEvent`; five low-code Agent projects. |
 | Proposal-only | Data Service schema, Action Center approval contracts, and UiPath Apps companion contract. |
 | Blocked or still approval-sensitive | Direct `uip maestro bpmn process publish` is blocked by UiPath `Invalid argument 'Period'`; solution deployment works, but `uip maestro bpmn process run` still fails before an instance/job/task appears because executable Maestro service/user task bindings are not yet materialized through live discovery; Action Center task creation depends on that live human task route; Data Service writes remain deferred to avoid shared-tenant collisions; Test Cloud execution and production release were not run. |
+
+## Post-QA Integration Hardening
+
+After merging the final QA lane, the orchestrator patched integration gaps found during live rehearsal:
+
+- `scripts/dev-live.mjs` now lets inline environment overrides win over `.env.local` and re-derives dependent console/deployment URLs when ports are overridden.
+- `scripts/setup-live-env.mjs` now manages `FIREWORKS_TIMEOUT_MS`; the verified local default is `20000`.
+- Factory API provider handling now bounds Fireworks calls with a timeout, parses channel-style provider JSON, normalizes common provider shape drift, and tops up partial clarification output with deterministic guardrail questions.
+- Final local lifecycle smoke on alternate ports reached `build_queued` for `REQ-2026-001`: intake/spec/governance/manifest used live Fireworks traces, clarification used the labeled degraded fallback, and LangSmith tracing was enabled in local provider status.
 
 ## Final QA Verification
 
@@ -36,6 +45,9 @@ Implementation base: `4d761b6` (`Align checkpoint 7 with AgentHack Track 2`).
 | `npm run smoke` | Passed; build plus test suite completed. |
 | `npm run smoke:demo` | Passed without secrets, live UiPath mutation, or external deployment. |
 | `git diff --check` | Passed after final QA docs edits. |
+| `npm --workspace @agent-factory/factory-api test` | Passed after provider/parser hardening; 26 tests. |
+| `npm --workspace @agent-factory/factory-api run build` | Passed after provider/parser hardening. |
+| Alternate-port local lifecycle smoke | Passed to `build_queued` on `8897/8898/5193/5194`; provider status reported Fireworks live-ready and LangSmith tracing enabled. |
 | `uip login status --output json` | Passed; logged into `https://cloud.uipath.com`, org `galacticus`, tenant `DefaultTenant`. |
 | `uip or folders get AgentFactoryDemo --output json` | Passed; folder id `7986306`, key `cba41e19-47cc-4a0a-bf73-de88b60a61be`. |
 | `uip or folders get "AgentFactoryDemoLiveSpine 1" --output json` | Passed; current patched solution folder id `7989142`, key `d991e64c-d0ad-4ec6-9798-8783b166a073`. |

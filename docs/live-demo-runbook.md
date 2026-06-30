@@ -56,6 +56,14 @@ npm run dev:live
 
 Use the URLs printed by the dev servers as the source of truth. The separate package commands remain available after build output exists: `npm run dev:api`, `npm run dev:worker`, `npm run dev:console`, and `npm run dev:customer360`.
 
+If another project is already using the defaults, inline overrides take precedence over `.env.local`:
+
+```bash
+FACTORY_API_PORT=8897 BUILD_WORKER_PORT=8898 FACTORY_CONSOLE_URL=http://localhost:5193 CUSTOMER360_TEMPLATE_URL=http://localhost:5194 npm run dev:live
+```
+
+Set `FIREWORKS_TIMEOUT_MS=20000` or higher for live-provider rehearsal. Lower values may force deterministic/degraded fallback on multi-step planning prompts.
+
 ## Safe UiPath Evidence Checks
 
 These checks are read-only or local validation. They do not publish, run, create tasks, write Data Service records, or execute Test Cloud gates:

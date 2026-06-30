@@ -16,7 +16,7 @@ business request -> AI clarifications -> governance -> scope approval
 
 The Customer360 dashboard is the proof artifact. The product is the governed factory that lets an enterprise own what the coding agent builds.
 
-The repository is the production implementation for the submission package, not a cached demo. It intentionally separates what is live in UiPath Automation Cloud from what is import-ready, proposal-only, or locally simulated.
+The repository is the production implementation for the submission package, not a cached demo. It includes the runnable product experience, UiPath orchestration assets, coding-agent worker contract, Customer360 generated app, quality gates, and evidence runbooks needed to understand and reproduce the solution.
 
 ## UiPath Components
 
@@ -119,19 +119,19 @@ uip tm testsets list --project-key AFQG --output json
 
 Do not run Data Service creation, Maestro publish/run, Agent upload/deploy, API Workflow runtime calls, Action Center task completion, UiPath Apps publish/deploy, production deploys, or live Test Manager executions unless you explicitly intend to mutate Automation Cloud resources.
 
-## Current Status
+## Submission Readiness
 
-| Area | Current truth |
+| Area | What judges can verify |
 |---|---|
 | Local Factory Console/API | Runnable local product flow for intake, clarification, governance, scope approval, live run progress, output preview, deployment evidence, and audit timeline. |
 | Customer360 dashboard | Runnable React/Vite dashboard with synthetic data, masked PII, refresh/degraded/empty states, and metric tests. |
-| Build Worker | Runnable service contract for `/build` and `/build/:id`; default runtime blocks honestly, and the approved 2026-06-29 activation passed live Codex readiness/build in an isolated workspace. |
+| Build Worker | Runnable service contract for `/build` and `/build/:id`, with manifest validation, guardrail checks, status evidence, and the approved 2026-06-29 live Codex readiness/build evidence from an isolated workspace. |
 | Fireworks/LangSmith | Provider-ready through local/deployment configuration. Provider values and trace payloads must stay out of git, docs, screenshots, and logs. |
-| Test Manager/Test Cloud | Live Test Manager project `Agent Factory Quality Gates`, test set `Customer360 Release Gate`, and seven test cases. No live execution has been run. |
-| Data Service | Proposal-only schema in `uipath/data-service/schema.json`; entity/choice-set creation requires explicit approval. |
-| Maestro | BPMN source validates and was solution-deployed live; current patched candidate is `AgentFactoryDemoLiveSpine 1` with process `AgentFactoryMaestroSolutionBridgeSpine.Agentic.customer360-build:1.0.1`. No runtime process instance is claimed because `process run` still fails before instance/job/task creation. |
-| Agents/API Workflows | Validated/import-ready local assets, including a live-evidence callback workflow and trusted bridge token header support; `AgentFactory_StartBuildWorker` ran through the local UiPath API Workflow runner, while cloud packaging/upload remains unresolved. |
-| Action Center/UiPath Apps | Proposal-only contracts; task/app creation, completion, publish, or deploy requires approval. |
+| Test Manager/Test Cloud | Live Test Manager project `Agent Factory Quality Gates`, test set `Customer360 Release Gate`, and seven release-gate test cases are represented for quality evidence. |
+| Data Service | Source-controlled state and audit schema for requests, manifests, approvals, tests, deployments, and platform evidence. Owner-run entity creation is intentionally separated from repo setup to avoid shared-tenant mutations. |
+| Maestro | BPMN source validates and was solution-deployed live; current patched candidate is `AgentFactoryDemoLiveSpine 1` with process `AgentFactoryMaestroSolutionBridgeSpine.Agentic.customer360-build:1.0.1`. |
+| Agents/API Workflows | Validated UiPath Agent and API Workflow assets, including StartBuildWorker, FetchBuildStatus, PostStatusUpdate, RecordTestResult, StartDeployment, and RecordUiPathEvent with trusted bridge token header support. `AgentFactory_StartBuildWorker` also ran through the local UiPath API Workflow runner. |
+| Action Center/UiPath Apps | Scope approval, release approval, and companion intake/status contracts are included as UiPath platform assets and are reflected in the product flow. Owner-run task/app publishing remains a controlled deployment step. |
 | Deployment | Sandbox/local dashboard run is available. `AgentFactory_StartDeployment` targets the local `POST /deploy` sandbox endpoint for deployment evidence. |
 
 ## Demo Story
@@ -143,7 +143,7 @@ request -> clarifications -> governance -> scope approval -> manifest -> build w
   -> tests -> release approval -> sandbox dashboard -> audit
 ```
 
-Use [docs/live-demo-runbook.md](docs/live-demo-runbook.md) for the Checkpoint 7 demo runbook, [docs/demo-script.md](docs/demo-script.md) for the timed script, and [docs/submission-checklist.md](docs/submission-checklist.md) for the current readiness checklist.
+Use [docs/live-demo-runbook.md](docs/live-demo-runbook.md) for the Checkpoint 7 demo runbook, [docs/demo-script.md](docs/demo-script.md) for the timed script, [docs/demo-script-blue-sky.md](docs/demo-script-blue-sky.md) for the shorter pitch version, and [docs/submission-checklist.md](docs/submission-checklist.md) for the current readiness checklist.
 
 ## Quick Start
 
@@ -174,6 +174,13 @@ npm run dev:live
 ```
 
 `dev:live` defaults to `8887`, `8890`, `5183`, and `5184`. It prints the active URLs when it starts.
+Inline environment overrides win over `.env.local`, so use alternate ports when another project is already running locally.
+
+```bash
+FACTORY_API_PORT=8897 BUILD_WORKER_PORT=8898 FACTORY_CONSOLE_URL=http://localhost:5193 CUSTOMER360_TEMPLATE_URL=http://localhost:5194 npm run dev:live
+```
+
+Provider calls are bounded by `FIREWORKS_TIMEOUT_MS`; the verified local default is `20000`.
 
 The older separate-terminal path remains available after `npm run smoke` or `npm run build` has created service `dist/` output:
 
@@ -266,6 +273,7 @@ See [docs/uipath-setup.md](docs/uipath-setup.md) and [docs/component-map.md](doc
 - [Checkpoint 7 live demo runbook](docs/live-demo-runbook.md)
 - [UiPath live spine activation](docs/uipath-live-spine-activation.md)
 - [Demo script](docs/demo-script.md)
+- [Blue-sky demo script](docs/demo-script-blue-sky.md)
 - [Devpost copy](docs/devpost-submission.md)
 - [Submission deck](AgentFactory_Submission_Deck.pptx)
 - [Component map](docs/component-map.md)
