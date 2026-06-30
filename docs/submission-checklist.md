@@ -11,6 +11,9 @@ Current as of Checkpoint 7 final QA on 2026-06-29.
 - [x] Component map exists in `docs/component-map.md`.
 - [x] Devpost draft copy exists in `docs/devpost-submission.md`.
 - [x] Five-minute demo script exists in `docs/demo-script.md`; shorter blue-sky version exists in `docs/demo-script-blue-sky.md`.
+- [x] README states Project Description, UiPath Components, Agent Type, and Setup Instructions for judges.
+- [x] README and Devpost copy identify the required UiPath Labs environment URL: `https://staging.uipath.com/hackathon26_244/`.
+- [ ] Devpost form field "What is the UiPath Labs link/environment URL where you built your solution?" is manually updated with `https://staging.uipath.com/hackathon26_244/`.
 
 ## Local Demo
 
@@ -66,6 +69,8 @@ Current as of Checkpoint 7 final QA on 2026-06-29.
 - [ ] Final screenshot or visual of validated Maestro BPMN.
 - [ ] Presentation deck link.
 - [ ] Hosted preview URL if Deployment/Runtime lane provides one.
+- [ ] Devpost source code link is set to `https://github.com/AbhinavGupta707/Ui-Path-Agent-Factory`.
+- [ ] Devpost README/source repo link, demo video, slide deck, screenshots, and UiPath Labs URL are all present before final submit.
 
 ## Known Open Facts For Integration
 

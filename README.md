@@ -33,11 +33,22 @@ The repository is the production implementation for the submission package, not 
 | Test Manager / Test Cloud | Quality-gate project, release test set, and seven Customer360 release test cases. | `uipath/test-cloud/quality-gate-assets.json` |
 | UiPath Apps | Companion intake/status contract for a future low-code operator surface. | `uipath/apps/` |
 
-Automation Cloud environment used for build and verification:
+Devpost-required UiPath Labs environment URL:
+
+```text
+https://staging.uipath.com/hackathon26_244/
+```
+
+Automation Cloud environment used for CLI build and verification:
 
 ```text
 https://cloud.uipath.com/galacticus/DefaultTenant/
 ```
+
+The Devpost submission form must use the Labs/staging environment URL above in
+the field titled "What is the UiPath Labs link/environment URL where you built
+your solution?" The `cloud.uipath.com` URL is included here only as the CLI
+verification context for the same organization and tenant.
 
 ## Agent Type
 

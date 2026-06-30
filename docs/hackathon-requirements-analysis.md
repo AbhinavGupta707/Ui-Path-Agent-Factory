@@ -4,6 +4,20 @@ Source reviewed: <https://uipath-agenthack.devpost.com/>
 
 Review date: 2026-06-29
 
+Organizer follow-up reviewed: 2026-06-30 email screenshot from the project
+owner. The follow-up explicitly adds a qualification-sensitive Devpost field:
+the UiPath Labs link/environment URL where the solution was built.
+
+Required value for that Devpost field:
+
+```text
+https://staging.uipath.com/hackathon26_244/
+```
+
+The same follow-up asks the GitHub README to include Project Description,
+UiPath Components, Agent Type, and Setup Instructions. The repository README now
+contains those exact judge-facing sections.
+
 ## Executive Decision
 
 Agent Factory should target Track 2, UiPath Maestro BPMN, for Checkpoint 7.
@@ -24,6 +38,8 @@ The page positions UiPath as the execution and orchestration layer for agentic a
 - human handoffs and governance,
 - use of UiPath platform components,
 - bonus credit for coding agents such as Codex through UiPath for Coding Agents.
+- source repo, demo video, presentation deck, screenshots, and the
+  organizer-required UiPath Labs environment URL.
 
 The listed challenge tracks are:
 
@@ -103,6 +119,8 @@ Required doc changes:
 - update status and acceptance criteria to require a live or approved runnable Automation Cloud orchestration path,
 - update final QA docs to verify Devpost alignment, video/demo story, and truth table,
 - keep all live mutations explicitly approval-gated.
+- call out the organizer-required UiPath Labs URL in README, Devpost copy, and
+  the submission checklist.
 
 ## Open Decisions Before Launch
 

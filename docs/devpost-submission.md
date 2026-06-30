@@ -23,6 +23,22 @@ Agent Factory turns business app requests into UiPath-governed coding-agent buil
 Track 2: UiPath Maestro BPMN
 ```
 
+## Required Submission URLs And Assets
+
+The organizer follow-up email states that the Devpost field
+"What is the UiPath Labs link/environment URL where you built your solution?"
+must be filled or the submission may not qualify.
+
+| Devpost field | Value / status |
+|---|---|
+| UiPath Labs link/environment URL | `https://staging.uipath.com/hackathon26_244/` |
+| Source code | `https://github.com/AbhinavGupta707/Ui-Path-Agent-Factory` |
+| Demo video | `TODO` |
+| Live/local product URL | `TODO` or local run path in `README.md` and `docs/setup.md` |
+| Slide deck | `TODO`; tracked deck file exists as `AgentFactory_Submission_Deck.pptx` |
+| Screenshots | Factory Console New Request, Build Plan manifest, Live Run rail, Output Preview, Customer360 dashboard, evidence/architecture close |
+| README coverage | Project Description, UiPath Components, Agent Type, and Setup Instructions are present in `README.md` |
+
 ## Project Story
 
 ```markdown
@@ -225,7 +241,8 @@ The video shows a business request entering Agent Factory, being clarified by AI
 
 ## Submission Links To Fill
 
-- GitHub repository: `TODO`
+- UiPath Labs link/environment URL: `https://staging.uipath.com/hackathon26_244/`
+- GitHub repository: `https://github.com/AbhinavGupta707/Ui-Path-Agent-Factory`
 - Demo video: `TODO`
 - Live/local product URL: `TODO`
 - Slide deck: `TODO`
