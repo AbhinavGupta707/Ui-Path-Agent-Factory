@@ -2,49 +2,77 @@
 
 Use this as the recording run-of-show for the UiPath AgentHack demo video.
 
-The structure is:
+The recording should feel like:
 
-1. Title slide.
-2. Problem/context slide.
-3. Product demo in Factory Console.
-4. Evidence close.
+1. Quantify the problem.
+2. Name the gap Agent Factory fills.
+3. Show the end-to-end product flow.
+4. Close on architecture, evidence, and judging fit.
+
+## Source Notes
+
+- Devpost listing: https://uipath-agenthack.devpost.com/
+- Track fit: Track 2, UiPath Maestro BPMN.
+- Devpost requires a working agentic solution on UiPath Automation Cloud, a demo video no longer than five minutes, architecture walkthrough, agents/orchestration explanation, where humans fit in, a public GitHub repo, and a presentation deck.
+- Judging criteria to emphasize: Business Impact and Adoption Potential, Platform Usage, Technical Execution, Completeness of Delivery, Creativity and Innovation, Presentation, plus Coding Agents bonus points inside Platform Usage.
+- Problem statistic source: https://survey.stackoverflow.co/2025/ai
+
+## Recording Stance
+
+This script intentionally positions Agent Factory as a UiPath-governed product, not a chat wrapper and not a dashboard generator. The dashboard is the artifact. The actual submission is the enterprise process that turns a business request into an approved, tested, auditable internal app.
+
+Safe phrasing for Codex:
+
+```text
+The worker path is manifest-first. When live Codex execution is enabled, Codex works inside this contract and returns session, diff, file, test, and artifact evidence.
+```
+
+Avoid saying:
+
+```text
+Codex just built this dashboard live in seconds.
+```
 
 ## Image Generation Prompts
 
 ### Slide 1: Title / Control Plane
 
 ```text
-16:9 premium dark enterprise software slide background for a hackathon demo. Show an abstract AI automation control plane: a central command hub orchestrating code windows, workflow rails, approval gates, audit trails, quality checks, and sandbox deployment nodes. Modern SaaS aesthetic, polished glass panels, subtle cyan green and violet accents, high contrast, cinematic but clean, no logos, no readable text, no people, leave negative space on the left for the title "Governed Agentic Automation Factory".
-```
+Create a complete 16:9 premium dark enterprise software title slide for a hackathon demo. The slide should look like a polished SaaS product keynote, not a generic AI poster. Background: an abstract enterprise automation control plane with a central orchestration hub connected to code editor panels, BPMN workflow rails, approval gates, audit logs, quality checks, API handoff nodes, and sandbox deployment tiles. Use restrained dark graphite and navy background, crisp white text, cyan-green status accents, and a small amount of violet highlighting. No real company logos. No people. Make the text sharp and readable.
 
-Suggested slide text:
+Exact slide text:
+Title, large on the left: Governed Agentic Automation Factory
+Subtitle beneath it: UiPath as the enterprise control plane for coding agents
+Small footer line: From business request to governed internal app
 
-```text
-Governed Agentic Automation Factory
-UiPath as the enterprise control plane for coding agents
+Composition: title block on the left third with generous negative space; visual control-plane network on the right two-thirds; professional enterprise hackathon presentation style; high contrast; clean spacing; no clutter; no extra text.
 ```
 
 ### Slide 2: Problem / Why This Matters
 
 ```text
-16:9 premium dark SaaS presentation slide background showing the risk of ungoverned AI-generated internal apps. Many glowing app prototypes and code panels branch out from a single prompt, with abstract warning markers for missing approvals, untested logic, unclear data access, and missing audit evidence. Sophisticated enterprise design, no logos, no readable text, no people, leave clean negative space on the right for statistics and short copy.
-```
+Create a complete 16:9 premium dark SaaS problem slide. The slide should visualize the risk of ungoverned AI-generated internal apps. Background: many glowing app prototypes and code panels branching from a single prompt, with subtle warning markers for missing ownership, unapproved data access, weak testing, missing audit trail, and unsafe deployment. The mood should be urgent but credible, like an enterprise boardroom technology slide. Use dark charcoal and slate, white text, cyan-green highlights, and amber warning accents. No logos. No people. Make all text crisp and readable.
 
-Suggested slide text:
+Exact slide text:
+Headline, large: AI can build faster.
+Second line, large: Enterprises still need trust.
 
-```text
-AI can build faster.
-Enterprises still need trust.
+Stat block, right side:
+84% use or plan to use AI tools
+46% distrust AI output accuracy
 
-84% use or plan to use AI tools.
-46% distrust AI output accuracy.
-
+Small source line:
 Source: Stack Overflow Developer Survey 2025
+
+Bottom thesis line:
+The gap is not generation. The gap is governed delivery.
+
+Composition: problem visuals on the left half, stats and thesis on the right half, clean alignment, no extra text, high contrast, professional hackathon demo style.
 ```
 
 ## Demo Setup
 
-Open:
+Open the product:
 
 ```text
 http://localhost:5183
@@ -60,11 +88,11 @@ Before recording:
 
 - Hard refresh `http://localhost:5183`.
 - Start on `New Request`.
-- Do not double-click during model-backed steps.
-- After `Generate build plan`, wait patiently. This can take 60-90 seconds.
-- After `Approve plan`, wait patiently. This can take 30-60 seconds.
+- Do not double-click model-backed steps.
+- Expect `Generate build plan` to take 60-90 seconds.
+- Expect `Approve plan` to take 30-60 seconds.
 
-## Exact Request
+## Exact Demo Request
 
 Paste this into `Business outcome`:
 
@@ -72,159 +100,115 @@ Paste this into `Business outcome`:
 I am in a business and I am struggling to track customer analytics. I want a dashboard that collates customer insights from purchases, behaviours, segments, and historical customer activity.
 ```
 
+## Judging Map
+
+- Business impact: enterprises can adopt coding agents without losing ownership, approvals, tests, audit, and release control.
+- Platform usage: Maestro BPMN is the process spine; UiPath agents shape requirements and summaries; Action Center handles human gates; API Workflows hand off the manifest; Data Service is the audit model; Test Manager/Test Cloud evidence supports quality; coding agents sit inside UiPath governance.
+- Technical execution: manifest-first worker contract, sandbox-only deployment, PII masking, allowed-file scope, forbidden actions, bounded repair loop, progress states, blocked-state honesty, and evidence capture.
+- Completeness: request to clarification to plan to approval to run to release to preview to evidence.
+- Creativity: UiPath becomes the operating system for coding agents, not just an automation tool beside them.
+- Presentation: short problem setup, product onscreen quickly, architecture explained during wait time, evidence at the end.
+
+## Broad Navigation
+
+- Start with Slide 1, then Slide 2.
+- Switch to Factory Console on `New Request`.
+- Submit the Customer360 request.
+- Show generated clarification questions.
+- Generate the build plan.
+- Show the Build Plan screen and governance/manifest details.
+- Approve the plan and show the Live Run.
+- Approve release.
+- Open the Customer360 preview.
+- Finish on the Evidence drawer or run evidence rail.
+
 ## Recording Script
 
-### 0:00-0:20 - Slide 1: Title
+### 0:00-0:20 - Title Slide
 
-Navigation:
-
-- Show title slide.
-
-Narration:
+Screen cue: show Slide 1.
 
 ```text
 Hello everyone, my name is Abhinav, and this is Governed Agentic Automation Factory: UiPath as the enterprise control plane for coding agents that build internal business apps.
 ```
 
-### 0:20-0:50 - Slide 2: Problem
+### 0:20-0:50 - Problem Slide
 
-Navigation:
-
-- Move to problem slide.
-
-Narration:
+Screen cue: show Slide 2.
 
 ```text
-Coding agents have made it easier than ever to create software. Stack Overflow's 2025 survey found that 84% of developers use or plan to use AI tools, but 46% distrust AI output accuracy.
+AI has made it easier than ever to ship software, but not easier to trust it. Stack Overflow's 2025 survey found that 84% of developers use or plan to use AI tools, while 46% distrust AI output accuracy.
 
-So the issue is not whether AI can build. The issue is whether enterprises can govern what AI builds: ownership, approved data access, human decisions, quality gates, audit, and controlled deployment. That is the gap Agent Factory is built for.
+That is exactly the enterprise problem. A business user can ask for an internal app, and a coding agent can produce one, but the enterprise still needs ownership, approved data access, human decisions, tests, audit, and safe release. That is the gap Agent Factory is built for.
 ```
 
-### 0:50-1:10 - Factory Console: New Request
+### 0:50-1:10 - New Request
 
-Navigation:
-
-- Switch to Chrome.
-- Open `http://localhost:5183`.
-- Confirm the left navigation is on `New Request`.
-- Paste the exact Customer360 request into `Business outcome`.
-- Click `Submit request`.
-
-Narration:
+Screen cue: switch to Factory Console, submit the Customer360 request.
 
 ```text
-Let's see how it works. A business user asks for a Customer360 dashboard across purchases, behavior, segments, and historical activity. The request does not go straight to a coding agent. It enters a governed lifecycle first.
+Let's see how it works. A revenue operations user asks for a Customer360 dashboard across purchases, behavior, segments, and historical activity.
+
+The important design choice is that the request does not go straight to a coding agent. It enters a UiPath-governed lifecycle first.
 ```
 
-### 1:10-1:40 - Clarification Questions
+### 1:10-1:35 - Clarification
 
-Navigation:
-
-- Wait for generated questions.
-- Show the `Clarifying questions` section.
-- Make sure the view shows `7/7 answered`.
-- Let the viewer see `UiPath Clarification Agent (Fireworks Live)` labels.
-
-Narration:
+Screen cue: show the generated questions and answered state.
 
 ```text
-The system asks only for the missing facts needed to build safely: approved source details, metric definitions, filters, PII policy, refresh cadence, and approval ownership. This turns a vague business ask into structured enterprise work.
+The first agent step converts a vague business ask into the facts needed to build safely: source systems, metric definitions, filters, PII policy, refresh needs, and approval ownership.
+
+This is where the product starts turning shadow IT into a repeatable enterprise process. Before code is touched, the request becomes structured work.
 ```
 
-### 1:40-1:55 - Generate Build Plan
+### 1:35-2:10 - Build Plan Generation
 
-Navigation:
-
-- Click `Generate build plan`.
-- Wait. Do not double-click.
-
-Narration:
+Screen cue: generate the plan; use the wait to explain architecture.
 
 ```text
-Now Agent Factory turns those answers into a governed build plan. This step is model-backed, so I will use the wait to explain the architecture.
+While the build plan generates, this is the architecture the judges should care about.
+
+Agent Factory is aligned to the Maestro BPMN track because it models a predictable request-to-release business process. Maestro is the process spine. UiPath agents shape requirements, governance, planning, and test summaries. Action Center is the human approval pattern. API Workflows hand the approved manifest to the worker. Data Service carries the audit model. Test Manager and Test Cloud evidence support release quality.
+
+The product move is that UiPath is not a logo in the corner. UiPath defines the lifecycle the coding agent has to obey.
 ```
 
-### 1:55-2:35 - Architecture During Wait
+### 2:10-2:45 - Build Plan
 
-Navigation:
-
-- Stay on the current screen while the plan generates.
-- If the screen changes to `Build Plan` early, keep talking while showing the generated plan.
-
-Narration:
+Screen cue: show Build Plan, governance, approvals, and manifest details.
 
 ```text
-Maestro is the process spine from intake to release. UiPath agents shape requirements, governance, planning, and test summaries. Action Center is the approval pattern. API Workflows hand the approved manifest to the worker. Data Service carries the audit model. Test Manager provides release quality evidence.
+Here is the key artifact: the build manifest.
 
-The product move is that UiPath is not a side integration. UiPath defines the lifecycle the coding agent has to obey.
+A coding agent should not receive a vague prompt like "make me a dashboard." It should receive approved metrics, allowed files, forbidden actions, sandbox-only deployment, PII rules, expected tests, and a bounded repair limit.
+
+That is the technical heart of Agent Factory: the AI can plan and build, but the enterprise process defines the contract.
 ```
 
-### 2:35-3:05 - Build Plan
+### 2:45-3:20 - Plan Approval And Live Run
 
-Navigation:
-
-- Show `Build Plan`.
-- Point attention to plan, governance, approval, and manifest details.
-
-Narration:
+Screen cue: approve the plan, then show the Live Run progress rail.
 
 ```text
-Here is the key artifact: the build manifest. A coding agent should not receive a vague prompt. It should receive approved metrics, allowed files, forbidden actions, sandbox-only deployment, masked PII policy, test expectations, and a bounded repair limit.
+This approval is not cosmetic. It is a state transition: scope and policy are approved before any worker path can proceed.
 
-That is the technical heart of Agent Factory: AI can build, but the enterprise process defines the contract.
+The run then moves through clarification, governance, human gate, API handoff, build, quality, release, and preview. The worker path is manifest-first. When live Codex execution is enabled, Codex works inside this contract and returns session, diff, file, test, and artifact evidence. If execution is unavailable, the run blocks honestly instead of pretending the build passed.
 ```
 
-### 3:05-3:20 - Approve Plan
+### 3:20-3:45 - Release Approval
 
-Navigation:
-
-- Click `Approve plan`.
-- Wait for the `Live Run` view.
-
-Narration:
+Screen cue: approve release and show the release-ready state.
 
 ```text
-This is the first human gate. Scope and data policy must be approved before the worker path can proceed.
+Release approval is separate from scope approval. The app is not releasable just because AI generated or assembled it.
+
+It needs evidence: test status, guardrails, deployment target, rollback notes, and an accountable human decision.
 ```
 
-### 3:20-3:55 - Live Run
+### 3:45-4:15 - Output Preview
 
-Navigation:
-
-- Show the progress rail.
-- Show live activity.
-- Let the viewer see the run status and evidence rows.
-
-Narration:
-
-```text
-The run moves through clarification, governance, human gate, API handoff, build, quality, release, and preview.
-
-The worker path is manifest-first. When live Codex execution is enabled, Codex works inside this contract and returns session, diff, file, test, and artifact evidence. If execution is unavailable, the run blocks honestly instead of pretending the build passed.
-```
-
-### 3:55-4:10 - Approve Release
-
-Navigation:
-
-- Click `Approve release`.
-- Wait until `Open preview` appears.
-
-Narration:
-
-```text
-Release approval is separate from scope approval. The app is not releasable just because AI generated or assembled it. It needs evidence: tests, guardrails, deployment target, rollback notes, and approval.
-```
-
-### 4:10-4:35 - Output Preview
-
-Navigation:
-
-- Click `Open preview`.
-- Show the Customer360 preview inside the Factory Console.
-- Optionally click `Open sandbox preview` to show `http://localhost:5184`.
-
-Narration:
+Screen cue: open the Customer360 preview.
 
 ```text
 The output is a working Customer360 dashboard, not a static screenshot. It uses synthetic data, masked identifiers, governed KPIs, segment filters, refresh states, degraded and empty states, and metric tests.
@@ -232,30 +216,31 @@ The output is a working Customer360 dashboard, not a static screenshot. It uses 
 The dashboard is the proof artifact. The actual product is the governed factory around it.
 ```
 
-### 4:35-5:00 - Evidence Close
+### 4:15-4:45 - Evidence Close
 
-Navigation:
-
-- Return to Factory Console if you opened the external preview.
-- Click `Evidence`.
-- End on the evidence drawer or the live run evidence rail.
-
-Narration:
+Screen cue: finish on the Evidence drawer or live run evidence rail.
 
 ```text
-The evidence drawer makes the submission scorable: manifest, audit timeline, platform evidence, API state, quality evidence, and the worker contract.
+This final view makes the submission scorable: manifest, audit timeline, platform evidence, API state, quality evidence, and the worker contract.
 
-Business impact is governed internal app delivery. Platform usage is UiPath orchestration across agents, approvals, APIs, tests, and audit. Technical execution is manifest-first coding-agent control. Completeness is the end-to-end request-to-preview flow. Creativity is the product move: UiPath becomes the operating system for coding agents.
+Against the judging criteria, business impact is governed internal app delivery. Platform usage is UiPath orchestration across Maestro BPMN, agents, approvals, APIs, tests, and audit. Technical execution is manifest-first coding-agent control. Completeness is the end-to-end request-to-preview flow. Creativity is the product move: UiPath becomes the operating system for coding agents.
 
 The AI plans and builds. UiPath orchestrates and governs. Tests and audit carry the evidence. That is Agent Factory: a controlled path from business request to reviewed internal app.
 ```
 
-## Recording Notes
+## Shorter Emergency Close
 
-- Best final frame: `Evidence` drawer open with platform evidence visible.
-- If `Generate build plan` appears slow, continue the architecture narration.
+Use this if the recording is running long:
+
+```text
+The key idea is simple: coding agents should not bypass enterprise process. Agent Factory gives them a governed UiPath lifecycle: BPMN orchestration, human gates, API handoffs, audit state, tests, and release evidence. The AI builds inside the contract. UiPath carries the control plane.
+```
+
+## Rehearsal Notes
+
+- Best opening product frame: Factory Console on `New Request`.
+- Best wait-time narration: architecture and judging map.
+- Best final frame: Evidence drawer open with platform evidence visible.
+- If generation is slow, stay calm and continue architecture narration.
 - If a lifecycle warning appears, hard refresh `http://localhost:5183` and restart the flow.
-- Do not say the dashboard was created from scratch in seconds.
-- Safe wording: "The worker path is manifest-first" and "when live Codex execution is enabled."
-- Avoid saying: "Codex just built this dashboard live" unless the Build Worker is actually running with live Codex enabled and you have fresh build evidence.
-
+- Do not describe the Customer360 dashboard as freshly generated by Codex unless the live Codex worker is actually enabled and fresh evidence exists.
