@@ -267,19 +267,6 @@ See [docs/uipath-setup.md](docs/uipath-setup.md) and [docs/component-map.md](doc
 | `uipath/` | Maestro, Data Service, Agents, API Workflow, Action Center, Apps, and Test Manager assets. |
 | `docs/` | Setup, demo script, Devpost copy, component map, and platform runbooks. |
 
-## Submission Docs
-
-- [Setup](docs/setup.md)
-- [Checkpoint 7 live demo runbook](docs/live-demo-runbook.md)
-- [UiPath live spine activation](docs/uipath-live-spine-activation.md)
-- [Demo script](docs/demo-script.md)
-- [Blue-sky demo script](docs/demo-script-blue-sky.md)
-- [Devpost copy](docs/devpost-submission.md)
-- [Submission deck](AgentFactory_Submission_Deck.pptx)
-- [Component map](docs/component-map.md)
-- [Submission checklist](docs/submission-checklist.md)
-- [UiPath setup and platform mapping](docs/uipath-setup.md)
-
 ## License
 
 MIT. See [LICENSE](LICENSE).
