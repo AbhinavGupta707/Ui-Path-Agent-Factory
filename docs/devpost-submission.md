@@ -31,7 +31,7 @@ must be filled or the submission may not qualify.
 
 | Devpost field | Value / status |
 |---|---|
-| UiPath Labs link/environment URL | `https://staging.uipath.com/hackathon26_244/` |
+| UiPath Labs link/environment URL | No assigned Labs staging URL was available. Use `https://cloud.uipath.com/galacticus/` and attach `submission/Agent-Factory-UiPath-Evidence-Pack.zip` as supplemental evidence. |
 | Source code | `https://github.com/AbhinavGupta707/Ui-Path-Agent-Factory` |
 | Demo video | `TODO` |
 | Live/local product URL | `TODO` or local run path in `README.md` and `docs/setup.md` |
@@ -241,7 +241,7 @@ The video shows a business request entering Agent Factory, being clarified by AI
 
 ## Submission Links To Fill
 
-- UiPath Labs link/environment URL: `https://staging.uipath.com/hackathon26_244/`
+- UiPath environment URL: `https://cloud.uipath.com/galacticus/` plus supplemental evidence pack `submission/Agent-Factory-UiPath-Evidence-Pack.zip`
 - GitHub repository: `https://github.com/AbhinavGupta707/Ui-Path-Agent-Factory`
 - Demo video: `TODO`
 - Live/local product URL: `TODO`

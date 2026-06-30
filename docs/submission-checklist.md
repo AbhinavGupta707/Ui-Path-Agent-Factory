@@ -12,8 +12,8 @@ Current as of Checkpoint 7 final QA on 2026-06-29.
 - [x] Devpost draft copy exists in `docs/devpost-submission.md`.
 - [x] Five-minute demo script exists in `docs/demo-script.md`; shorter blue-sky version exists in `docs/demo-script-blue-sky.md`.
 - [x] README states Project Description, UiPath Components, Agent Type, and Setup Instructions for judges.
-- [x] README and Devpost copy identify the required UiPath Labs environment URL: `https://staging.uipath.com/hackathon26_244/`.
-- [ ] Devpost form field "What is the UiPath Labs link/environment URL where you built your solution?" is manually updated with `https://staging.uipath.com/hackathon26_244/`.
+- [x] README and Devpost copy explain that no assigned UiPath Labs staging URL was available and point to the Automation Cloud org evidence.
+- [ ] Devpost form field "What is the UiPath Labs link/environment URL where you built your solution?" is filled with `https://cloud.uipath.com/galacticus/` and the supplemental evidence ZIP is uploaded.
 
 ## Local Demo
 

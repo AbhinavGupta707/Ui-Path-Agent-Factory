@@ -8,10 +8,11 @@ Organizer follow-up reviewed: 2026-06-30 email screenshot from the project
 owner. The follow-up explicitly adds a qualification-sensitive Devpost field:
 the UiPath Labs link/environment URL where the solution was built.
 
-Required value for that Devpost field:
+Current submission reality:
 
 ```text
-https://staging.uipath.com/hackathon26_244/
+No assigned UiPath Labs staging URL is available for this project.
+Use https://cloud.uipath.com/galacticus/ plus the supplemental evidence pack.
 ```
 
 The same follow-up asks the GitHub README to include Project Description,
